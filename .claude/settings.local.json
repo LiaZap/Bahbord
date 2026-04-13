@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx next:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Bash(curl -s http://localhost:3000/login)",
+      "Bash(curl -s -L -v http://localhost:3000/login)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri http://localhost:3000/login -MaximumRedirection 0 -UseBasicParsing -ErrorAction SilentlyContinue | Select-Object StatusCode, Headers\")",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri http://localhost:3000/login -UseBasicParsing\\).Content.Substring\\(0,500\\)\")",
+      "Bash(node -e \"fetch\\('http://localhost:3000/login'\\).then\\(r => { console.log\\('status:', r.status\\); return r.text\\(\\) }\\).then\\(t => console.log\\(t.substring\\(0,800\\)\\)\\)\")",
+      "Bash(node -e \"fetch\\('http://localhost:3000/login'\\).then\\(r=>{console.log\\('status:',r.status\\);return r.text\\(\\)}\\).then\\(t=>console.log\\(t.substring\\(0,800\\)\\)\\).catch\\(e=>console.log\\('err',e\\)\\)\")",
+      "Bash(node -e \"setTimeout\\(\\(\\)=>{},10000\\); fetch\\('http://localhost:3000/login'\\).then\\(r=>{console.log\\('status:',r.status\\);return r.text\\(\\)}\\).then\\(t=>{console.log\\(t.substring\\(0,800\\)\\);process.exit\\(\\)}\\).catch\\(e=>{console.log\\('err',e\\);process.exit\\(1\\)}\\)\")",
+      "Bash(timeout 10 node -e \"fetch\\('http://localhost:3000/login'\\).then\\(function\\(r\\){console.log\\(r.status\\);return r.text\\(\\)}\\).then\\(function\\(t\\){console.log\\(t.substring\\(0,500\\)\\);process.exit\\(0\\)}\\).catch\\(function\\(e\\){console.log\\(e\\);process.exit\\(1\\)}\\)\")",
+      "Bash(node -e \"const http=require\\('http'\\);http.get\\('http://localhost:3000/login',r=>{let d='';r.on\\('data',c=>d+=c\\);r.on\\('end',\\(\\)=>{console.log\\('status:',r.statusCode\\);console.log\\('headers:',JSON.stringify\\(r.headers\\)\\);console.log\\(d.substring\\(0,500\\)\\);process.exit\\(\\)}\\)}\\)\")",
+      "Bash(node -e \"const http=require\\('http'\\);function tryFetch\\(n\\){if\\(n<=0\\){console.log\\('FAILED'\\);process.exit\\(1\\)}http.get\\('http://127.0.0.1:3000/login',r=>{let d='';r.on\\('data',c=>d+=c\\);r.on\\('end',\\(\\)=>{console.log\\('STATUS:',r.statusCode\\);console.log\\('LOCATION:',r.headers.location||'none'\\);console.log\\(d.substring\\(0,600\\)\\);process.exit\\(0\\)}\\)}\\).on\\('error',\\(\\)=>setTimeout\\(\\(\\)=>tryFetch\\(n-1\\),1500\\)\\)}tryFetch\\(8\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(node -e \"const http=require\\('http'\\);function tryFetch\\(n\\){if\\(n<=0\\){console.log\\('FAILED'\\);process.exit\\(1\\)}http.get\\('http://127.0.0.1:3000/board',r=>{let d='';r.on\\('data',c=>d+=c\\);r.on\\('end',\\(\\)=>{const hasCSS=d.includes\\('layout.css'\\);const hasStyle=d.includes\\('style'\\);console.log\\('STATUS:',r.status\\);console.log\\('Has CSS link:',hasCSS\\);console.log\\('Has style:',hasStyle\\);const cssMatch=d.match\\(/href=\\\\\"\\(\\\\/_next\\\\/static\\\\/css\\\\/[^\\\\\"]+\\)\\\\\"/\\);if\\(cssMatch\\)console.log\\('CSS file:',cssMatch[1]\\);process.exit\\(0\\)}\\)}\\).on\\('error',\\(\\)=>setTimeout\\(\\(\\)=>tryFetch\\(n-1\\),1500\\)\\)}tryFetch\\(10\\)\")",
+      "Bash(node -e \"const http=require\\('http'\\);function tryFetch\\(n\\){if\\(n<=0\\){process.exit\\(1\\)}http.get\\('http://127.0.0.1:3000/board',r=>{console.log\\('STATUS:',r.statusCode\\);console.log\\('LOCATION:',r.headers.location||'none'\\);process.exit\\(0\\)}\\).on\\('error',\\(\\)=>setTimeout\\(\\(\\)=>tryFetch\\(n-1\\),1500\\)\\)}tryFetch\\(8\\)\")",
+      "Bash(node -e \"const http=require\\('http'\\);http.get\\('http://127.0.0.1:3000/login',r=>{let d='';r.on\\('data',c=>d+=c\\);r.on\\('end',\\(\\)=>{const css=d.match\\(/href=\\\\\"\\(\\\\/_next\\\\/static\\\\/css\\\\/[^\\\\\"]+\\)\\\\\"/g\\);console.log\\('STATUS:',r.statusCode\\);console.log\\('CSS refs:',css\\);process.exit\\(0\\)}\\)}\\).on\\('error',e=>console.log\\(e\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(PGPASSWORD=humaniza123 psql -h localhost -U humaniza -d bahboard -f db/002_complete_schema.sql)",
+      "Bash(where psql:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(taskkill //f //im node.exe)",
+      "Bash(xargs grep:*)",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}

@@ -1,0 +1,108 @@
+import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+
+export async function GET() {
+  const result = await query(
+    `SELECT
+      t.id,
+      t.title,
+      to_char(t.due_date AT TIME ZONE 'UTC', 'DD Mon YYYY') AS due_date,
+      s.name AS status,
+      sv.name AS service,
+      m.display_name AS assignee
+    FROM tickets t
+    LEFT JOIN statuses s ON s.id = t.status_id
+    LEFT JOIN services sv ON sv.id = t.service_id
+    LEFT JOIN members m ON m.id = t.assignee_id
+    WHERE t.is_archived = false
+    ORDER BY t.created_at DESC`
+  );
+
+  return NextResponse.json(result.rows);
+}
+
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const ticketId = body.id as string | undefined;
+  const statusKey = body.status_key as string | undefined;
+
+  if (!ticketId || !statusKey) {
+    return NextResponse.json({ error: 'Missing ticket id or status_key' }, { status: 400 });
+  }
+
+  const statusMap: Record<string, string> = {
+    todo: 'NÃO INICIADO',
+    waiting: 'AGUARDANDO RESPOSTA',
+    progress: 'EM PROGRESSO',
+    done: 'CONCLUÍDO'
+  };
+
+  const statusName = statusMap[statusKey];
+  if (!statusName) {
+    return NextResponse.json({ error: 'Invalid status_key' }, { status: 400 });
+  }
+
+  const result = await query(
+    `UPDATE tickets
+     SET status_id = (SELECT id FROM statuses WHERE name = $1),
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING *`,
+    [statusName, ticketId]
+  );
+
+  if (result.rowCount === 0) {
+    return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+  }
+
+  return NextResponse.json(result.rows[0]);
+}
+
+export async function POST(request: Request) {
+  const body = await request.json();
+  const workspaceSlug = body.workspace_slug ?? 'bahcompany';
+
+  const result = await query(
+    `INSERT INTO tickets (
+      workspace_id,
+      ticket_type_id,
+      status_id,
+      service_id,
+      assignee_id,
+      reporter_id,
+      title,
+      description,
+      priority,
+      due_date,
+      created_at,
+      updated_at
+    ) VALUES (
+      (SELECT id FROM workspaces WHERE slug = $1),
+      $2,
+      $3,
+      $4,
+      $5,
+      $6,
+      $7,
+      $8,
+      $9,
+      $10,
+      NOW(),
+      NOW()
+    ) RETURNING *`,
+    [
+      workspaceSlug,
+      body.ticket_type_id,
+      body.status_id,
+      body.service_id,
+      body.assignee_id,
+      body.reporter_id,
+      body.title,
+      body.description,
+      body.priority ?? 'medium',
+      body.due_date ?? null
+    ]
+  );
+
+  return NextResponse.json(result.rows[0], { status: 201 });
+}
