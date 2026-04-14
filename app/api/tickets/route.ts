@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultWorkspaceId } from '@/lib/db';
 
 export async function GET() {
   const result = await query(
@@ -60,7 +60,13 @@ export async function PATCH(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const workspaceSlug = body.workspace_slug ?? 'bahcompany';
+  const workspaceId = body.workspace_slug
+    ? (await query(`SELECT id FROM workspaces WHERE slug = $1`, [body.workspace_slug])).rows[0]?.id
+    : await getDefaultWorkspaceId();
+
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
+  }
 
   const result = await query(
     `INSERT INTO tickets (
@@ -77,7 +83,7 @@ export async function POST(request: Request) {
       created_at,
       updated_at
     ) VALUES (
-      (SELECT id FROM workspaces WHERE slug = $1),
+      $1,
       $2,
       $3,
       $4,
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
       NOW()
     ) RETURNING *`,
     [
-      workspaceSlug,
+      workspaceId,
       body.ticket_type_id,
       body.status_id,
       body.service_id,

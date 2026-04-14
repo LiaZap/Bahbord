@@ -33,7 +33,7 @@ export default function StatusesSettings() {
         const data = await res.json();
         setStatuses(data);
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar statuses:', err); }
     finally { setLoading(false); }
   }
 

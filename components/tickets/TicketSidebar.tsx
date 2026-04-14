@@ -74,7 +74,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
         if (memberRes.ok) setMembers(await memberRes.json());
         if (categoryRes.ok) setCategories(await categoryRes.json());
         if (sprintRes.ok) setSprints(await sprintRes.json());
-      } catch { /* silencioso */ }
+      } catch (err) { console.error('Erro ao carregar opções:', err); }
     }
     fetchOptions();
   }, []);

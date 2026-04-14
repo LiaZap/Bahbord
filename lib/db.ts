@@ -18,4 +18,18 @@ export async function query<T extends QueryResultRow = QueryResultRow>(text: str
   return result;
 }
 
+export async function getDefaultWorkspaceId(): Promise<string> {
+  const result = await pool.query<{ id: string }>(`SELECT id FROM workspaces LIMIT 1`);
+  const id = result.rows[0]?.id;
+  if (!id) throw new Error('Nenhum workspace encontrado');
+  return id;
+}
+
+export async function getDefaultMemberId(): Promise<string> {
+  const result = await pool.query<{ id: string }>(`SELECT id FROM members LIMIT 1`);
+  const id = result.rows[0]?.id;
+  if (!id) throw new Error('Nenhum membro encontrado');
+  return id;
+}
+
 export default pool;

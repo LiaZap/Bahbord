@@ -26,7 +26,7 @@ export default function TicketComments({ ticketId }: TicketCommentsProps) {
     fetch(`/api/comments?ticket_id=${ticketId}`)
       .then((r) => r.json())
       .then((data) => setComments(data))
-      .catch(() => {});
+      .catch((err) => console.error('Erro ao carregar comentários:', err));
   }, [ticketId]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,8 +47,8 @@ export default function TicketComments({ ticketId }: TicketCommentsProps) {
         const updated = await fetch(`/api/comments?ticket_id=${ticketId}`).then((r) => r.json());
         setComments(updated);
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao enviar comentário:', err);
     } finally {
       setIsSubmitting(false);
     }

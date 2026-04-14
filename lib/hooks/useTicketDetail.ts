@@ -50,8 +50,8 @@ export function useTicketDetail(ticketId: string) {
         const data = await res.json();
         setTicket(data);
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao carregar ticket:', err);
     } finally {
       setLoading(false);
     }
@@ -71,8 +71,8 @@ export function useTicketDetail(ticketId: string) {
       if (res.ok) {
         await fetchTicket();
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao atualizar ticket:', err);
     }
   }, [ticketId, fetchTicket]);
 

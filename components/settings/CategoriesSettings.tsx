@@ -20,7 +20,7 @@ export default function CategoriesSettings() {
     try {
       const res = await fetch('/api/options?type=categories');
       if (res.ok) setCategories(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar categorias:', err); }
     finally { setLoading(false); }
   }
 

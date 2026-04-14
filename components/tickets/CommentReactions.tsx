@@ -24,7 +24,7 @@ export default function CommentReactions({ commentId }: CommentReactionsProps) {
     try {
       const res = await fetch(`/api/comment-reactions?comment_id=${commentId}`);
       if (res.ok) setReactions(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar reações:', err); }
   }, [commentId]);
 
   useEffect(() => { fetchReactions(); }, [fetchReactions]);

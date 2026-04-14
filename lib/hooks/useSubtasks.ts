@@ -22,8 +22,8 @@ export function useSubtasks(ticketId: string) {
       if (res.ok) {
         setSubtasks(await res.json());
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao carregar subtasks:', err);
     } finally {
       setLoading(false);
     }

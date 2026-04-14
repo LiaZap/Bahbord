@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultMemberId } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -31,15 +31,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ticket_id e content são obrigatórios' }, { status: 400 });
   }
 
-  // Se não tiver author_id, pegar o primeiro member do workspace
   let memberId = author_id;
   if (!memberId) {
-    const memberResult = await query(`SELECT id FROM members LIMIT 1`);
-    memberId = memberResult.rows[0]?.id;
-  }
-
-  if (!memberId) {
-    return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
+    try {
+      memberId = await getDefaultMemberId();
+    } catch {
+      return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
+    }
   }
 
   const result = await query(
@@ -50,4 +48,41 @@ export async function POST(request: Request) {
   );
 
   return NextResponse.json(result.rows[0], { status: 201 });
+}
+
+export async function PATCH(request: Request) {
+  const body = await request.json();
+  const { id, content } = body;
+
+  if (!id || !content?.trim()) {
+    return NextResponse.json({ error: 'id e content são obrigatórios' }, { status: 400 });
+  }
+
+  const result = await query(
+    `UPDATE comments SET body = $1, updated_at = NOW() WHERE id = $2 RETURNING id, body, updated_at`,
+    [content.trim(), id]
+  );
+
+  if (result.rowCount === 0) {
+    return NextResponse.json({ error: 'Comentário não encontrado' }, { status: 404 });
+  }
+
+  return NextResponse.json(result.rows[0]);
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+  }
+
+  const result = await query(`DELETE FROM comments WHERE id = $1`, [id]);
+
+  if (result.rowCount === 0) {
+    return NextResponse.json({ error: 'Comentário não encontrado' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

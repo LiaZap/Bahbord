@@ -23,7 +23,7 @@ export default function ServicesSettings() {
     try {
       const res = await fetch('/api/options?type=services');
       if (res.ok) setServices(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar serviços:', err); }
     finally { setLoading(false); }
   }
 

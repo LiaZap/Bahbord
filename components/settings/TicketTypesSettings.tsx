@@ -28,7 +28,7 @@ export default function TicketTypesSettings() {
     try {
       const res = await fetch('/api/options?type=ticket_types');
       if (res.ok) setTypes(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar tipos:', err); }
     finally { setLoading(false); }
   }
 

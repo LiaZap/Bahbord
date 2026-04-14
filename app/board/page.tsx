@@ -1,6 +1,6 @@
 import KanbanBoard from '@/components/board/KanbanBoard';
 import BoardShell from '@/components/board/BoardShell';
-import { query } from '@/lib/db';
+import { query, getDefaultWorkspaceId } from '@/lib/db';
 
 type BoardTicket = {
   id: string;
@@ -60,10 +60,11 @@ export default async function BoardPage() {
 
   const rows = result.rows as BoardTicket[];
 
+  const wsId = await getDefaultWorkspaceId();
   const [serviceRows, statusRows, typeRows] = await Promise.all([
-    query<ServiceItem>(`SELECT id, name FROM services WHERE workspace_id = (SELECT id FROM workspaces WHERE slug = 'bahcompany') ORDER BY name ASC`),
-    query<StatusItem>(`SELECT id, name FROM statuses WHERE workspace_id = (SELECT id FROM workspaces WHERE slug = 'bahcompany') ORDER BY position ASC`),
-    query<TicketTypeItem>(`SELECT id, name FROM ticket_types WHERE workspace_id = (SELECT id FROM workspaces WHERE slug = 'bahcompany') ORDER BY position ASC`)
+    query<ServiceItem>(`SELECT id, name FROM services WHERE workspace_id = $1 ORDER BY name ASC`, [wsId]),
+    query<StatusItem>(`SELECT id, name FROM statuses WHERE workspace_id = $1 ORDER BY position ASC`, [wsId]),
+    query<TicketTypeItem>(`SELECT id, name FROM ticket_types WHERE workspace_id = $1 ORDER BY position ASC`, [wsId])
   ]);
 
   const initialItems = {

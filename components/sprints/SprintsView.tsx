@@ -32,7 +32,7 @@ export default function SprintsView() {
     try {
       const res = await fetch('/api/sprints');
       if (res.ok) setSprints(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar sprints:', err); }
     finally { setLoading(false); }
   }, []);
 

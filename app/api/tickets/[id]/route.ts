@@ -2,28 +2,49 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const result = await query(
-    `SELECT
-      tf.*,
-      t.ticket_type_id,
-      -- Parent info
-      pw.prefix || '-' || LPAD(pt.sequence_number::text, 3, '0') AS parent_key,
-      pt.title AS parent_title,
-      -- Time tracking total
-      COALESCE((SELECT SUM(duration_minutes) FROM time_entries te WHERE te.ticket_id = tf.id AND te.is_running = false), 0)::int AS total_time_minutes
-    FROM tickets_full tf
-    JOIN tickets t ON t.id = tf.id
-    LEFT JOIN tickets pt ON pt.id = t.parent_id
-    LEFT JOIN workspaces pw ON pw.id = pt.workspace_id
-    WHERE tf.id = $1`,
-    [params.id]
-  );
+  try {
+    const result = await query(
+      `SELECT
+        tf.id, tf.workspace_id, tf.title, tf.description, tf.priority,
+        tf.due_date, tf.sequence_number, tf.created_at, tf.updated_at,
+        tf.completed_at, tf.is_archived, tf.parent_id, tf.ticket_key,
+        tf.type_id, tf.type_name, tf.type_icon, tf.type_color,
+        tf.status_id, tf.status_name, tf.status_color, tf.status_position, tf.is_done,
+        tf.service_id, tf.service_name, tf.service_color,
+        tf.category_id, tf.category_name,
+        tf.assignee_id, tf.assignee_name,
+        tf.reporter_id, tf.reporter_name,
+        tf.sprint_name,
+        tf.subtask_count, tf.subtask_done_count, tf.comment_count,
+        t.ticket_type_id, t.sprint_id,
+        COALESCE((
+          SELECT SUM(te.duration_minutes)
+          FROM time_entries te
+          WHERE te.ticket_id = t.id AND te.is_running = false
+        ), 0)::int AS total_time_minutes,
+        CASE WHEN t.parent_id IS NOT NULL THEN
+          (SELECT w2.prefix || '-' || LPAD(p.sequence_number::text, 3, '0')
+           FROM tickets p JOIN workspaces w2 ON w2.id = p.workspace_id
+           WHERE p.id = t.parent_id)
+        ELSE NULL END AS parent_key,
+        CASE WHEN t.parent_id IS NOT NULL THEN
+          (SELECT p.title FROM tickets p WHERE p.id = t.parent_id)
+        ELSE NULL END AS parent_title
+      FROM tickets_full tf
+      JOIN tickets t ON t.id = tf.id
+      WHERE tf.id = $1`,
+      [params.id]
+    );
 
-  if (result.rowCount === 0) {
-    return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0]);
+  } catch (err) {
+    console.error('GET /api/tickets/[id] error:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
-
-  return NextResponse.json(result.rows[0]);
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

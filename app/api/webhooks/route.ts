@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultWorkspaceId, getDefaultMemberId } from '@/lib/db';
 
 // Webhook endpoint para integrações externas (n8n, Zapier, etc.)
 // Recebe eventos e pode disparar ações no BahBoard
@@ -26,14 +26,15 @@ export async function POST(request: Request) {
         const { title, service_id, priority, status_id, ticket_type_id } = data;
         if (!title) return NextResponse.json({ error: 'title é obrigatório' }, { status: 400 });
 
+        const wsId = await getDefaultWorkspaceId();
         const result = await query(
           `INSERT INTO tickets (workspace_id, title, service_id, priority, status_id, ticket_type_id, created_at, updated_at)
-           VALUES ((SELECT id FROM workspaces LIMIT 1), $1, $2, $3,
-             COALESCE($4, (SELECT id FROM statuses ORDER BY position ASC LIMIT 1)),
-             COALESCE($5, (SELECT id FROM ticket_types ORDER BY position ASC LIMIT 1)),
+           VALUES ($1, $2, $3, $4,
+             COALESCE($5, (SELECT id FROM statuses ORDER BY position ASC LIMIT 1)),
+             COALESCE($6, (SELECT id FROM ticket_types ORDER BY position ASC LIMIT 1)),
              NOW(), NOW())
            RETURNING id, title`,
-          [title, service_id || null, priority || 'medium', status_id || null, ticket_type_id || null]
+          [wsId, title, service_id || null, priority || 'medium', status_id || null, ticket_type_id || null]
         );
         return NextResponse.json({ ok: true, ticket: result.rows[0] }, { status: 201 });
       }
@@ -68,8 +69,7 @@ export async function POST(request: Request) {
         const { ticket_id, content } = data;
         if (!ticket_id || !content) return NextResponse.json({ error: 'ticket_id e content obrigatórios' }, { status: 400 });
 
-        const memberResult = await query(`SELECT id FROM members LIMIT 1`);
-        const memberId = memberResult.rows[0]?.id;
+        const memberId = await getDefaultMemberId();
 
         await query(
           `INSERT INTO comments (ticket_id, author_id, body) VALUES ($1, $2, $3)`,
@@ -82,8 +82,7 @@ export async function POST(request: Request) {
         const { recipient_id, title, message, ticket_id, type } = data;
         if (!title) return NextResponse.json({ error: 'title obrigatório' }, { status: 400 });
 
-        const wsResult = await query(`SELECT id FROM workspaces LIMIT 1`);
-        const workspaceId = wsResult.rows[0]?.id;
+        const workspaceId = await getDefaultWorkspaceId();
 
         await query(
           `INSERT INTO notifications (workspace_id, recipient_id, title, message, ticket_id, type, is_read)

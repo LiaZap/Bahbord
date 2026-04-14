@@ -26,8 +26,8 @@ export function useTimeTracking(ticketId: string) {
       if (res.ok) {
         setEntries(await res.json());
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao carregar time entries:', err);
     } finally {
       setLoading(false);
     }

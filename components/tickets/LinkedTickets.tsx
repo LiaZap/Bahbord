@@ -42,7 +42,7 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
     try {
       const res = await fetch(`/api/ticket-links?ticket_id=${ticketId}`);
       if (res.ok) setLinks(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar links:', err); }
   }, [ticketId]);
 
   useEffect(() => { fetchLinks(); }, [fetchLinks]);
@@ -61,7 +61,7 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
         );
         setSearchResults(filtered.slice(0, 8));
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao buscar tickets:', err); }
   }
 
   async function handleAdd(targetId: string) {

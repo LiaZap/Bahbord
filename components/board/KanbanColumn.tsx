@@ -64,9 +64,8 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workspace_slug: 'bahcompany',
           title: quickTitle.trim(),
-          status_id: null, // vai buscar pelo nome
+          status_id: null,
           priority: 'medium',
         }),
       });

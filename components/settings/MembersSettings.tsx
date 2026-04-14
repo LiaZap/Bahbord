@@ -20,7 +20,7 @@ export default function MembersSettings() {
     fetch('/api/options?type=members')
       .then((r) => r.json())
       .then((data) => { setMembers(data); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch((err) => { console.error('Erro ao carregar membros:', err); setLoading(false); });
   }, []);
 
   async function handleRoleChange(id: string, role: string) {

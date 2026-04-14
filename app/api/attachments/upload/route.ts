@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { query } from '@/lib/db';
+import { query, getDefaultMemberId } from '@/lib/db';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -49,9 +49,10 @@ export async function POST(request: Request) {
 
   const fileUrl = urlData?.publicUrl || null;
 
-  // Buscar membro padrão
-  const memberResult = await query(`SELECT id FROM members LIMIT 1`);
-  const memberId = memberResult.rows[0]?.id;
+  let memberId: string | null = null;
+  try {
+    memberId = await getDefaultMemberId();
+  } catch { /* sem membro padrão */ }
 
   // Salvar no banco
   const result = await query(

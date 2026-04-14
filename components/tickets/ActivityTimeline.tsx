@@ -42,7 +42,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     try {
       const res = await fetch(`/api/comments?ticket_id=${ticketId}`);
       if (res.ok) setComments(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar comentários:', err); }
   }, [ticketId]);
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
@@ -60,7 +60,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
         setNewComment('');
         await fetchComments();
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao enviar comentário:', err); }
     finally { setIsSubmitting(false); }
   }
 

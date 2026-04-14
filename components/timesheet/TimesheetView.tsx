@@ -40,7 +40,7 @@ export default function TimesheetView() {
         setEntries(data.entries);
         setSummary(data.summary);
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar timesheet:', err); }
     finally { setLoading(false); }
   }, [period]);
 

@@ -80,7 +80,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
         setTitleValue(data.title);
         setDescValue(data.description || '');
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar ticket:', err); }
     finally { setLoading(false); }
   }, [ticketId]);
 

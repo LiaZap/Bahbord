@@ -95,8 +95,8 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
               progress: allTickets.filter((t: any) => normalizeStatus(t.status) === 'progress').map(mapTicket),
               done: allTickets.filter((t: any) => normalizeStatus(t.status) === 'done').map(mapTicket),
             });
-          } catch {
-            // Silencioso — falha de realtime não deve quebrar a UI
+          } catch (err) {
+            console.error('Erro ao atualizar board via realtime:', err);
           }
         }
       )

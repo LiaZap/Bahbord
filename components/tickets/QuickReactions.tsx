@@ -19,7 +19,7 @@ export default function QuickReactions({ onReact }: QuickReactionsProps) {
     fetch('/api/quick-reactions')
       .then((r) => r.json())
       .then(setReactions)
-      .catch(() => {});
+      .catch((err) => console.error('Erro ao carregar reações:', err));
   }, []);
 
   if (reactions.length === 0) return null;

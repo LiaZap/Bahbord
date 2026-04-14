@@ -31,7 +31,7 @@ export default function NotificationCenter() {
     try {
       const res = await fetch('/api/notifications');
       if (res.ok) setNotifications(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar notificações:', err); }
   }, []);
 
   useEffect(() => {

@@ -40,7 +40,7 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
     try {
       const res = await fetch(`/api/attachments?ticket_id=${ticketId}`);
       if (res.ok) setAttachments(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar anexos:', err); }
   }, [ticketId]);
 
   useEffect(() => { fetchAttachments(); }, [fetchAttachments]);
@@ -79,8 +79,16 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/attachments?id=${id}`, { method: 'DELETE' });
-    toast('Arquivo removido', 'success');
+    try {
+      const res = await fetch(`/api/attachments?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast('Arquivo removido', 'success');
+      } else {
+        toast('Erro ao remover arquivo', 'error');
+      }
+    } catch {
+      toast('Erro de conexão', 'error');
+    }
     await fetchAttachments();
   }
 

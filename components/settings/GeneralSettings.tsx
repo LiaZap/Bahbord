@@ -28,7 +28,7 @@ export default function GeneralSettings() {
         setPrefix(data.prefix);
         setDescription(data.description || '');
       })
-      .catch(() => {});
+      .catch((err) => console.error('Erro ao carregar settings:', err));
   }, []);
 
   async function handleSave() {
@@ -43,7 +43,7 @@ export default function GeneralSettings() {
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao salvar settings:', err); }
     finally { setSaving(false); }
   }
 

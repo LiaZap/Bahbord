@@ -21,7 +21,7 @@ export default function QuickReactionsSettings() {
     try {
       const res = await fetch('/api/quick-reactions');
       if (res.ok) setReactions(await res.json());
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar reações:', err); }
     finally { setLoading(false); }
   }
 

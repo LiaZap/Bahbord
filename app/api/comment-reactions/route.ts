@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultMemberId } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -31,10 +31,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'comment_id e emoji são obrigatórios' }, { status: 400 });
   }
 
-  // Buscar membro padrão
-  const memberResult = await query(`SELECT id FROM members LIMIT 1`);
-  const memberId = memberResult.rows[0]?.id;
-  if (!memberId) {
+  let memberId: string;
+  try {
+    memberId = await getDefaultMemberId();
+  } catch {
     return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
   }
 

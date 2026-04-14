@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultWorkspaceId } from '@/lib/db';
 
 // GET workspace settings
 export async function GET() {
@@ -62,8 +62,10 @@ export async function PATCH(request: Request) {
   }
 
   sets.push(`updated_at = NOW()`);
+  const wsId = await getDefaultWorkspaceId();
+  values.push(wsId);
   const result = await query(
-    `UPDATE workspaces SET ${sets.join(', ')} WHERE id = (SELECT id FROM workspaces LIMIT 1) RETURNING *`,
+    `UPDATE workspaces SET ${sets.join(', ')} WHERE id = $${idx + 1} RETURNING *`,
     values
   );
 
@@ -80,10 +82,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Tabela não permitida' }, { status: 400 });
   }
 
-  // Adicionar workspace_id
-  const wsResult = await query(`SELECT id FROM workspaces LIMIT 1`);
-  const workspaceId = wsResult.rows[0]?.id;
-  if (!workspaceId) {
+  let workspaceId: string;
+  try {
+    workspaceId = await getDefaultWorkspaceId();
+  } catch {
     return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
   }
 

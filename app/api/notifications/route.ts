@@ -8,7 +8,7 @@ export async function GET() {
       m.display_name AS actor_name,
       tf.ticket_key
     FROM notifications n
-    LEFT JOIN members m ON m.id = n.actor_id
+    LEFT JOIN members m ON m.id = COALESCE(n.actor_id, n.member_id)
     LEFT JOIN tickets_full tf ON tf.id = n.ticket_id
     ORDER BY n.created_at DESC
     LIMIT 30`

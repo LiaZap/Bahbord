@@ -66,7 +66,7 @@ export default function SearchModal() {
         setResults(filtered.slice(0, 10));
         setSelectedIndex(0);
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro na busca:', err); }
     finally { setLoading(false); }
   }, []);
 

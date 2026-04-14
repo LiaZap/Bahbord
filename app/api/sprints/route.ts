@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultWorkspaceId } from '@/lib/db';
 
 export async function GET() {
+  const wsId = await getDefaultWorkspaceId();
+
   const result = await query(
     `SELECT s.id, s.name, s.goal, s.start_date, s.end_date, s.is_active, s.is_completed, s.created_at, s.completed_at,
       COUNT(t.id)::int AS ticket_count,
@@ -9,9 +11,10 @@ export async function GET() {
     FROM sprints s
     LEFT JOIN tickets t ON t.sprint_id = s.id AND t.is_archived = false
     LEFT JOIN statuses st ON st.id = t.status_id
-    WHERE s.workspace_id = (SELECT id FROM workspaces LIMIT 1)
+    WHERE s.workspace_id = $1
     GROUP BY s.id
-    ORDER BY s.is_active DESC, s.created_at DESC`
+    ORDER BY s.is_active DESC, s.created_at DESC`,
+    [wsId]
   );
 
   return NextResponse.json(result.rows);
@@ -25,11 +28,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
   }
 
+  const wsId = await getDefaultWorkspaceId();
+
   const result = await query(
     `INSERT INTO sprints (workspace_id, name, goal, start_date, end_date, is_active, is_completed)
-     VALUES ((SELECT id FROM workspaces LIMIT 1), $1, $2, $3, $4, false, false)
+     VALUES ($1, $2, $3, $4, $5, false, false)
      RETURNING *`,
-    [name.trim(), goal || null, start_date || null, end_date || null]
+    [wsId, name.trim(), goal || null, start_date || null, end_date || null]
   );
 
   return NextResponse.json(result.rows[0], { status: 201 });
@@ -44,9 +49,11 @@ export async function PATCH(request: Request) {
   }
 
   if (action === 'activate') {
+    const wsId = await getDefaultWorkspaceId();
     // Desativa todos primeiro
     await query(
-      `UPDATE sprints SET is_active = false WHERE workspace_id = (SELECT id FROM workspaces LIMIT 1)`
+      `UPDATE sprints SET is_active = false WHERE workspace_id = $1`,
+      [wsId]
     );
     const result = await query(
       `UPDATE sprints SET is_active = true WHERE id = $1 RETURNING *`,
@@ -87,4 +94,30 @@ export async function PATCH(request: Request) {
   );
 
   return NextResponse.json(result.rows[0]);
+}
+
+export async function DELETE(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+  }
+
+  // Verificar se tem tickets associados
+  const check = await query(`SELECT COUNT(*)::int AS cnt FROM tickets WHERE sprint_id = $1`, [id]);
+  if (check.rows[0].cnt > 0) {
+    return NextResponse.json(
+      { error: `Não é possível remover: ${check.rows[0].cnt} ticket(s) associado(s) a este sprint` },
+      { status: 409 }
+    );
+  }
+
+  const result = await query(`DELETE FROM sprints WHERE id = $1`, [id]);
+
+  if (result.rowCount === 0) {
+    return NextResponse.json({ error: 'Sprint não encontrado' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

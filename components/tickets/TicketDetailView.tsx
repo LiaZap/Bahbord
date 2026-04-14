@@ -80,7 +80,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
         setTitleValue(data.title);
         setDescValue(data.description || '');
       }
-    } catch { /* silencioso */ }
+    } catch (err) { console.error('Erro ao carregar ticket:', err); }
     finally { setLoading(false); }
   }, [ticketId]);
 

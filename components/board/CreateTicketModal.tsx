@@ -85,7 +85,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
           if (cRes.ok) setCategories(await cRes.json());
           if (sRes.ok) setSprints(await sRes.json());
           if (svRes.ok) setAllServices(await svRes.json());
-        } catch { /* silencioso */ }
+        } catch (err) { console.error('Erro ao carregar opções:', err); }
       }
       load();
     }, [isOpen]);
@@ -121,7 +121,6 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            workspace_slug: 'bahcompany',
             ticket_type_id: ticketTypeId,
             status_id: statusId,
             service_id: serviceId,

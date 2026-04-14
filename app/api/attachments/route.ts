@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getDefaultMemberId } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -30,9 +30,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'ticket_id e file_name são obrigatórios' }, { status: 400 });
   }
 
-  // Buscar membro padrão
-  const memberResult = await query(`SELECT id FROM members LIMIT 1`);
-  const memberId = memberResult.rows[0]?.id;
+  let memberId: string | null = null;
+  try {
+    memberId = await getDefaultMemberId();
+  } catch { /* sem membro padrão */ }
 
   const result = await query(
     `INSERT INTO attachments (ticket_id, uploaded_by, file_name, file_url, file_size, mime_type)

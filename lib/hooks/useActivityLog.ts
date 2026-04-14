@@ -22,8 +22,8 @@ export function useActivityLog(ticketId: string) {
       if (res.ok) {
         setActivities(await res.json());
       }
-    } catch {
-      // silencioso
+    } catch (err) {
+      console.error('Erro ao carregar activity log:', err);
     } finally {
       setLoading(false);
     }
