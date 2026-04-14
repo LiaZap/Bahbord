@@ -223,9 +223,9 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex flex-1 gap-3 pb-2">
+        <div className="flex gap-3 pb-2">
           {columns.map((column) => (
-            <div key={column.id} className="flex-1 min-w-0">
+            <div key={column.id} className="w-[260px] shrink-0">
               <KanbanColumn
                 id={column.id}
                 title={column.title}
