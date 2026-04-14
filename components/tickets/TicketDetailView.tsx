@@ -11,6 +11,7 @@ import LinkedTickets from './LinkedTickets';
 import ActivityTimeline from './ActivityTimeline';
 import TicketSidebar from './TicketSidebar';
 import TimeTracker from './TimeTracker';
+import DevLinks from './DevLinks';
 import AttachmentList from './AttachmentList';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { DetailSkeleton } from '@/components/ui/Skeleton';
@@ -254,6 +255,11 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           {/* Tickets vinculados */}
           <section className="border-b border-white/[0.04] pb-5 mb-5">
             <LinkedTickets ticketId={ticket.id} />
+          </section>
+
+          {/* Desenvolvimento */}
+          <section className="border-b border-white/[0.04] pb-5 mb-5">
+            <DevLinks ticketId={ticket.id} />
           </section>
 
           {/* Anexos */}

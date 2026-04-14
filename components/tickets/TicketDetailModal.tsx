@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SubtaskList from './SubtaskList';
 import LinkedTickets from './LinkedTickets';
 import ActivityTimeline from './ActivityTimeline';
+import DevLinks from './DevLinks';
 import TicketSidebar from './TicketSidebar';
 import TimeTracker from './TimeTracker';
 import AttachmentList from './AttachmentList';
@@ -258,6 +259,16 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                     {/* Tickets vinculados */}
                     <section className="mb-6 border-t border-white/[0.04] pt-5">
                       <LinkedTickets ticketId={ticket.id} />
+                    </section>
+
+                    {/* Desenvolvimento */}
+                    <section className="mb-6 border-t border-white/[0.04] pt-5">
+                      <DevLinks ticketId={ticket.id} />
+                    </section>
+
+                    {/* Anexos */}
+                    <section className="mb-6 border-t border-white/[0.04] pt-5">
+                      <AttachmentList ticketId={ticket.id} />
                     </section>
 
                     {/* Atividade */}

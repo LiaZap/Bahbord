@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Send, Reply, ThumbsUp, Smile, Pencil, Trash2 } from 'lucide-react';
+import { Reply, ThumbsUp, Smile, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useActivityLog } from '@/lib/hooks/useActivityLog';
 import QuickReactions from './QuickReactions';
 import CommentReactions from './CommentReactions';
+import MentionInput from './MentionInput';
 import { cn } from '@/lib/utils/cn';
 
 interface Comment {
@@ -66,11 +67,6 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     finally { setIsSubmitting(false); }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await submitComment(newComment);
-  }
-
   async function handleEditComment(id: string, body: string) {
     try {
       const res = await fetch('/api/comments', {
@@ -126,6 +122,29 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
       return acc;
     }, {});
 
+  function renderMentions(text: string): React.ReactNode {
+    const regex = /@([\w][\w\s]*?[\w])(?=\s|$|[.,!?;:])/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.slice(lastIndex, match.index));
+      }
+      parts.push(
+        <span key={match.index} className="text-blue-400 font-medium">
+          @{match[1]}
+        </span>
+      );
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.slice(lastIndex));
+    }
+    return parts.length > 0 ? parts : text;
+  }
+
   function renderComment(c: Comment) {
     const isEditing = editingId === c.id;
 
@@ -154,7 +173,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
               </div>
             </div>
           ) : (
-            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300">{c.body}</p>
+            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300">{renderMentions(c.body)}</p>
           )}
           <CommentReactions commentId={c.id} />
           {/* Comment actions */}
@@ -222,14 +241,15 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[10px] font-bold text-white">
             PV
           </div>
-          <form onSubmit={handleSubmit} className="flex-1">
-            <input
+          <div className="flex-1">
+            <MentionInput
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
+              onChange={setNewComment}
+              onSubmit={() => submitComment(newComment)}
               placeholder="Adicionar comentário..."
               className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[13px] text-slate-200 outline-none placeholder:text-slate-600 transition focus:border-blue-500/30 focus:bg-white/[0.05]"
             />
-          </form>
+          </div>
         </div>
         <div className="mt-2 ml-11">
           <QuickReactions onReact={(text) => submitComment(text)} />
