@@ -289,8 +289,8 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
 
           {/* Footer timestamps */}
           <div className="mt-6 space-y-1 text-[11px] text-slate-500">
-            <p>Criado {ticket.created_at}</p>
-            <p>Atualizado {ticket.updated_at}</p>
+            <p>Criado {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            <p>Atualizado {new Date(ticket.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
           <button className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300">
             <Settings2 size={12} />

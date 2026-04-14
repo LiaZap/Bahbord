@@ -180,7 +180,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                 <input
                   type="date"
                   autoFocus
-                  defaultValue={ticket.due_date || ''}
+                  defaultValue={ticket.due_date ? ticket.due_date.substring(0, 10) : ''}
                   onChange={(e) => handleSelect('due_date', e.target.value)}
                   onBlur={() => setEditingField(null)}
                   className="rounded border border-blue-500/30 bg-[#1e2126] px-2 py-0.5 text-[13px] text-slate-200 outline-none"
@@ -188,7 +188,9 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
               ) : (
                 <span className="flex items-center gap-1.5 text-slate-200" onClick={() => setEditingField('due_date')}>
                   <Calendar size={13} className="text-slate-500" />
-                  {ticket.due_date || <span className="text-slate-600">Nenhum</span>}
+                  {ticket.due_date
+                    ? new Date(ticket.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : <span className="text-slate-600">Nenhum</span>}
                 </span>
               )}
             </InfoRow>
