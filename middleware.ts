@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  return response;
+}
+
 export function middleware(req: NextRequest) {
   const memberId = req.cookies.get('bahjira-member-id')?.value;
-
   const { pathname } = req.nextUrl;
 
   // Allow public paths through without auth check
@@ -17,19 +24,17 @@ export function middleware(req: NextRequest) {
     pathname.endsWith('.ico');
 
   if (isPublicPath) {
-    // If logged in and on login page, redirect to board
     if (memberId && pathname === '/login') {
-      return NextResponse.redirect(new URL('/board', req.url));
+      return addSecurityHeaders(NextResponse.redirect(new URL('/board', req.url)));
     }
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
-  // Redirect to login if no auth cookie
   if (!memberId) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return addSecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {

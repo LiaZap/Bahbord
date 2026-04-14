@@ -16,7 +16,7 @@ export default async function HomePage() {
       SELECT
         COUNT(*) FILTER (WHERE is_archived = false) AS total_active,
         COUNT(*) FILTER (WHERE is_done = true AND completed_at > NOW() - INTERVAL '30 days') AS completed_month,
-        COUNT(*) FILTER (WHERE is_archived = false AND status_name = 'AGUARDANDO RESPOSTA') AS waiting,
+        COUNT(*) FILTER (WHERE is_archived = false AND status_name = 'AGUARDANDO') AS waiting,
         COUNT(*) FILTER (WHERE is_archived = false AND priority = 'urgent') AS urgent
       FROM tickets_full
     `),

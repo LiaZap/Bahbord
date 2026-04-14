@@ -32,4 +32,34 @@ export async function getDefaultMemberId(): Promise<string> {
   return id;
 }
 
+// Whitelist de colunas permitidas por tabela para prevenir SQL injection
+const ALLOWED_COLUMNS: Record<string, string[]> = {
+  statuses: ['name', 'color', 'position', 'wip_limit', 'is_done'],
+  services: ['name', 'color', 'is_active'],
+  categories: ['name', 'color'],
+  ticket_types: ['name', 'icon', 'color', 'description_template', 'position'],
+  quick_reactions: ['emoji', 'label', 'position'],
+  members: ['display_name', 'email', 'role', 'phone'],
+  clients: ['name', 'color', 'contact_email', 'contact_phone', 'is_active'],
+  tickets: ['title', 'description', 'priority', 'due_date', 'status_id', 'assignee_id', 'reporter_id', 'service_id', 'category_id', 'sprint_id', 'ticket_type_id', 'parent_id', 'client_id'],
+  subtasks: ['title', 'is_completed', 'is_done', 'position'],
+  time_entries: ['description', 'duration_minutes', 'is_billable'],
+};
+
+export function validateColumns(table: string, columns: string[]): boolean {
+  const allowed = ALLOWED_COLUMNS[table];
+  if (!allowed) return false;
+  return columns.every((col) => allowed.includes(col));
+}
+
+export function filterAllowedColumns(table: string, fields: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ALLOWED_COLUMNS[table];
+  if (!allowed) return {};
+  const filtered: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (allowed.includes(key)) filtered[key] = val;
+  }
+  return filtered;
+}
+
 export default pool;

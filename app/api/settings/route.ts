@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query, getDefaultWorkspaceId, filterAllowedColumns } from '@/lib/db';
 
 // GET workspace settings
 export async function GET() {
@@ -28,11 +28,12 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Tabela não permitida' }, { status: 400 });
       }
 
+      const safeFields = filterAllowedColumns(table, fields);
       const sets: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
 
-      for (const [key, val] of Object.entries(fields)) {
+      for (const [key, val] of Object.entries(safeFields)) {
         sets.push(`${key} = $${idx}`);
         values.push(val);
         idx++;
@@ -100,7 +101,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
     }
 
-    const allFields = { ...fields, workspace_id: workspaceId };
+    const safeFields = filterAllowedColumns(table, fields);
+    const allFields = { ...safeFields, workspace_id: workspaceId };
     const columns = Object.keys(allFields);
     const placeholders = columns.map((_, i) => `$${i + 1}`);
     const values = Object.values(allFields);

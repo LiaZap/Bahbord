@@ -8,8 +8,11 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get('authorization');
   const webhookSecret = process.env.WEBHOOK_SECRET;
 
-  // Validar secret se configurado
-  if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+  // Validar secret (obrigatório)
+  if (!webhookSecret) {
+    return NextResponse.json({ error: 'Webhook não configurado' }, { status: 503 });
+  }
+  if (authHeader !== `Bearer ${webhookSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

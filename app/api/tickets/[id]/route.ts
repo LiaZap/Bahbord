@@ -50,6 +50,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  try {
   const body = await request.json();
   const ticketId = params.id;
 
@@ -100,4 +101,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const ticket = result.rows[0];
   dispatchWebhook('ticket.updated', ticket);
   return NextResponse.json(ticket);
+  } catch (err) {
+    console.error('PATCH /api/tickets/[id] error:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
 }
