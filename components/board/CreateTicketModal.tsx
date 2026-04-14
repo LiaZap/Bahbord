@@ -198,11 +198,11 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -8 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-xl border border-white/[0.08] bg-[#1e2126] shadow-2xl shadow-black/50"
+              className="flex max-h-[92vh] w-full max-w-[520px] flex-col rounded-xl border border-white/[0.08] bg-[#1e2126] shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-6 py-4">
+              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
                 <h2 className="text-[16px] font-semibold text-white">{modalTitle}</h2>
                 <div className="flex items-center gap-1">
                   <button type="button" className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><Minus size={14} /></button>
@@ -214,7 +214,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
 
               {/* Body — scrollable */}
               <form className="flex-1 overflow-y-auto" onSubmit={handleSubmit}>
-                <div className="space-y-5 px-6 py-5">
+                <div className="space-y-4 px-5 py-4">
                   {/* Error banner */}
                   {error && (
                     <div className="flex items-center gap-2 rounded-md bg-red-500/10 border border-red-500/20 px-4 py-3">
@@ -252,7 +252,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Status */}
                   <div>
                     <label className={labelClass}>Status</label>
-                    <select value={statusId} onChange={(e) => setStatusId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={statusId} onChange={(e) => setStatusId(e.target.value)} className={selectClass}>
                       {initialStatuses.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                     <p className="mt-1 text-[11px] text-slate-600">Este é o status inicial após a criação</p>
@@ -287,7 +287,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                       type="date"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className={selectClass + ' max-w-xs'}
+                      className={selectClass}
                     />
                   </div>
 
@@ -306,7 +306,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* BAH! Serviço/Produto */}
                   <div>
                     <label className={labelClass}>BAH! Serviço/Produto {requiredDot}</label>
-                    <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} className={selectClass}>
                       <option value="">Select...</option>
                       {allServices.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
@@ -315,7 +315,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Pai */}
                   <div>
                     <label className={labelClass}>Pai</label>
-                    <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={selectClass}>
                       <option value="">Selecionar pai</option>
                     </select>
                     <p className="mt-1 text-[11px] text-slate-600">Sua hierarquia de tipos do ticket determina os tickets que você pode selecionar aqui.</p>
@@ -324,7 +324,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Categorias */}
                   <div>
                     <label className={labelClass}>Categorias</label>
-                    <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={selectClass}>
                       <option value="">Selecionar categoria</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
@@ -333,7 +333,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Sprint */}
                   <div>
                     <label className={labelClass}>Sprint</label>
-                    <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={sprintId} onChange={(e) => setSprintId(e.target.value)} className={selectClass}>
                       <option value="">Nenhum</option>
                       {sprints.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
@@ -348,7 +348,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Relator */}
                   <div>
                     <label className={labelClass}>Relator {requiredDot}</label>
-                    <select value={reporterId} onChange={(e) => setReporterId(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={reporterId} onChange={(e) => setReporterId(e.target.value)} className={selectClass}>
                       <option value="">Selecionar</option>
                       {members.map((m) => <option key={m.id} value={m.id}>{m.display_name || m.name}</option>)}
                     </select>
@@ -357,14 +357,14 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                   {/* Prioridade */}
                   <div>
                     <label className={labelClass}>Prioridade</label>
-                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className={selectClass + ' max-w-xs'}>
+                    <select value={priority} onChange={(e) => setPriority(e.target.value)} className={selectClass}>
                       {priorityOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                     </select>
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t border-white/[0.06] bg-[#1e2126] px-6 py-4">
+                <div className="sticky bottom-0 flex items-center justify-between border-t border-white/[0.06] bg-[#1e2126] px-5 py-3">
                   <label className="flex items-center gap-2 text-[13px] text-slate-400 cursor-pointer">
                     <input
                       type="checkbox"

@@ -88,38 +88,37 @@ export default function TicketCard({ id, title, service, due, assignee, priority
         active && 'ring-2 ring-blue-500/30 border-blue-500/20'
       )}
     >
-      <div className="px-3 py-2.5">
-        {/* Row 1: Type + Key + Priority */}
-        <div className="mb-1.5 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <TicketTypeIcon typeIcon={typeIcon} size="sm" showBackground={false} />
-            <span className="font-mono text-[10px] font-semibold tracking-wide text-slate-500">{ticketKey}</span>
-          </div>
-          <div className={cn('h-[7px] w-[7px] rounded-full', prio.dot)} title={prio.label} />
+      <div className="px-2.5 py-2">
+        {/* Row 1: Type + Key */}
+        <div className="mb-1 flex items-center gap-1.5">
+          <TicketTypeIcon typeIcon={typeIcon} size="sm" showBackground={false} />
+          <span className="font-mono text-[10px] font-medium text-slate-500">{ticketKey}</span>
+          <span className="flex-1" />
+          <div className={cn('h-[6px] w-[6px] rounded-full', prio.dot)} title={prio.label} />
         </div>
 
         {/* Title */}
-        <h3 className="mb-1.5 text-[12.5px] font-medium leading-[1.4] text-[#d4d7dc] line-clamp-2 group-hover:text-white transition-colors">
+        <h3 className="mb-1.5 text-[12px] font-medium leading-[1.35] text-[#cdd0d5] line-clamp-2 group-hover:text-white transition-colors">
           {title}
         </h3>
 
-        {/* Footer: service + date + avatar */}
-        <div className="flex items-center gap-1.5">
+        {/* Footer */}
+        <div className="flex items-center gap-1">
           {hasService && svc && (
-            <span className={cn('rounded px-1.5 py-[1px] text-[9px] font-semibold tracking-wide', svc.bg, svc.text)}>
+            <span className={cn('rounded px-1.5 py-[1px] text-[8.5px] font-semibold', svc.bg, svc.text)}>
               {service}
             </span>
           )}
           {hasDue && (
-            <span className="flex items-center gap-0.5 text-[10px] text-slate-600">
-              <Calendar size={9} strokeWidth={1.5} />
+            <span className="flex items-center gap-0.5 text-[9px] text-slate-600">
+              <Calendar size={8} strokeWidth={1.5} />
               {due}
             </span>
           )}
           <span className="flex-1" />
           {initials && (
             <div
-              className={cn('flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br text-[8px] font-bold text-white', nameToColor(assignee))}
+              className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-full bg-gradient-to-br text-[7px] font-bold text-white', nameToColor(assignee))}
               title={assignee}
             >
               {initials}
