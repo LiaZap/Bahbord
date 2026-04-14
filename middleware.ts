@@ -11,8 +11,13 @@ export function middleware(req: NextRequest) {
     pathname === '/login' ||
     pathname.startsWith('/api/auth/') ||
     pathname.startsWith('/api/options') ||
+    pathname.startsWith('/api/quick-reactions') ||
+    pathname.startsWith('/api/webhooks') ||
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon.ico');
+    pathname.startsWith('/favicon.ico') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.ico');
 
   if (isPublicPath) {
     // If logged in and on login page, redirect to board

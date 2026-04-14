@@ -15,6 +15,7 @@ import AttachmentList from './AttachmentList';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { useToast } from '@/components/ui/Toast';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
+import DOMPurify from 'dompurify';
 
 interface TicketData {
   id: string;
@@ -240,7 +241,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                         ) : (
                           <div onClick={() => setEditingDesc(true)} className="cursor-text text-[14px] leading-relaxed text-slate-300">
                             {ticket.description ? (
-                              <div dangerouslySetInnerHTML={{ __html: ticket.description }} />
+                              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ticket.description) }} />
                             ) : (
                               <p className="italic text-slate-600">Clique para adicionar uma descrição...</p>
                             )}

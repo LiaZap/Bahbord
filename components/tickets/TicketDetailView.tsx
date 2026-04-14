@@ -17,6 +17,7 @@ import { DetailSkeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { cn } from '@/lib/utils/cn';
+import DOMPurify from 'dompurify';
 
 interface TicketData {
   id: string;
@@ -235,7 +236,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
                     className="cursor-text text-[14px] leading-relaxed text-slate-300"
                   >
                     {ticket.description ? (
-                      <div dangerouslySetInnerHTML={{ __html: ticket.description }} />
+                      <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ticket.description) }} />
                     ) : (
                       <p className="text-slate-600 italic">Clique para adicionar uma descrição...</p>
                     )}
