@@ -14,23 +14,9 @@ const priorityConfig: Record<string, { dot: string; border: string; label: strin
   low: { dot: 'bg-slate-500', border: 'border-l-slate-600', label: 'Baixa' }
 };
 
-const serviceStyles: Record<string, { bg: string; text: string }> = {
-  BAHTECH: { bg: 'bg-sky-500/8', text: 'text-sky-400' },
-  BAHVITRINE: { bg: 'bg-emerald-500/8', text: 'text-emerald-400' },
-  BAHSAUDE: { bg: 'bg-green-500/8', text: 'text-green-400' },
-  BAHCOUNT: { bg: 'bg-amber-500/8', text: 'text-amber-400' },
-  BAHFLASH: { bg: 'bg-rose-500/8', text: 'text-rose-400' },
-  BAHPROJECT: { bg: 'bg-indigo-500/8', text: 'text-indigo-400' },
-  LOVATTOFIT: { bg: 'bg-violet-500/8', text: 'text-violet-400' },
-  EQUINOX: { bg: 'bg-yellow-500/8', text: 'text-yellow-400' }
-};
-
-function getServiceStyle(service: string) {
-  const upper = service.toUpperCase();
-  for (const [key, val] of Object.entries(serviceStyles)) {
-    if (upper.includes(key)) return val;
-  }
-  return { bg: 'bg-slate-500/8', text: 'text-slate-400' };
+function getServiceInlineStyle(color: string | null): { bg: string; text: string } {
+  if (!color) return { bg: 'rgba(100,116,139,0.08)', text: '#94a3b8' };
+  return { bg: color + '14', text: color };
 }
 
 function nameToColor(name: string): string {
@@ -49,6 +35,7 @@ interface TicketCardProps {
   id: string;
   title: string;
   service: string;
+  serviceColor?: string | null;
   due: string;
   assignee: string;
   priority: string;
@@ -58,7 +45,7 @@ interface TicketCardProps {
   onClick: () => void;
 }
 
-export default function TicketCard({ id, title, service, due, assignee, priority, ticketKey, typeIcon, active, onClick }: TicketCardProps) {
+export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, active, onClick }: TicketCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const { openTicket } = useBoardShell();
@@ -70,7 +57,7 @@ export default function TicketCard({ id, title, service, due, assignee, priority
     : null;
   const hasService = service && service !== 'Sem serviço';
   const hasDue = due && due !== '-';
-  const svc = hasService ? getServiceStyle(service) : null;
+  const svc = hasService ? getServiceInlineStyle(serviceColor ?? null) : null;
 
   return (
     <article
@@ -105,7 +92,10 @@ export default function TicketCard({ id, title, service, due, assignee, priority
         {/* Footer */}
         <div className="flex items-center gap-1">
           {hasService && svc && (
-            <span className={cn('rounded px-1.5 py-[1px] text-[8.5px] font-semibold', svc.bg, svc.text)}>
+            <span
+              className="rounded px-1.5 py-[1px] text-[8.5px] font-semibold"
+              style={{ backgroundColor: svc.bg, color: svc.text }}
+            >
               {service}
             </span>
           )}

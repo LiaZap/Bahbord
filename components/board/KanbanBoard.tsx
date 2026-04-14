@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client';
 import KanbanColumn from './KanbanColumn';
 import TicketCard from './TicketCard';
 import BoardFilters, { type BoardFilterState } from './BoardFilters';
+import { useToast } from '@/components/ui/Toast';
 
 const columns: Array<{ id: keyof BoardItems; title: string; color: string }> = [
   { id: 'todo', title: 'Não iniciado', color: 'bg-slate-500' },
@@ -19,6 +20,7 @@ export type TicketItem = {
   id: string;
   title: string;
   service: string;
+  serviceColor: string | null;
   due: string;
   assignee: string;
   priority: string;
@@ -39,9 +41,10 @@ function findContainer(items: BoardItems, id: string) {
 
 interface KanbanBoardProps {
   initialItems: BoardItems;
+  wipLimits?: Record<string, number | null>;
 }
 
-export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
+export default function KanbanBoard({ initialItems, wipLimits = {} }: KanbanBoardProps) {
   const [items, setItems] = useState(initialItems);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>({
@@ -53,6 +56,7 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
   });
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const { toast } = useToast();
 
   // Supabase Realtime — atualizar board quando tickets mudam
   useEffect(() => {
@@ -82,6 +86,7 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
               id: t.id,
               title: t.title,
               service: t.service ?? t.service_name ?? 'Sem serviço',
+              serviceColor: t.serviceColor ?? t.service_color ?? null,
               due: t.due ?? t.due_date ?? '-',
               assignee: t.assignee ?? t.assignee_name ?? 'Sem responsável',
               priority: t.priority ?? 'medium',
@@ -159,6 +164,12 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
     const destinationColumn = findContainer(items, over.id as string) ?? (over.id as string);
     if (!sourceColumn || !destinationColumn || sourceColumn === destinationColumn) return;
 
+    // Validar WIP limit
+    const limit = wipLimits[destinationColumn];
+    if (limit && items[destinationColumn as keyof BoardItems].length >= limit) {
+      return; // Bloqueia o move
+    }
+
     setItems((prev) => {
       const activeItem = prev[sourceColumn as keyof BoardItems].find((item) => item.id === active.id);
       if (!activeItem) return prev;
@@ -177,6 +188,15 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
     const activeContainer = findContainer(items, active.id as string);
     const overContainer = findContainer(items, over.id as string) ?? (over.id as string);
     if (!activeContainer || !overContainer) return;
+
+    // Validar WIP limit no drop final
+    if (activeContainer !== overContainer) {
+      const limit = wipLimits[overContainer];
+      if (limit && items[overContainer as keyof BoardItems].length > limit) {
+        toast(`Limite WIP atingido (${limit}) nesta coluna`, 'warning');
+        return;
+      }
+    }
 
     if (activeContainer === overContainer) {
       const activeIndex = items[activeContainer as keyof BoardItems].findIndex((item) => item.id === active.id);
@@ -233,6 +253,7 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
                 cards={filterTickets(items[column.id])}
                 activeItemId={selectedCard}
                 onSelectCard={setSelectedCard}
+                wipLimit={wipLimits[column.id] ?? null}
               />
             </div>
           ))}

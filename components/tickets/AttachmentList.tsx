@@ -79,6 +79,7 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
   }
 
   async function handleDelete(id: string) {
+    if (!confirm('Remover este anexo?')) return;
     try {
       const res = await fetch(`/api/attachments?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

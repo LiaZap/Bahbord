@@ -7,6 +7,7 @@ type BoardTicket = {
   title: string;
   due: string | null;
   service_name: string | null;
+  service_color: string | null;
   assignee_name: string | null;
   status_name: string | null;
   priority: string | null;
@@ -15,7 +16,7 @@ type BoardTicket = {
 };
 
 type ServiceItem = { id: string; name: string };
-type StatusItem = { id: string; name: string };
+type StatusItem = { id: string; name: string; wip_limit?: number | null };
 type TicketTypeItem = { id: string; name: string };
 
 function normalizeStatus(status: string | null) {
@@ -33,6 +34,7 @@ function mapTicket(ticket: BoardTicket) {
     id: ticket.id,
     title: ticket.title,
     service: ticket.service_name ?? 'Sem serviço',
+    serviceColor: ticket.service_color ?? null,
     due: ticket.due ?? '-',
     assignee: ticket.assignee_name ?? 'Sem responsável',
     priority: ticket.priority ?? 'medium',
@@ -49,6 +51,7 @@ export default async function BoardPage() {
       priority,
       to_char(due_date AT TIME ZONE 'America/Sao_Paulo', 'DD Mon') AS due,
       service_name,
+      service_color,
       assignee_name,
       status_name,
       ticket_key,
@@ -63,7 +66,7 @@ export default async function BoardPage() {
   const wsId = await getDefaultWorkspaceId();
   const [serviceRows, statusRows, typeRows] = await Promise.all([
     query<ServiceItem>(`SELECT id, name FROM services WHERE workspace_id = $1 ORDER BY name ASC`, [wsId]),
-    query<StatusItem>(`SELECT id, name FROM statuses WHERE workspace_id = $1 ORDER BY position ASC`, [wsId]),
+    query<StatusItem>(`SELECT id, name, wip_limit FROM statuses WHERE workspace_id = $1 ORDER BY position ASC`, [wsId]),
     query<TicketTypeItem>(`SELECT id, name FROM ticket_types WHERE workspace_id = $1 ORDER BY position ASC`, [wsId])
   ]);
 
@@ -74,9 +77,16 @@ export default async function BoardPage() {
     done: rows.filter((t) => normalizeStatus(t.status_name) === 'done').map(mapTicket)
   };
 
+  // Montar mapa de WIP limits por coluna
+  const wipLimits: Record<string, number | null> = {};
+  for (const s of statusRows.rows) {
+    const key = normalizeStatus(s.name);
+    if (s.wip_limit) wipLimits[key] = s.wip_limit;
+  }
+
   return (
     <BoardShell services={serviceRows.rows} statuses={statusRows.rows} ticketTypes={typeRows.rows}>
-      <KanbanBoard initialItems={initialItems} />
+      <KanbanBoard initialItems={initialItems} wipLimits={wipLimits} />
     </BoardShell>
   );
 }

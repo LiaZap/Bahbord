@@ -55,15 +55,9 @@ export default function SearchModal() {
     if (q.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/tickets');
+      const res = await fetch(`/api/tickets/search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
-        const all: SearchResult[] = await res.json();
-        const lower = q.toLowerCase();
-        const filtered = all.filter((t) =>
-          t.title?.toLowerCase().includes(lower) ||
-          t.ticket_key?.toLowerCase().includes(lower)
-        );
-        setResults(filtered.slice(0, 10));
+        setResults(await res.json());
         setSelectedIndex(0);
       }
     } catch (err) { console.error('Erro na busca:', err); }

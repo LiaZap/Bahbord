@@ -28,6 +28,7 @@ interface ColumnProps {
   cards: ColumnCard[];
   activeItemId: string | null;
   onSelectCard: (id: string) => void;
+  wipLimit?: number | null;
 }
 
 const columnAccents: Record<string, string> = {
@@ -44,7 +45,7 @@ const statusKeyToName: Record<string, string> = {
   done: 'CONCLUÍDO',
 };
 
-export default function KanbanColumn({ id, title, color, cards, activeItemId, onSelectCard }: ColumnProps) {
+export default function KanbanColumn({ id, title, color, cards, activeItemId, onSelectCard, wipLimit }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const { createInColumn } = useBoardShell();
   const accent = columnAccents[id] || color;
@@ -109,7 +110,9 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
         <div className="flex items-center gap-2">
           <div className={cn('h-2 w-2 rounded-sm', accent)} />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{title}</span>
-          <span className="text-[11px] font-semibold tabular-nums text-slate-600">{cards.length}</span>
+          <span className={cn('text-[11px] font-semibold tabular-nums', wipLimit && cards.length >= wipLimit ? 'text-amber-400' : 'text-slate-600')}>
+            {cards.length}{wipLimit ? `/${wipLimit}` : ''}
+          </span>
         </div>
         <button
           onClick={() => createInColumn(id)}

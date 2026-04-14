@@ -77,7 +77,12 @@ export function useTimeTracking(ticketId: string) {
     return sum + (e.duration_minutes || 0);
   }, 0);
 
-  return { entries, loading, runningEntry, elapsed, totalMinutes, startTimer, stopTimer };
+  const deleteEntry = useCallback(async (entryId: string) => {
+    await fetch(`/api/time-entries?id=${entryId}`, { method: 'DELETE' });
+    await fetchEntries();
+  }, [fetchEntries]);
+
+  return { entries, loading, runningEntry, elapsed, totalMinutes, startTimer, stopTimer, deleteEntry, refetch: fetchEntries };
 }
 
 export function formatDuration(totalSeconds: number): string {

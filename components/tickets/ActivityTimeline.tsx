@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Send, Reply, ThumbsUp, Smile, Pencil, MoreHorizontal } from 'lucide-react';
+import { Send, Reply, ThumbsUp, Smile, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useActivityLog } from '@/lib/hooks/useActivityLog';
@@ -36,6 +36,8 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState('');
   const { activities } = useActivityLog(ticketId);
 
   const fetchComments = useCallback(async () => {
@@ -67,6 +69,28 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     await submitComment(newComment);
+  }
+
+  async function handleEditComment(id: string, body: string) {
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, content: body }),
+      });
+      if (res.ok) {
+        setEditingId(null);
+        await fetchComments();
+      }
+    } catch (err) { console.error('Erro ao editar comentário:', err); }
+  }
+
+  async function handleDeleteComment(id: string) {
+    if (!confirm('Remover este comentário?')) return;
+    try {
+      const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' });
+      if (res.ok) await fetchComments();
+    } catch (err) { console.error('Erro ao deletar comentário:', err); }
   }
 
   function timeAgo(dateStr: string) {
@@ -103,6 +127,8 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     }, {});
 
   function renderComment(c: Comment) {
+    const isEditing = editingId === c.id;
+
     return (
       <div key={c.id} className="group flex gap-3 py-4">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-600 to-orange-700 text-[10px] font-bold text-white">
@@ -113,16 +139,34 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
             <span className="text-[13px] font-semibold text-slate-200">{c.author_name}</span>
             <span className="text-[11px] text-slate-500">{formatDate(c.created_at)}</span>
           </div>
-          <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300">{c.body}</p>
+          {isEditing ? (
+            <div className="mt-1 space-y-2">
+              <input
+                autoFocus
+                value={editBody}
+                onChange={(e) => setEditBody(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleEditComment(c.id, editBody); if (e.key === 'Escape') setEditingId(null); }}
+                className="w-full rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-slate-200 outline-none focus:border-blue-500/30"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => handleEditComment(c.id, editBody)} className="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500">Salvar</button>
+                <button onClick={() => setEditingId(null)} className="text-[11px] text-slate-500 hover:text-slate-300">Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300">{c.body}</p>
+          )}
           <CommentReactions commentId={c.id} />
           {/* Comment actions */}
-          <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
-            <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Responder"><Reply size={13} /></button>
-            <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Curtir"><ThumbsUp size={13} /></button>
-            <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Reação"><Smile size={13} /></button>
-            <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Editar"><Pencil size={13} /></button>
-            <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Mais"><MoreHorizontal size={13} /></button>
-          </div>
+          {!isEditing && (
+            <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Responder"><Reply size={13} /></button>
+              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Curtir"><ThumbsUp size={13} /></button>
+              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Reação"><Smile size={13} /></button>
+              <button onClick={() => { setEditingId(c.id); setEditBody(c.body); }} className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Editar"><Pencil size={13} /></button>
+              <button onClick={() => handleDeleteComment(c.id)} className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-red-400" title="Remover"><Trash2 size={13} /></button>
+            </div>
+          )}
         </div>
       </div>
     );

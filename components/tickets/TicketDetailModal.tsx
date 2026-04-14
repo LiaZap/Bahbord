@@ -183,7 +183,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                     {ticket.parent_key && (
                       <>
                         <TicketTypeIcon typeName={ticket.type_name} typeIcon={ticket.type_icon} size="sm" />
-                        <button onClick={() => { /* TODO: open parent */ }} className="text-slate-400 hover:text-blue-400">
+                        <button onClick={() => { onClose(); setTimeout(() => { window.location.href = `/ticket/${ticket.parent_id}`; }, 100); }} className="text-slate-400 hover:text-blue-400">
                           {ticket.parent_key}
                         </button>
                         <span className="text-slate-600">/</span>

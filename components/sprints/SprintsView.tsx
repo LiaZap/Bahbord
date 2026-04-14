@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Play, CheckCircle, Calendar, Target, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Play, CheckCircle, Calendar, Target, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface Sprint {
@@ -60,6 +60,17 @@ export default function SprintsView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action }),
     });
+    await fetchSprints();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Remover este sprint? Esta ação não pode ser desfeita.')) return;
+    const res = await fetch(`/api/sprints?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || 'Erro ao remover sprint');
+      return;
+    }
     await fetchSprints();
   }
 
@@ -168,6 +179,15 @@ export default function SprintsView() {
                 >
                   <CheckCircle size={12} />
                   Concluir sprint
+                </button>
+              )}
+              {!sprint.is_active && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(sprint.id); }}
+                  className="flex items-center gap-1.5 rounded bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/20"
+                >
+                  <Trash2 size={12} />
+                  Remover
                 </button>
               )}
             </div>

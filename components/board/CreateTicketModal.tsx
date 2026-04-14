@@ -62,6 +62,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
     const [categories, setCategories] = useState<SelectItem[]>([]);
     const [sprints, setSprints] = useState<SelectItem[]>([]);
     const [allServices, setAllServices] = useState<SelectItem[]>(initialServices);
+    const [parentTickets, setParentTickets] = useState<Array<{ id: string; title: string; ticket_key?: string }>>([]);
 
     useImperativeHandle(ref, () => ({
       open: (presetStatusId?: string) => {
@@ -85,6 +86,11 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
           if (cRes.ok) setCategories(await cRes.json());
           if (sRes.ok) setSprints(await sRes.json());
           if (svRes.ok) setAllServices(await svRes.json());
+          // Carregar tickets para seleção de pai
+          try {
+            const tRes = await fetch('/api/tickets');
+            if (tRes.ok) setParentTickets(await tRes.json());
+          } catch { /* parent list is optional */ }
         } catch (err) { console.error('Erro ao carregar opções:', err); }
       }
       load();
@@ -130,6 +136,9 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
             description: description.trim(),
             priority,
             due_date: dueDate || null,
+            parent_id: parentId || null,
+            category_id: categoryId || null,
+            sprint_id: sprintId || null,
           })
         });
 
@@ -316,6 +325,9 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     <label className={labelClass}>Pai</label>
                     <select value={parentId} onChange={(e) => setParentId(e.target.value)} className={selectClass}>
                       <option value="">Selecionar pai</option>
+                      {parentTickets.map((t) => (
+                        <option key={t.id} value={t.id}>{t.ticket_key ? `${t.ticket_key} - ` : ''}{t.title}</option>
+                      ))}
                     </select>
                     <p className="mt-1 text-[11px] text-slate-600">Sua hierarquia de tipos do ticket determina os tickets que você pode selecionar aqui.</p>
                   </div>

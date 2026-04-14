@@ -74,39 +74,35 @@ export async function POST(request: Request) {
       ticket_type_id,
       status_id,
       service_id,
+      category_id,
       assignee_id,
       reporter_id,
       title,
       description,
       priority,
       due_date,
+      parent_id,
+      sprint_id,
       created_at,
       updated_at
     ) VALUES (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5,
-      $6,
-      $7,
-      $8,
-      $9,
-      $10,
-      NOW(),
-      NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+      NOW(), NOW()
     ) RETURNING *`,
     [
       workspaceId,
       body.ticket_type_id,
       body.status_id,
       body.service_id,
+      body.category_id ?? null,
       body.assignee_id,
       body.reporter_id,
       body.title,
       body.description,
       body.priority ?? 'medium',
-      body.due_date ?? null
+      body.due_date ?? null,
+      body.parent_id ?? null,
+      body.sprint_id ?? null,
     ]
   );
 

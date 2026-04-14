@@ -93,28 +93,30 @@ export default function ListView({ tickets, statuses, members }: ListViewProps) 
 
     const ids = Array.from(selected);
 
-    if (bulkAction.startsWith('status:')) {
-      const statusId = bulkAction.replace('status:', '');
-      await Promise.all(ids.map((id) =>
-        fetch(`/api/tickets/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status_id: statusId }),
-        })
-      ));
-      toast(`${ids.length} ticket${ids.length > 1 ? 's' : ''} atualizado${ids.length > 1 ? 's' : ''}`, 'success');
-    }
+    try {
+      let field: Record<string, unknown> = {};
+      if (bulkAction.startsWith('status:')) {
+        field = { status_id: bulkAction.replace('status:', '') };
+      } else if (bulkAction.startsWith('assignee:')) {
+        field = { assignee_id: bulkAction.replace('assignee:', '') || null };
+      }
 
-    if (bulkAction.startsWith('assignee:')) {
-      const assigneeId = bulkAction.replace('assignee:', '') || null;
-      await Promise.all(ids.map((id) =>
+      const results = await Promise.all(ids.map((id) =>
         fetch(`/api/tickets/${id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assignee_id: assigneeId }),
+          body: JSON.stringify(field),
         })
       ));
-      toast(`${ids.length} ticket${ids.length > 1 ? 's' : ''} atualizado${ids.length > 1 ? 's' : ''}`, 'success');
+
+      const failed = results.filter((r) => !r.ok).length;
+      if (failed > 0) {
+        toast(`${failed} de ${ids.length} ticket(s) falharam ao atualizar`, 'error');
+      } else {
+        toast(`${ids.length} ticket${ids.length > 1 ? 's' : ''} atualizado${ids.length > 1 ? 's' : ''}`, 'success');
+      }
+    } catch {
+      toast('Erro de conexão ao atualizar tickets', 'error');
     }
 
     setSelected(new Set());

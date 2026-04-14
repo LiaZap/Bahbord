@@ -1,14 +1,26 @@
 'use client';
 
-import { Play, Square, Clock } from 'lucide-react';
+import { Play, Square, Clock, Trash2 } from 'lucide-react';
 import { useTimeTracking, formatDuration, formatMinutes } from '@/lib/hooks/useTimeTracking';
+import { useToast } from '@/components/ui/Toast';
 
 interface TimeTrackerProps {
   ticketId: string;
 }
 
 export default function TimeTracker({ ticketId }: TimeTrackerProps) {
-  const { entries, runningEntry, elapsed, totalMinutes, startTimer, stopTimer } = useTimeTracking(ticketId);
+  const { entries, runningEntry, elapsed, totalMinutes, startTimer, stopTimer, deleteEntry } = useTimeTracking(ticketId);
+  const { toast } = useToast();
+
+  async function handleDeleteEntry(id: string) {
+    if (!confirm('Remover este registro de tempo?')) return;
+    try {
+      await deleteEntry(id);
+      toast('Registro removido', 'success');
+    } catch {
+      toast('Erro ao remover', 'error');
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -55,7 +67,7 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
         {entries.length > 0 && (
           <div className="mt-2 max-h-32 space-y-1 overflow-auto">
             {entries.filter((e) => !e.is_running).map((e) => (
-              <div key={e.id} className="flex items-center justify-between text-[11px]">
+              <div key={e.id} className="group flex items-center justify-between text-[11px]">
                 <span className="text-slate-500">
                   {new Date(e.started_at).toLocaleDateString('pt-BR')}
                 </span>
@@ -63,6 +75,12 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
                 <span className="font-medium text-slate-300">
                   {formatMinutes(e.duration_minutes || 0)}
                 </span>
+                <button
+                  onClick={() => handleDeleteEntry(e.id)}
+                  className="shrink-0 opacity-0 transition group-hover:opacity-100"
+                >
+                  <Trash2 size={11} className="text-slate-600 hover:text-red-400" />
+                </button>
               </div>
             ))}
           </div>

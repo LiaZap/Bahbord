@@ -77,6 +77,7 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
   }
 
   async function handleRemove(linkId: string) {
+    if (!confirm('Remover este vínculo?')) return;
     await fetch(`/api/ticket-links?id=${linkId}`, { method: 'DELETE' });
     await fetchLinks();
   }
