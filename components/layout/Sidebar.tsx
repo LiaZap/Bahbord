@@ -4,13 +4,18 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
-import { LayoutDashboard, Columns3, List, Inbox, Zap, Search, Settings, ChevronDown, Menu, X, CalendarDays, Clock } from 'lucide-react';
+import {
+  LayoutDashboard, Columns3, List, Inbox, Zap, Search, Settings,
+  ChevronDown, Menu, X, CalendarDays, Clock, ChevronRight
+} from 'lucide-react';
 
-const menu = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/board', label: 'Quadros', icon: Columns3 },
+const mainNav = [
+  { href: '/board', label: 'Quadro', icon: Columns3 },
   { href: '/list', label: 'Lista', icon: List },
   { href: '/backlog', label: 'Backlog', icon: Inbox },
+];
+
+const planningNav = [
   { href: '/sprints', label: 'Sprints', icon: Zap },
   { href: '/timeline', label: 'Cronograma', icon: CalendarDays },
   { href: '/timesheet', label: 'Timesheet', icon: Clock },
@@ -19,19 +24,42 @@ const menu = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [planningOpen, setPlanningOpen] = useState(true);
+
+  function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutDashboard }) {
+    const active = pathname === href;
+    return (
+      <Link
+        href={href as any}
+        onClick={() => setMobileOpen(false)}
+        className={cn(
+          'flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition-colors duration-100',
+          active
+            ? 'bg-white/[0.08] text-white'
+            : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+        )}
+      >
+        <Icon size={16} strokeWidth={active ? 2 : 1.5} className={active ? 'text-blue-400' : 'text-slate-500'} />
+        {label}
+        {active && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />}
+      </Link>
+    );
+  }
 
   const sidebarContent = (
     <>
-      {/* Workspace */}
-      <div className="flex items-center gap-2.5 border-b border-border/50 px-4 py-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+      {/* Workspace header */}
+      <div className="flex items-center gap-2.5 px-4 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-md shadow-blue-500/20">
           B
         </div>
-        <div className="flex flex-1 items-center gap-1">
-          <span className="text-sm font-semibold text-white">Bah!Company</span>
-          <ChevronDown size={12} className="text-slate-500" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] font-semibold text-white truncate">Bah!Company</span>
+            <ChevronDown size={12} className="shrink-0 text-slate-500" />
+          </div>
+          <span className="text-[11px] text-slate-500">Projeto de software</span>
         </div>
-        {/* Close button on mobile */}
         <button
           onClick={() => setMobileOpen(false)}
           className="text-slate-500 hover:text-slate-300 lg:hidden"
@@ -40,67 +68,55 @@ export default function Sidebar() {
         </button>
       </div>
 
+      <div className="mx-3 mb-3 h-px bg-white/[0.06]" />
+
       {/* Search */}
-      <div className="px-3 pt-3 pb-1">
+      <div className="px-3 pb-2">
         <button
-          onClick={() => {
-            // Dispara Ctrl+K para abrir SearchModal
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
-          }}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-500 transition hover:bg-input/40 hover:text-slate-300"
+          onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
+          className="flex w-full items-center gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2.5 py-[7px] text-[12px] text-slate-500 transition hover:border-white/[0.1] hover:bg-white/[0.05]"
         >
           <Search size={14} />
-          <span className="flex-1 text-left">Pesquisar</span>
-          <kbd className="hidden rounded bg-surface px-1 py-0.5 text-[9px] text-slate-600 sm:inline">Ctrl+K</kbd>
+          <span className="flex-1 text-left">Pesquisar...</span>
+          <kbd className="hidden rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-slate-600 sm:inline">/</kbd>
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 px-3 pt-1">
-        {menu.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href as any}
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] font-medium transition',
-                active
-                  ? 'bg-accent/15 text-white'
-                  : 'text-slate-400 hover:bg-input/30 hover:text-slate-200'
-              )}
-            >
-              <Icon size={15} className={active ? 'text-accent' : 'text-slate-500'} />
-              {item.label}
-            </Link>
-          );
-        })}
+      {/* Main navigation */}
+      <nav className="flex-1 space-y-0.5 px-3">
+        <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />
+
+        <div className="pt-1 pb-0.5">
+          <span className="px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Visualizações</span>
+        </div>
+        {mainNav.map((item) => (
+          <NavItem key={item.href} {...item} />
+        ))}
+
+        {/* Planning section - collapsible */}
+        <button
+          onClick={() => setPlanningOpen(!planningOpen)}
+          className="mt-2 flex w-full items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400"
+        >
+          <ChevronRight size={11} className={cn('transition-transform', planningOpen && 'rotate-90')} />
+          Planejamento
+        </button>
+        {planningOpen && planningNav.map((item) => (
+          <NavItem key={item.href} {...item} />
+        ))}
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border/50 px-3 py-3">
-        <Link
-          href={"/settings" as any}
-          onClick={() => setMobileOpen(false)}
-          className={cn(
-            'flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] transition',
-            pathname === '/settings'
-              ? 'bg-accent/15 text-white'
-              : 'text-slate-500 hover:bg-input/30 hover:text-slate-300'
-          )}
-        >
-          <Settings size={15} className={pathname === '/settings' ? 'text-accent' : undefined} />
-          Configurações
-        </Link>
+      <div className="mx-3 h-px bg-white/[0.06]" />
+      <div className="px-3 py-3">
+        <NavItem href="/settings" label="Configurações" icon={Settings} />
       </div>
     </>
   );
 
   return (
     <>
-      {/* Mobile hamburger button */}
+      {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
         className="fixed left-3 top-3 z-50 rounded-md bg-surface2 p-2 text-slate-400 shadow-lg hover:text-white lg:hidden"
@@ -111,23 +127,21 @@ export default function Sidebar() {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden animate-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Mobile sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-56 flex-col bg-sidebar text-slate-300 transition-transform duration-200 lg:hidden',
-          mobileOpen ? 'translate-x-0 flex' : '-translate-x-full'
-        )}
-      >
+      <aside className={cn(
+        'fixed inset-y-0 left-0 z-50 w-[240px] flex-col bg-[#161819] transition-transform duration-200 lg:hidden',
+        mobileOpen ? 'translate-x-0 flex' : '-translate-x-full'
+      )}>
         {sidebarContent}
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden w-56 shrink-0 flex-col bg-sidebar text-slate-300 lg:flex">
+      <aside className="hidden w-[240px] shrink-0 flex-col bg-[#161819] lg:flex">
         {sidebarContent}
       </aside>
     </>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
 import { supabase } from '@/lib/supabase/client';
 import KanbanColumn from './KanbanColumn';
+import TicketCard from './TicketCard';
 import BoardFilters, { type BoardFilterState } from './BoardFilters';
 
 const columns: Array<{ id: keyof BoardItems; title: string; color: string }> = [
@@ -200,8 +201,13 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
     }
   };
 
+  // Encontrar o card sendo arrastado para o overlay
+  const activeCard = selectedCard
+    ? allTickets.find((t) => t.id === selectedCard)
+    : null;
+
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <BoardFilters
         filters={filters}
         onFiltersChange={setFilters}
@@ -210,20 +216,40 @@ export default function KanbanBoard({ initialItems }: KanbanBoardProps) {
         availableTypes={availableTypes}
       />
 
-      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div className="grid h-full grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex flex-1 gap-4 overflow-x-auto pb-2">
           {columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              id={column.id}
-              title={column.title}
-              color={column.color}
-              cards={filterTickets(items[column.id])}
-              activeItemId={selectedCard}
-              onSelectCard={setSelectedCard}
-            />
+            <div key={column.id} className="w-[280px] shrink-0 xl:flex-1 xl:w-auto">
+              <KanbanColumn
+                id={column.id}
+                title={column.title}
+                color={column.color}
+                cards={filterTickets(items[column.id])}
+                activeItemId={selectedCard}
+                onSelectCard={setSelectedCard}
+              />
+            </div>
           ))}
         </div>
+
+        {/* Drag overlay — mostra uma cópia fluida do card durante o arraste */}
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activeCard ? (
+            <div className="w-[280px] rotate-2 opacity-90">
+              <TicketCard
+                {...activeCard}
+                active={false}
+                onClick={() => {}}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );

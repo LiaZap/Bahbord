@@ -1,70 +1,53 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { cn } from '@/lib/utils/cn';
-import { Plus } from 'lucide-react';
+import { Plus, Filter, Users } from 'lucide-react';
 import NotificationCenter from '@/components/ui/NotificationCenter';
-
-const tabs = [
-  { href: '/', label: 'Resumo' },
-  { href: '/board', label: 'Quadros' },
-  { href: '/backlog', label: 'Backlog' },
-  { href: '/list', label: 'Lista' }
-];
 
 interface HeaderProps {
   onCreateTicket?: () => void;
 }
 
+const pageTitles: Record<string, string> = {
+  '/': 'Dashboard',
+  '/board': 'Quadro',
+  '/list': 'Lista',
+  '/backlog': 'Backlog',
+  '/sprints': 'Sprints',
+  '/timeline': 'Cronograma',
+  '/timesheet': 'Timesheet',
+  '/settings': 'Configurações',
+};
+
 export default function Header({ onCreateTicket }: HeaderProps) {
   const pathname = usePathname();
+  const pageTitle = pageTitles[pathname] || 'BahBoard';
 
   return (
-    <header className="shrink-0 border-b border-border/50 bg-sidebar">
-      {/* Top row */}
-      <div className="flex items-center justify-between px-4 py-2.5 sm:px-5">
-        <div className="flex items-center gap-2 pl-10 lg:pl-0">
-          <div className="hidden h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-blue-500 to-violet-600 text-[9px] font-bold text-white sm:flex">
-            B
-          </div>
-          <span className="text-sm font-semibold text-white">Bah!Company</span>
-          <span className="hidden text-slate-600 sm:inline">/</span>
-          <span className="hidden text-sm text-slate-400 sm:inline">BahBoard</span>
-        </div>
-        <div className="flex items-center gap-2">
-          {onCreateTicket && (
-            <button
-              onClick={onCreateTicket}
-              className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500"
-            >
-              <Plus size={13} />
-              <span className="hidden sm:inline">Novo</span>
-            </button>
-          )}
-          <NotificationCenter />
-        </div>
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#1a1c1e] px-5">
+      {/* Left side */}
+      <div className="flex items-center gap-3 pl-10 lg:pl-0">
+        <h1 className="text-[15px] font-semibold text-white">{pageTitle}</h1>
+        {pathname === '/board' && (
+          <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[11px] font-medium text-slate-400">
+            Sprint 23
+          </span>
+        )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-0.5 overflow-x-auto px-4 sm:px-5">
-        {tabs.map((tab) => {
-          const active = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href as any}
-              className={cn(
-                'relative whitespace-nowrap px-3 py-2 text-xs font-medium transition',
-                active
-                  ? 'text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-accent'
-                  : 'text-slate-500 hover:text-slate-300'
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      {/* Right side */}
+      <div className="flex items-center gap-1.5">
+        {onCreateTicket && (
+          <button
+            onClick={onCreateTicket}
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-500 active:scale-[0.98]"
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            <span className="hidden sm:inline">Criar</span>
+          </button>
+        )}
+        <NotificationCenter />
       </div>
     </header>
   );

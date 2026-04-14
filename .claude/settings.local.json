@@ -25,7 +25,8 @@
       "Read(//c/Program Files \\(x86\\)/**)",
       "Bash(taskkill //f //im node.exe)",
       "Bash(xargs grep:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(xargs -I{} sed -i 's/bg-surface text-\\\\[#c5c8c6\\\\]/bg-\\\\[#1a1c1e\\\\] text-\\\\[#c5c8c6\\\\]/g' {})"
     ]
   }
 }

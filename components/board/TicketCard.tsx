@@ -4,23 +4,24 @@ import Link from 'next/link';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils/cn';
+import { Calendar } from 'lucide-react';
 
-const priorityConfig: Record<string, { color: string; label: string }> = {
-  urgent: { color: 'bg-red-500', label: 'Urgente' },
-  high: { color: 'bg-orange-400', label: 'Alta' },
-  medium: { color: 'bg-yellow-400', label: 'Média' },
-  low: { color: 'bg-blue-400', label: 'Baixa' }
+const priorityConfig: Record<string, { color: string; border: string; label: string }> = {
+  urgent: { color: 'bg-red-500', border: 'border-l-red-500', label: 'Urgente' },
+  high: { color: 'bg-orange-400', border: 'border-l-orange-400', label: 'Alta' },
+  medium: { color: 'bg-blue-400', border: 'border-l-blue-400', label: 'Média' },
+  low: { color: 'bg-slate-400', border: 'border-l-slate-500', label: 'Baixa' }
 };
 
 const serviceColors: Record<string, string> = {
-  BAHTECH: 'bg-sky-500/15 text-sky-400',
-  BAHVITRINE: 'bg-emerald-500/15 text-emerald-400',
-  BAHSAUDE: 'bg-green-500/15 text-green-400',
-  BAHCOUNT: 'bg-amber-500/15 text-amber-400',
-  BAHFLASH: 'bg-rose-500/15 text-rose-400',
-  BAHPROJECT: 'bg-cyan-500/15 text-cyan-400',
-  LOVATTOFIT: 'bg-violet-500/15 text-violet-400',
-  EQUINOX: 'bg-yellow-500/15 text-yellow-400'
+  BAHTECH: 'bg-sky-500/10 text-sky-400 ring-sky-500/20',
+  BAHVITRINE: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+  BAHSAUDE: 'bg-green-500/10 text-green-400 ring-green-500/20',
+  BAHCOUNT: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+  BAHFLASH: 'bg-rose-500/10 text-rose-400 ring-rose-500/20',
+  BAHPROJECT: 'bg-indigo-500/10 text-indigo-400 ring-indigo-500/20',
+  LOVATTOFIT: 'bg-violet-500/10 text-violet-400 ring-violet-500/20',
+  EQUINOX: 'bg-yellow-500/10 text-yellow-400 ring-yellow-500/20'
 };
 
 function getServiceColor(service: string) {
@@ -28,7 +29,7 @@ function getServiceColor(service: string) {
   for (const [key, val] of Object.entries(serviceColors)) {
     if (upper.includes(key)) return val;
   }
-  return 'bg-slate-500/15 text-slate-400';
+  return 'bg-slate-500/10 text-slate-400 ring-slate-500/20';
 }
 
 interface TicketCardProps {
@@ -53,49 +54,73 @@ export default function TicketCard({ id, title, service, due, assignee, priority
     ? assignee.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
     : null;
 
+  const hasService = service && service !== 'Sem serviço';
+
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group cursor-grab rounded-lg border border-border/40 bg-surface2 p-3 shadow-sm shadow-black/10 transition active:cursor-grabbing',
-        isDragging ? 'opacity-50 shadow-xl' : 'hover:border-border hover:shadow-md hover:shadow-black/15',
-        active && 'ring-1 ring-accent/60'
+        'group cursor-grab rounded-md border border-white/[0.06] bg-[#22252a] transition-all duration-150 active:cursor-grabbing',
+        'hover:border-white/[0.1] hover:bg-[#272b31]',
+        'border-l-[3px]',
+        prio.border,
+        isDragging && 'opacity-40 rotate-1 shadow-2xl scale-[1.02]',
+        active && 'ring-1 ring-blue-500/40'
       )}
       {...attributes}
       {...listeners}
       onClick={onClick}
     >
-      {/* Header: key + service */}
-      <div className="mb-1.5 flex items-center gap-1.5">
-        <span className={cn('h-2 w-2 shrink-0 rounded-full', prio.color)} title={prio.label} />
-        <span className="text-[11px]">{typeIcon}</span>
-        <Link
-          href={`/ticket/${id}`}
-          className="truncate font-mono text-[11px] text-slate-500 transition hover:text-accent"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {ticketKey}
-        </Link>
-        <span className={cn('ml-auto rounded px-1.5 py-0.5 text-[10px] font-semibold', getServiceColor(service))}>
-          {service}
-        </span>
-      </div>
-
-      {/* Title */}
-      <h3 className="text-[13px] font-medium leading-snug text-slate-200">{title}</h3>
-
-      {/* Footer: date + assignee */}
-      <div className="mt-2 flex items-center justify-between text-[11px]">
-        <span className="text-slate-600">{due}</span>
-        {initials ? (
-          <div
-            className="flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-[9px] font-bold text-accent"
-            title={assignee}
+      <div className="p-3">
+        {/* Top: key + type */}
+        <div className="mb-2 flex items-center gap-1.5">
+          <span className="text-[13px]">{typeIcon}</span>
+          <Link
+            href={`/ticket/${id}`}
+            className="font-mono text-[11px] font-medium text-slate-500 transition hover:text-blue-400"
+            onClick={(e) => e.stopPropagation()}
           >
-            {initials}
+            {ticketKey}
+          </Link>
+        </div>
+
+        {/* Title */}
+        <h3 className="mb-2 text-[13px] font-medium leading-[1.4] text-slate-200 line-clamp-2">
+          {title}
+        </h3>
+
+        {/* Service badge */}
+        {hasService && (
+          <div className="mb-2">
+            <span className={cn(
+              'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1',
+              getServiceColor(service)
+            )}>
+              {service}
+            </span>
           </div>
-        ) : null}
+        )}
+
+        {/* Footer: due date + assignee */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-[11px] text-slate-500">
+            {due && due !== '-' && (
+              <>
+                <Calendar size={11} />
+                <span>{due}</span>
+              </>
+            )}
+          </div>
+          {initials && (
+            <div
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-blue-500/20 to-violet-500/20 text-[9px] font-bold text-blue-300 ring-1 ring-white/[0.06]"
+              title={assignee}
+            >
+              {initials}
+            </div>
+          )}
+        </div>
       </div>
     </article>
   );

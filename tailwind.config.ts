@@ -8,16 +8,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        surface: '#1d1f21',
-        surface2: '#282a2e',
-        sidebar: '#1a1c1e',
-        column: '#22242a',
-        input: '#373b41',
-        border: '#373b41',
+        surface: '#1a1c1e',
+        surface2: '#22252a',
+        sidebar: '#161819',
+        column: '#1e2024',
+        input: '#2a2d33',
+        border: '#2d3036',
         accent: '#3b82f6',
         success: '#22c55e',
         warning: '#f59e0b',
         danger: '#ef4444'
+      },
+      boxShadow: {
+        'card': '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)',
+        'card-hover': '0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)',
       }
     }
   },

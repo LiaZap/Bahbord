@@ -16,11 +16,11 @@ export default function BoardShell({ services, statuses, ticketTypes, children }
   const modalRef = useRef<CreateTicketModalRef>(null);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface text-[#c5c8c6]">
+    <div className="flex h-screen overflow-hidden bg-[#1a1c1e] text-[#c5c8c6]">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onCreateTicket={() => modalRef.current?.open()} />
-        <main className="flex-1 overflow-auto bg-surface p-4">
+        <main className="flex-1 overflow-auto p-5">
           {children}
         </main>
       </div>
