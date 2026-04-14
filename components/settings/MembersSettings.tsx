@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserPlus, Trash2 } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 
 interface Member {
   id: string;
@@ -9,12 +10,15 @@ interface Member {
   email: string;
   role: string;
   avatar_url: string | null;
+  phone: string | null;
   created_at: string;
 }
 
 export default function MembersSettings() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null);
+  const [phoneValue, setPhoneValue] = useState('');
 
   useEffect(() => {
     fetch('/api/options?type=members')
@@ -32,8 +36,14 @@ export default function MembersSettings() {
     setMembers((prev) => prev.map((m) => m.id === id ? { ...m, role } : m));
   }
 
-  function getInitials(name: string) {
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+  async function handlePhoneSave(id: string) {
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'members', id, phone: phoneValue }),
+    });
+    setMembers((prev) => prev.map((m) => m.id === id ? { ...m, phone: phoneValue || null } : m));
+    setEditingPhoneId(null);
   }
 
   if (loading) {
@@ -56,6 +66,7 @@ export default function MembersSettings() {
             <tr className="border-b border-border/40 text-left text-xs text-slate-500">
               <th className="px-4 py-3 font-medium">Membro</th>
               <th className="px-4 py-3 font-medium">Email</th>
+              <th className="px-4 py-3 font-medium">Telefone</th>
               <th className="px-4 py-3 font-medium">Função</th>
               <th className="px-4 py-3 font-medium w-16"></th>
             </tr>
@@ -65,13 +76,31 @@ export default function MembersSettings() {
               <tr key={m.id} className="border-b border-border/20 last:border-0">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
-                      {getInitials(m.display_name)}
-                    </div>
+                    <Avatar name={m.display_name} size="sm" />
                     <span className="text-slate-200">{m.display_name}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-slate-400">{m.email}</td>
+                <td className="px-4 py-3 text-slate-400">
+                  {editingPhoneId === m.id ? (
+                    <input
+                      autoFocus
+                      value={phoneValue}
+                      onChange={(e) => setPhoneValue(e.target.value)}
+                      onBlur={() => handlePhoneSave(m.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handlePhoneSave(m.id); if (e.key === 'Escape') setEditingPhoneId(null); }}
+                      className="w-full rounded border border-border/40 bg-surface px-2 py-1 text-xs text-slate-200 outline-none"
+                      placeholder="(00) 00000-0000"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => { setEditingPhoneId(m.id); setPhoneValue(m.phone || ''); }}
+                      className="text-xs text-slate-500 hover:text-slate-300"
+                    >
+                      {m.phone || 'Adicionar'}
+                    </button>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <select
                     value={m.role}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { dispatchWebhook } from '@/lib/webhooks';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
@@ -94,5 +95,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
   }
 
-  return NextResponse.json(result.rows[0]);
+  const ticket = result.rows[0];
+  dispatchWebhook('ticket.updated', ticket);
+  return NextResponse.json(ticket);
 }

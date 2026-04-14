@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Calendar, SlidersHorizontal, Zap, Pin } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import Avatar from '@/components/ui/Avatar';
 
 interface FieldOption {
   id: string;
@@ -86,9 +87,6 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
 
   const prio = priorityOptions.find((p) => p.id === ticket.priority) || priorityOptions[2];
 
-  function getInitials(name: string) {
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-  }
 
   function InfoRow({ label, children, fieldName, options, currentValue, displayKey }: {
     label: string;
@@ -199,9 +197,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             <InfoRow label="Responsável" fieldName="assignee_id" options={members} currentValue={ticket.assignee_id} displayKey="display_name">
               {ticket.assignee_name ? (
                 <span className="flex items-center gap-2 text-slate-200">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-600 to-orange-700 text-[8px] font-bold text-white">
-                    {getInitials(ticket.assignee_name)}
-                  </span>
+                  <Avatar name={ticket.assignee_name} size="xs" />
                   {ticket.assignee_name}
                 </span>
               ) : (
@@ -258,9 +254,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             <InfoRow label="Relator" fieldName="reporter_id" options={members} currentValue={ticket.reporter_id} displayKey="display_name">
               {ticket.reporter_name ? (
                 <span className="flex items-center gap-2 text-slate-200">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-teal-600 to-cyan-700 text-[8px] font-bold text-white">
-                    {getInitials(ticket.reporter_name)}
-                  </span>
+                  <Avatar name={ticket.reporter_name} size="xs" />
                   {ticket.reporter_name}
                 </span>
               ) : (

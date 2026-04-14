@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const queries: Record<string, string> = {
       statuses: `SELECT id, name, color FROM statuses ORDER BY position ASC`,
       services: `SELECT id, name, color FROM services WHERE is_active = true ORDER BY name ASC`,
-      members: `SELECT id, display_name, avatar_url, email FROM members ORDER BY display_name ASC`,
+      members: `SELECT id, display_name, avatar_url, email, phone FROM members ORDER BY display_name ASC`,
       categories: `SELECT id, name, color FROM categories ORDER BY name ASC`,
       sprints: `SELECT id, name, is_active FROM sprints ORDER BY created_at DESC`,
       ticket_types: `SELECT id, name, icon, color FROM ticket_types ORDER BY position ASC`,

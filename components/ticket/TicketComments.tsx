@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Send } from 'lucide-react';
+import Avatar from '@/components/ui/Avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -54,10 +55,6 @@ export default function TicketComments({ ticketId }: TicketCommentsProps) {
     }
   }
 
-  function getInitials(name: string) {
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
   function timeAgo(dateStr: string) {
     try {
       return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: ptBR });
@@ -77,9 +74,7 @@ export default function TicketComments({ ticketId }: TicketCommentsProps) {
         <div className="mb-4 space-y-3">
           {comments.map((c) => (
             <div key={c.id} className="flex gap-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/20 text-[10px] font-bold text-accent">
-                {getInitials(c.author_name)}
-              </div>
+              <Avatar name={c.author_name} size="sm" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-200">{c.author_name}</span>

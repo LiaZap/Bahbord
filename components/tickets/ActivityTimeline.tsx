@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Reply, ThumbsUp, Smile, Pencil, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useActivityLog } from '@/lib/hooks/useActivityLog';
+import { useComments } from '@/lib/hooks/useComments';
 import QuickReactions from './QuickReactions';
 import CommentReactions from './CommentReactions';
 import MentionInput from './MentionInput';
+import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils/cn';
 
 interface Comment {
@@ -34,60 +36,23 @@ interface ActivityTimelineProps {
 
 export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('comments');
-  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
   const { activities } = useActivityLog(ticketId);
-
-  const fetchComments = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/comments?ticket_id=${ticketId}`);
-      if (res.ok) setComments(await res.json());
-    } catch (err) { console.error('Erro ao carregar comentários:', err); }
-  }, [ticketId]);
-
-  useEffect(() => { fetchComments(); }, [fetchComments]);
+  const { comments, isSubmitting, submitComment: rawSubmitComment, editComment, deleteComment } = useComments(ticketId);
 
   async function submitComment(text: string) {
-    if (!text.trim() || isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticket_id: ticketId, content: text.trim() }),
-      });
-      if (res.ok) {
-        setNewComment('');
-        await fetchComments();
-      }
-    } catch (err) { console.error('Erro ao enviar comentário:', err); }
-    finally { setIsSubmitting(false); }
+    await rawSubmitComment(text);
+    setNewComment('');
   }
 
   async function handleEditComment(id: string, body: string) {
-    try {
-      const res = await fetch('/api/comments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, content: body }),
-      });
-      if (res.ok) {
-        setEditingId(null);
-        await fetchComments();
-      }
-    } catch (err) { console.error('Erro ao editar comentário:', err); }
+    const ok = await editComment(id, body);
+    if (ok) setEditingId(null);
   }
 
-  async function handleDeleteComment(id: string) {
-    if (!confirm('Remover este comentário?')) return;
-    try {
-      const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' });
-      if (res.ok) await fetchComments();
-    } catch (err) { console.error('Erro ao deletar comentário:', err); }
-  }
+  const handleDeleteComment = deleteComment;
 
   function timeAgo(dateStr: string) {
     try { return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: ptBR }); }
@@ -100,10 +65,6 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
         day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
     } catch { return dateStr; }
-  }
-
-  function getInitials(name: string) {
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   const allItems = [
@@ -150,9 +111,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
 
     return (
       <div key={c.id} className="group flex gap-3 py-4">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-600 to-orange-700 text-[10px] font-bold text-white">
-          {getInitials(c.author_name)}
-        </div>
+        <Avatar name={c.author_name} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
             <span className="text-[13px] font-semibold text-slate-200">{c.author_name}</span>
@@ -194,9 +153,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   function renderActivity(a: typeof activities[0]) {
     return (
       <div key={a.id} className="flex items-start gap-3 py-2.5 text-[13px]">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[8px] font-bold text-slate-400">
-          {a.actor_name ? getInitials(a.actor_name) : '?'}
-        </div>
+        <Avatar name={a.actor_name || '?'} size="sm" />
         <div className="flex-1 text-slate-400">
           {a.actor_name && <span className="font-medium text-slate-300">{a.actor_name}</span>}
           {' '}alterou <span className="font-medium text-slate-300">{a.field_name}</span>

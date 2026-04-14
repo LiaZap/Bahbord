@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultMemberId } from '@/lib/db';
+import { dispatchWebhook } from '@/lib/webhooks';
 
 export async function GET(request: Request) {
   try {
@@ -53,7 +54,9 @@ export async function POST(request: Request) {
       [ticket_id, memberId, content.trim()]
     );
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    const comment = result.rows[0];
+    dispatchWebhook('comment.created', { ...comment, ticket_id });
+    return NextResponse.json(comment, { status: 201 });
   } catch (err) {
     console.error('POST /api/comments error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

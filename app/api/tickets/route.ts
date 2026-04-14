@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { dispatchWebhook } from '@/lib/webhooks';
 
 export async function GET(request: Request) {
   try {
@@ -154,7 +155,9 @@ export async function POST(request: Request) {
       ]
     );
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    const ticket = result.rows[0];
+    dispatchWebhook('ticket.created', ticket);
+    return NextResponse.json(ticket, { status: 201 });
   } catch (err) {
     console.error('POST /api/tickets error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
