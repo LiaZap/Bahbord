@@ -47,7 +47,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
       <div className="mx-auto w-full max-w-md rounded-3xl bg-surface2 p-8 shadow-xl shadow-black/20">
-        <h1 className="text-3xl font-semibold">Entrar no BahBoard</h1>
+        <div className="mb-4 flex justify-center">
+          <img src="/logo-bah.svg" alt="Bah!" className="h-12 w-auto object-contain" />
+        </div>
+        <h1 className="text-center text-3xl font-semibold">Entrar no BahBoard</h1>
         <p className="mt-2 text-slate-400">Use seu email e senha para acessar o workspace.</p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <label className="block space-y-2 text-sm">

@@ -50,9 +50,7 @@ export default function Sidebar() {
     <>
       {/* Workspace header */}
       <div className="flex items-center gap-2.5 px-4 py-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-md shadow-blue-500/20">
-          B
-        </div>
+        <img src="/logo-bah.svg" alt="Bah!" className="h-8 w-8 rounded-lg object-contain" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span className="text-[13px] font-semibold text-white truncate">Bah!Company</span>
