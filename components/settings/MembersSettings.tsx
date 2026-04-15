@@ -31,10 +31,10 @@ export default function MembersSettings() {
   }, []);
 
   async function handleRoleChange(id: string, role: string) {
-    await fetch('/api/settings', {
+    await fetch('/api/members/role', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: 'members', id, role }),
+      body: JSON.stringify({ member_id: id, role }),
     });
     setMembers((prev) => prev.map((m) => m.id === id ? { ...m, role } : m));
   }
