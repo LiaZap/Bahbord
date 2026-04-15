@@ -6,8 +6,11 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard, Columns3, List, Inbox, Zap, Search, Settings,
-  ChevronDown, Menu, X, CalendarDays, Clock, ChevronRight, PanelLeftClose, PanelLeft
+  ChevronDown, Menu, X, CalendarDays, Clock, ChevronRight, PanelLeftClose, PanelLeft,
+  FolderKanban, History
 } from 'lucide-react';
+import { useProject } from '@/lib/project-context';
+import ChangelogPanel from '@/components/changelog/ChangelogPanel';
 
 const mainNav = [
   { href: '/board', label: 'Quadro', icon: Columns3 },
@@ -30,6 +33,15 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [planningOpen, setPlanningOpen] = useState(true);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; prefix: string; color: string }>>([]);
+  const [boards, setBoards] = useState<Array<{ id: string; name: string; type: string; project_id: string }>>([]);
+  const { currentProjectId, setProject } = useProject();
+
+  useState(() => {
+    fetch('/api/options?type=projects').then((r) => r.json()).then(setProjects).catch(() => {});
+    fetch('/api/options?type=boards').then((r) => r.json()).then(setBoards).catch(() => {});
+  });
 
   function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutDashboard }) {
     const active = pathname === href;
@@ -98,6 +110,49 @@ export default function Sidebar() {
         </div>
       )}
 
+      {/* Project selector */}
+      {!collapsed && projects.length > 0 && (
+        <div className="px-3 pb-2">
+          <span className="px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Projeto</span>
+          <div className="mt-1 space-y-0.5">
+            {projects.map((p) => {
+              const active = currentProjectId === p.id;
+              const projectBoards = boards.filter((b) => b.project_id === p.id);
+              return (
+                <div key={p.id}>
+                  <button
+                    onClick={() => setProject(p.id)}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-md px-2.5 py-[6px] text-[12px] font-medium transition',
+                      active ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
+                    )}
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded text-[8px] font-bold text-white" style={{ backgroundColor: p.color }}>
+                      {p.prefix.substring(0, 2)}
+                    </span>
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                  {active && projectBoards.length > 0 && (
+                    <div className="ml-5 mt-0.5 space-y-0.5 border-l border-white/[0.06] pl-2">
+                      {projectBoards.map((b) => (
+                        <Link
+                          key={b.id}
+                          href="/board"
+                          className="block truncate rounded px-2 py-1 text-[11px] text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
+                        >
+                          {b.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mx-2.5 mt-2 h-px bg-white/[0.06]" />
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto">
         <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />
@@ -126,7 +181,25 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="mx-3 h-px bg-white/[0.06]" />
-      <div className="px-3 py-2">
+      <div className="px-3 py-2 space-y-0.5">
+        <NavItem href="/projects" label="Projetos" icon={FolderKanban} />
+        {!collapsed ? (
+          <button
+            onClick={() => setChangelogOpen(true)}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-slate-200"
+          >
+            <History size={16} strokeWidth={1.5} className="text-slate-500" />
+            Changelog
+          </button>
+        ) : (
+          <button
+            onClick={() => setChangelogOpen(true)}
+            title="Changelog"
+            className="flex w-full items-center justify-center rounded-md p-2 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
+          >
+            <History size={16} />
+          </button>
+        )}
         <NavItem href="/settings" label="Configurações" icon={Settings} />
       </div>
 
@@ -175,6 +248,7 @@ export default function Sidebar() {
       )}>
         {sidebarContent}
       </aside>
+      <ChangelogPanel isOpen={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </SidebarContext.Provider>
   );
 }
