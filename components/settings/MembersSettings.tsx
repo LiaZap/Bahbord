@@ -79,35 +79,8 @@ export default function MembersSettings() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Membros</h2>
-        <button
-          onClick={() => setShowInvite(!showInvite)}
-          className="flex items-center gap-1.5 rounded bg-accent px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-500"
-        >
-          <UserPlus size={14} />
-          Convidar membro
-        </button>
+        <span className="text-[11px] text-slate-500">Membros entram via aprovação</span>
       </div>
-
-      {showInvite && (
-        <div className="flex items-center gap-3 rounded-lg border border-accent/30 bg-surface2 px-4 py-3">
-          <input
-            autoFocus
-            value={inviteName}
-            onChange={(e) => setInviteName(e.target.value)}
-            placeholder="Nome"
-            className="flex-1 rounded border border-border/40 bg-surface px-2 py-1 text-sm text-slate-200 outline-none focus:border-accent/60"
-          />
-          <input
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleInvite(); }}
-            placeholder="Email"
-            className="flex-1 rounded border border-border/40 bg-surface px-2 py-1 text-sm text-slate-200 outline-none focus:border-accent/60"
-          />
-          <button onClick={handleInvite} className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-blue-500">Adicionar</button>
-          <button onClick={() => setShowInvite(false)} className="text-xs text-slate-500 hover:text-slate-300">Cancelar</button>
-        </div>
-      )}
 
       <div className="rounded-lg border border-border/40 bg-surface2 overflow-hidden">
         <table className="w-full text-sm">
