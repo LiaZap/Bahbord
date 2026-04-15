@@ -9,8 +9,11 @@ import KeyboardShortcuts from '@/components/ui/KeyboardShortcuts';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Bahjira',
-  description: 'Sistema de gestão de projetos'
+  title: 'Bahboard',
+  description: 'Sistema de gestão de projetos',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
