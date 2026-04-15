@@ -93,11 +93,12 @@ export default function Sidebar() {
     <>
       {/* Organization header (top level) */}
       <div className={cn('flex items-center gap-2.5 px-4 py-3', collapsed && 'justify-center px-2')}>
-        <img src="/logo-bah.svg" alt="Bah!" className="h-7 w-7 rounded-md object-contain shrink-0" />
-        {!collapsed && (
+        {collapsed ? (
+          <img src="/logo-bahtech.svg" alt="BahTech" className="h-6 w-6 object-contain object-left shrink-0" />
+        ) : (
           <div className="flex-1 min-w-0">
-            <span className="text-[14px] font-bold text-white truncate block">BahTech</span>
-            <span className="text-[10px] text-slate-500">Organização</span>
+            <img src="/logo-bahtech.svg" alt="BahTech" className="h-5 object-contain object-left" />
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Organização</span>
           </div>
         )}
         <button onClick={() => setMobileOpen(false)} className="text-slate-500 hover:text-slate-300 md:hidden">
