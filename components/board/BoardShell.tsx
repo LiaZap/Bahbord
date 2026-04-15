@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import CreateTicketModal, { type CreateTicketModalRef } from './CreateTicketModal';
 import TicketDetailModal from '@/components/tickets/TicketDetailModal';
+import RecentBoardTracker from './RecentBoardTracker';
 
 interface BoardShellProps {
   services: Array<{ id: string; name: string }>;
@@ -57,6 +58,7 @@ export default function BoardShell({ services, statuses, ticketTypes, children }
         </div>
         <CreateTicketModal ref={modalRef} services={services} statuses={statuses} ticketTypes={ticketTypes} />
         <TicketDetailModal ticketId={selectedTicketId} onClose={() => setSelectedTicketId(null)} />
+        <RecentBoardTracker />
       </div>
     </BoardShellContext.Provider>
   );

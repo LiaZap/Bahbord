@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard, Columns3, List, Inbox, Zap, Search, Settings,
   ChevronDown, Menu, X, CalendarDays, Clock, ChevronRight, PanelLeftClose, PanelLeft,
-  FolderKanban, History
+  FolderKanban, History, Filter, Users
 } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import ChangelogPanel from '@/components/changelog/ChangelogPanel';
@@ -182,7 +182,10 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="mx-3 h-px bg-white/[0.06]" />
       <div className="px-3 py-2 space-y-0.5">
+        <NavItem href="/filters" label="Filtros" icon={Filter} />
         <NavItem href="/projects" label="Projetos" icon={FolderKanban} />
+        <NavItem href="/clients" label="Clientes" icon={Users} />
+        <NavItem href="/teams" label="Equipes" icon={Users} />
         {!collapsed ? (
           <button
             onClick={() => setChangelogOpen(true)}

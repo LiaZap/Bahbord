@@ -2,6 +2,7 @@
 
 import { Search, X, SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import SavedFilters from './SavedFilters';
 
 export interface BoardFilterState {
   search: string;
@@ -54,6 +55,9 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
           className="w-44 rounded-md border border-white/[0.06] bg-white/[0.03] pl-8 pr-3 py-[6px] text-[12px] text-slate-200 outline-none placeholder:text-slate-600 transition focus:w-64 focus:border-blue-500/40 focus:bg-white/[0.05]"
         />
       </div>
+
+      {/* Saved Filters */}
+      <SavedFilters currentFilters={filters} onApplyFilter={onFiltersChange} />
 
       {/* Divider */}
       <div className="h-5 w-px bg-white/[0.06]" />
