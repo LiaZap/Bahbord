@@ -8,6 +8,7 @@ export interface AuthMember {
   role: string;
   display_name: string;
   email: string;
+  is_approved: boolean;
 }
 
 /**
@@ -27,7 +28,7 @@ export async function getAuthMember(): Promise<AuthMember | null> {
 
     // Look up member by Clerk user ID
     const result = await query<AuthMember>(
-      `SELECT m.id, m.workspace_id, m.display_name, m.email,
+      `SELECT m.id, m.workspace_id, m.display_name, m.email, m.is_approved,
         COALESCE(orr.role, 'viewer') AS role
       FROM members m
       LEFT JOIN org_roles orr ON orr.member_id = m.id AND orr.workspace_id = m.workspace_id
@@ -90,6 +91,7 @@ export async function getAuthMember(): Promise<AuthMember | null> {
       role: 'viewer',
       display_name: displayName,
       email,
+      is_approved: false,
     };
   } catch {
     return null;

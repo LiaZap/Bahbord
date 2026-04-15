@@ -16,6 +16,7 @@ export async function GET() {
         display_name: member.display_name,
         email: member.email,
         role: member.role,
+        is_approved: member.is_approved,
       },
       workspace_id: member.workspace_id,
     });

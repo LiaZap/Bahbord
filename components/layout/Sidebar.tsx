@@ -36,7 +36,11 @@ export default function Sidebar() {
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [projects, setProjects] = useState<Array<{ id: string; name: string; prefix: string; color: string }>>([]);
   const [boards, setBoards] = useState<Array<{ id: string; name: string; type: string; project_id: string }>>([]);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isApproved, setIsApproved] = useState<boolean>(true);
   const { currentProjectId, recentBoards, setProject, setBoard } = useProject();
+
+  const isAdminUser = userRole === 'owner' || userRole === 'admin';
 
   // Carregar projetos filtrados por acesso do membro logado
   useEffect(() => {
@@ -45,6 +49,8 @@ export default function Sidebar() {
         const meRes = await fetch('/api/auth/me');
         const me = meRes.ok ? await meRes.json() : null;
         const mid = me?.member?.id;
+        setUserRole(me?.member?.role || null);
+        setIsApproved(me?.member?.is_approved !== false);
         const projRes = await fetch(mid ? `/api/projects?member_id=${mid}` : '/api/projects');
         const projs = projRes.ok ? await projRes.json() : [];
         setProjects(projs);
@@ -227,14 +233,22 @@ export default function Sidebar() {
         {(collapsed || planningOpen) && planningNav.map((item) => <NavItem key={item.href} {...item} />)}
       </nav>
 
+      {/* Aguardando aprovação */}
+      {!isApproved && !collapsed && (
+        <div className="mx-3 mb-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <p className="text-[12px] font-medium text-amber-400">Aguardando aprovação</p>
+          <p className="mt-1 text-[11px] text-slate-500">Seu acesso está sendo analisado pelo administrador.</p>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="mx-3 h-px bg-white/[0.06]" />
       <div className="px-3 py-2 space-y-0.5">
         <NavItem href="/filters" label="Filtros" icon={Filter} />
-        <NavItem href="/projects" label="Projetos" icon={FolderKanban} />
-        <NavItem href="/clients" label="Clientes" icon={Users} />
-        <NavItem href="/teams" label="Equipes" icon={Users} />
-        {!collapsed ? (
+        {isAdminUser && <NavItem href="/projects" label="Projetos" icon={FolderKanban} />}
+        {isAdminUser && <NavItem href="/clients" label="Clientes" icon={Users} />}
+        {isAdminUser && <NavItem href="/teams" label="Equipes" icon={Users} />}
+        {isAdminUser && (!collapsed ? (
           <button
             onClick={() => setChangelogOpen(true)}
             className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium text-slate-400 transition hover:bg-white/[0.04] hover:text-slate-200"
@@ -250,8 +264,8 @@ export default function Sidebar() {
           >
             <History size={16} />
           </button>
-        )}
-        <NavItem href="/settings" label="Configurações" icon={Settings} />
+        ))}
+        {isAdminUser && <NavItem href="/settings" label="Configurações" icon={Settings} />}
       </div>
 
       {/* Collapse toggle (desktop only) */}
