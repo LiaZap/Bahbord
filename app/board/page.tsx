@@ -20,6 +20,7 @@ type BoardTicket = {
   completed_at: string | null;
   client_name: string | null;
   project_id: string | null;
+  assignee_avatar: string | null;
 };
 
 type ProjectItem = { id: string; name: string };
@@ -54,6 +55,7 @@ function mapTicket(ticket: BoardTicket) {
     completedAt: ticket.completed_at ?? null,
     clientName: ticket.client_name ?? null,
     projectId: ticket.project_id ?? null,
+    assigneeAvatar: ticket.assignee_avatar ?? null,
   };
 }
 
@@ -86,6 +88,7 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
       service_name,
       service_color,
       assignee_name,
+      assignee_avatar,
       status_name,
       ticket_key,
       type_icon,
@@ -96,7 +99,7 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
       project_id
     FROM tickets_full
     ${whereClause}
-    ORDER BY created_at DESC`,
+    ORDER BY updated_at DESC`,
     queryParams.length > 0 ? queryParams : undefined
   );
 

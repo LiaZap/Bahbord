@@ -37,6 +37,12 @@ export async function getAuthMember(): Promise<AuthMember | null> {
     );
 
     if (result.rows[0]) {
+      // Update avatar from Clerk (non-blocking)
+      currentUser().then((u) => {
+        if (u?.imageUrl) {
+          query(`UPDATE members SET avatar_url = $1 WHERE clerk_user_id = $2 AND (avatar_url IS NULL OR avatar_url != $1)`, [u.imageUrl, userId]).catch(() => {});
+        }
+      }).catch(() => {});
       return { ...result.rows[0], clerk_id: userId };
     }
 

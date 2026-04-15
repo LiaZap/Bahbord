@@ -22,6 +22,7 @@ export type TicketItem = {
   completedAt?: string | null;
   clientName?: string | null;
   projectId?: string | null;
+  assigneeAvatar?: string | null;
 };
 
 export type BoardItems = {
@@ -88,6 +89,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
               completedAt: t.completedAt ?? t.completed_at ?? null,
               clientName: t.clientName ?? t.client_name ?? null,
               projectId: t.projectId ?? t.project_id ?? null,
+              assigneeAvatar: t.assigneeAvatar ?? t.assignee_avatar ?? null,
             });
 
             setItems({
