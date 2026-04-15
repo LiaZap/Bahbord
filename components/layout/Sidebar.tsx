@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, createContext, useContext } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
@@ -39,7 +39,7 @@ export default function Sidebar() {
   const { currentProjectId, recentBoards, setProject, setBoard } = useProject();
 
   // Carregar projetos filtrados por acesso do membro logado
-  useState(() => {
+  useEffect(() => {
     async function loadUserProjects() {
       try {
         const meRes = await fetch('/api/auth/me');
@@ -48,7 +48,6 @@ export default function Sidebar() {
         const projRes = await fetch(mid ? `/api/projects?member_id=${mid}` : '/api/projects');
         const projs = projRes.ok ? await projRes.json() : [];
         setProjects(projs);
-        // Load boards per project filtered by member access
         const boardResults = await Promise.all(
           projs.map(async (p: { id: string }) => {
             const bRes = await fetch(`/api/boards?project_id=${p.id}${mid ? `&member_id=${mid}` : ''}`);
@@ -59,7 +58,7 @@ export default function Sidebar() {
       } catch {}
     }
     loadUserProjects();
-  });
+  }, []);
 
   function NavItem({ href, label, icon: Icon }: { href: string; label: string; icon: typeof LayoutDashboard }) {
     const active = pathname === href;
