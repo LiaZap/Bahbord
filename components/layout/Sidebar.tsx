@@ -208,8 +208,8 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 px-3 overflow-y-auto">
-        <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />
-        <NavItem href="/docs" label="Documentação" icon={BookOpen} />
+        {isAdminUser && <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />}
+        {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
 
         {!collapsed && (
           <div className="pt-2 pb-0.5">
@@ -219,7 +219,7 @@ export default function Sidebar() {
         {collapsed && <div className="my-2 mx-2 h-px bg-white/[0.06]" />}
         {mainNav.map((item) => <NavItem key={item.href} {...item} />)}
 
-        {!collapsed ? (
+        {isAdminUser && (!collapsed ? (
           <button
             onClick={() => setPlanningOpen(!planningOpen)}
             className="mt-2 flex w-full items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400"
@@ -229,8 +229,8 @@ export default function Sidebar() {
           </button>
         ) : (
           <div className="my-2 mx-2 h-px bg-white/[0.06]" />
-        )}
-        {(collapsed || planningOpen) && planningNav.map((item) => <NavItem key={item.href} {...item} />)}
+        ))}
+        {isAdminUser && (collapsed || planningOpen) && planningNav.map((item) => <NavItem key={item.href} {...item} />)}
       </nav>
 
       {/* Aguardando aprovação */}
@@ -244,7 +244,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="mx-3 h-px bg-white/[0.06]" />
       <div className="px-3 py-2 space-y-0.5">
-        <NavItem href="/filters" label="Filtros" icon={Filter} />
+        {isAdminUser && <NavItem href="/filters" label="Filtros" icon={Filter} />}
         {isAdminUser && <NavItem href="/projects" label="Projetos" icon={FolderKanban} />}
         {isAdminUser && <NavItem href="/clients" label="Clientes" icon={Users} />}
         {isAdminUser && <NavItem href="/teams" label="Equipes" icon={Users} />}
