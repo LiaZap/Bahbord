@@ -1,9 +1,6 @@
 import { Pool, QueryResult, QueryResultRow } from 'pg';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('O ambiente DATABASE_URL não está definido. Use .env.local para configurar a conexão PostgreSQL.');
-}
+const connectionString = process.env.DATABASE_URL || '';
 
 declare global {
   // eslint-disable-next-line no-var

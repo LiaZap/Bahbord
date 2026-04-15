@@ -3,9 +3,6 @@ import { MongoClient, Db } from 'mongodb';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const MONGODB_DB = process.env.MONGODB_DB || 'bahjira';
 
-if (!MONGODB_URI) {
-  throw new Error('MONGODB_URI não está definida. Configure em .env.local');
-}
 
 declare global {
   // eslint-disable-next-line no-var
