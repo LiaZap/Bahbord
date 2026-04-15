@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:\\\\Users\\\\Paulo\\\\Documents\\\\Bahjira\\\\app\\\\api\" -name \"*.ts\" -exec grep -l \"getAuthMember\\\\|getAuth\" {} \\\\;)",
+      "Bash(xargs -I {} grep -n \"CREATE TABLE.*members\\\\|ALTER TABLE members\" {} -A 15)",
+      "Bash(find \"c:\\\\Users\\\\Paulo\\\\Documents\\\\Bahjira\\\\db\" -name \"*.sql\" -exec grep -l \"CREATE TABLE.*members\" {} \\\\;)",
+      "Bash(grep \".sql$\")",
+      "Bash(find \"c:/Users/Paulo/Documents/Bahjira/app/api\" -type f -name \"*.ts\" -exec grep -l \"getDefaultMemberId\" {} \\\\;)",
+      "Bash(find \"c:/Users/Paulo/Documents/Bahjira/lib\" -name \"*.ts\" -type f -exec grep -l \"any\" {} \\\\;)",
+      "Bash(git commit -m ':*)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import KanbanBoard from '@/components/board/KanbanBoard';
 import BoardShell from '@/components/board/BoardShell';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
