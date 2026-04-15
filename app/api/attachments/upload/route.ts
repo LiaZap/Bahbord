@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { query, getDefaultMemberId } from '@/lib/db';
 import { isDriveConfigured, uploadToDrive, getTicketFolderId } from '@/lib/google-drive';
+import { getAuthMember } from '@/lib/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const ticketId = formData.get('ticket_id') as string | null;
@@ -18,12 +21,11 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     let fileUrl: string | null = null;
-    let storageProvider = 'local';
+    let storageProvider = 'none';
 
-    // Strategy 1: Google Drive (preferred - no database bloat)
+    // Strategy 1: Google Drive (preferred)
     if (isDriveConfigured()) {
       try {
-        // Get ticket info for folder structure
         const ticketInfo = await query(
           `SELECT tf.ticket_key, w.name AS workspace_name,
             COALESCE(p.prefix, w.prefix) AS project_prefix
@@ -73,9 +75,19 @@ export async function POST(request: Request) {
       }
     }
 
-    // Save metadata to PostgreSQL (just the reference, not the file)
-    let memberId: string | null = null;
-    try { memberId = await getDefaultMemberId(); } catch {}
+    // If no storage worked, return error
+    if (!fileUrl) {
+      return NextResponse.json(
+        { error: 'Nenhum serviço de armazenamento configurado. Configure o Google Drive ou Supabase Storage.' },
+        { status: 503 }
+      );
+    }
+
+    // Use authenticated member
+    let memberId = auth?.id;
+    if (!memberId) {
+      try { memberId = await getDefaultMemberId(); } catch {}
+    }
 
     const result = await query(
       `INSERT INTO attachments (ticket_id, uploaded_by, file_name, file_url, file_size, mime_type)

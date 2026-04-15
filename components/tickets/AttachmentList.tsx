@@ -62,18 +62,8 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
       if (res.ok) {
         uploaded++;
       } else {
-        // Fallback: salvar só metadados se upload falhar
-        await fetch('/api/attachments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ticket_id: ticketId,
-            file_name: file.name,
-            file_size: file.size,
-            mime_type: file.type,
-          }),
-        });
-        uploaded++;
+        const err = await res.json().catch(() => ({}));
+        toast(err.error || `Erro ao enviar ${file.name}`, 'error');
       }
     }
     toast(`${uploaded} arquivo${uploaded > 1 ? 's' : ''} adicionado${uploaded > 1 ? 's' : ''}`, 'success');

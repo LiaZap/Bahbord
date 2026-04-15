@@ -14,10 +14,8 @@ export async function GET(request: Request) {
     }
 
     const result = await query(
-      `SELECT s.id, s.title, s.is_completed, s.position, s.created_at, s.completed_at,
-        m.display_name AS assignee_name
+      `SELECT s.id, s.title, s.is_done AS is_completed, s.position, s.created_at, s.completed_at
       FROM subtasks s
-      LEFT JOIN members m ON m.id = s.assignee_id
       WHERE s.ticket_id = $1
       ORDER BY s.position ASC, s.created_at ASC`,
       [ticketId]
@@ -48,9 +46,9 @@ export async function POST(request: Request) {
     const nextPos = posResult.rows[0].next_pos;
 
     const result = await query(
-      `INSERT INTO subtasks (ticket_id, title, position, is_completed)
+      `INSERT INTO subtasks (ticket_id, title, position, is_done)
        VALUES ($1, $2, $3, false)
-       RETURNING *`,
+       RETURNING id, title, is_done AS is_completed, position, created_at, completed_at`,
       [ticket_id, title.trim(), nextPos]
     );
 
@@ -77,7 +75,7 @@ export async function PATCH(request: Request) {
     let idx = 1;
 
     if (typeof is_completed === 'boolean') {
-      sets.push(`is_completed = $${idx}`);
+      sets.push(`is_done = $${idx}`);
       params.push(is_completed);
       idx++;
       if (is_completed) {
@@ -105,7 +103,8 @@ export async function PATCH(request: Request) {
 
     params.push(id);
     const result = await query(
-      `UPDATE subtasks SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      `UPDATE subtasks SET ${sets.join(', ')} WHERE id = $${idx}
+       RETURNING id, title, is_done AS is_completed, position, created_at, completed_at`,
       params
     );
 
