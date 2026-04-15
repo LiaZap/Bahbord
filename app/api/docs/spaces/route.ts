@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
@@ -20,6 +21,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
+
     const workspaceId = await getDefaultWorkspaceId();
     const body = await request.json();
     const { name, description, icon } = body;
@@ -43,6 +46,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const { id, name, description, icon } = body;
 
@@ -73,6 +78,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

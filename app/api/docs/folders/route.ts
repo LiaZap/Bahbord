@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
@@ -38,6 +39,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const { space_id, parent_id, name } = body;
 
@@ -60,6 +63,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const { id, name } = body;
 
@@ -84,6 +89,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
+    await getAuthMember();
+
     const result = await query(
       `SELECT
         tf.id, tf.workspace_id, tf.title, tf.description, tf.priority,
@@ -51,6 +54,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
+  await getAuthMember();
+
   const body = await request.json();
   const ticketId = params.id;
   const expectedUpdatedAt = body._updated_at; // OCC: versão esperada

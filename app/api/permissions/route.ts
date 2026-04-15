@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get('group_id');
     const workspaceId = await getDefaultWorkspaceId();
@@ -33,6 +39,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { key, display_name, group_id, scope } = body;
     const workspaceId = await getDefaultWorkspaceId();
@@ -57,6 +68,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { id, display_name, group_id, scope } = body;
 
@@ -87,6 +103,11 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

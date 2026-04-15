@@ -46,9 +46,16 @@ export default function Sidebar() {
         const me = meRes.ok ? await meRes.json() : null;
         const mid = me?.member?.id;
         const projRes = await fetch(mid ? `/api/projects?member_id=${mid}` : '/api/projects');
-        if (projRes.ok) setProjects(await projRes.json());
-        const bRes = await fetch('/api/options?type=boards');
-        if (bRes.ok) setBoards(await bRes.json());
+        const projs = projRes.ok ? await projRes.json() : [];
+        setProjects(projs);
+        // Load boards per project filtered by member access
+        const boardResults = await Promise.all(
+          projs.map(async (p: { id: string }) => {
+            const bRes = await fetch(`/api/boards?project_id=${p.id}${mid ? `&member_id=${mid}` : ''}`);
+            return bRes.ok ? bRes.json() : [];
+          })
+        );
+        setBoards(boardResults.flat());
       } catch {}
     }
     loadUserProjects();

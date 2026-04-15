@@ -73,6 +73,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'id e action (approve/reject) são obrigatórios' }, { status: 400 });
     }
 
+    // Verify reviewer is org admin/owner
+    if (reviewer_id) {
+      const reviewerRole = await query(
+        `SELECT role FROM org_roles WHERE member_id = $1 AND workspace_id = (SELECT workspace_id FROM approval_requests WHERE id = $2)`,
+        [reviewer_id, id]
+      );
+      if (!reviewerRole.rows[0] || !['owner', 'admin'].includes(reviewerRole.rows[0].role)) {
+        return NextResponse.json({ error: 'Apenas administradores podem aprovar/rejeitar pedidos' }, { status: 403 });
+      }
+    }
+
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
 
     const result = await query(

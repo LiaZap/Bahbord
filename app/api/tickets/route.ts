@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
@@ -66,6 +69,8 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const ticketId = body.id as string | undefined;
     const statusKey = body.status_key as string | undefined;
@@ -108,6 +113,8 @@ export async function PATCH(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const workspaceId = body.workspace_slug
       ? (await query(`SELECT id FROM workspaces WHERE slug = $1`, [body.workspace_slug])).rows[0]?.id

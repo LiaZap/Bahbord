@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 const SCOPE_TABLES: Record<string, { table: string; fk: string }> = {
   org: { table: 'org_roles', fk: 'workspace_id' },
@@ -38,6 +39,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { scope, scope_id, member_id, role } = body;
 
@@ -68,6 +74,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const scope = searchParams.get('scope');

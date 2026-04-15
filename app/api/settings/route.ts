@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId, filterAllowedColumns } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET workspace settings
 export async function GET() {
@@ -18,6 +19,11 @@ export async function GET() {
 // PATCH workspace settings
 export async function PATCH(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { table, id, ...fields } = body;
 
@@ -86,6 +92,11 @@ export async function PATCH(request: Request) {
 // POST - criar novo item em tabelas de configuração
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { table, ...fields } = body;
 
@@ -122,6 +133,11 @@ export async function POST(request: Request) {
 // DELETE
 export async function DELETE(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const table = searchParams.get('table');
     const id = searchParams.get('id');

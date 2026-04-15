@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultMemberId } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const ticketId = searchParams.get('ticket_id');
 
@@ -31,6 +34,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const { ticket_id, author_id, content } = body;
 
@@ -65,6 +70,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await getAuthMember();
+
     const body = await request.json();
     const { id, content } = body;
 
@@ -90,6 +97,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
