@@ -198,6 +198,31 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
               )}
             </InfoRow>
 
+            {/* Prioridade */}
+            <InfoRow label="Prioridade" fieldName="priority">
+              {editingField === 'priority' ? (
+                <select
+                  autoFocus
+                  value={ticket.priority}
+                  onChange={(e) => { handleSelect('priority', e.target.value); }}
+                  onBlur={() => setEditingField(null)}
+                  className="max-w-[180px] rounded border border-blue-500/30 bg-[#1e2126] px-2 py-1 text-[13px] text-slate-200 outline-none"
+                >
+                  {priorityOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span
+                  className="flex cursor-pointer items-center gap-1.5 text-slate-200"
+                  onClick={() => setEditingField('priority')}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: prio.color }} />
+                  {prio.name}
+                </span>
+              )}
+            </InfoRow>
+
             {/* Responsável */}
             <InfoRow label="Responsável" fieldName="assignee_id" options={members} currentValue={ticket.assignee_id} displayKey="display_name">
               {ticket.assignee_name ? (

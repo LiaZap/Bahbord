@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
-  Share2, Maximize2, X as XIcon,
+  Share2, Maximize2, X as XIcon, Trash2,
   ChevronDown, ChevronRight, Settings2
 } from 'lucide-react';
 import SubtaskList from './SubtaskList';
@@ -103,6 +103,20 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
     return () => window.removeEventListener('keydown', handleKey);
   }, []);
 
+  async function handleDeleteTicket() {
+    if (!confirm('Excluir este ticket permanentemente? Esta ação não pode ser desfeita.')) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast('Ticket excluído', 'success');
+        window.location.href = '/board';
+      } else {
+        const err = await res.json();
+        toast(err.error || 'Erro ao excluir', 'error');
+      }
+    } catch { toast('Erro de conexão', 'error'); }
+  }
+
   async function updateField(field: string, value: unknown) {
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, {
@@ -180,6 +194,13 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
             title="Abrir em nova aba"
           >
             <Maximize2 size={14} />
+          </button>
+          <button
+            onClick={handleDeleteTicket}
+            className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-red-400"
+            title="Excluir ticket"
+          >
+            <Trash2 size={14} />
           </button>
           <Link href="/board" className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300">
             <XIcon size={14} />

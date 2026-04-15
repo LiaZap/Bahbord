@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
-import { getAuthMember } from '@/lib/api-auth';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
@@ -128,6 +128,26 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   return NextResponse.json(ticket);
   } catch (err) {
     console.error('PATCH /api/tickets/[id] error:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const auth = await getAuthMember();
+    if (auth && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Apenas administradores podem excluir tickets' }, { status: 403 });
+    }
+
+    const result = await query(`DELETE FROM tickets WHERE id = $1 RETURNING id`, [params.id]);
+
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/tickets/[id] error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
