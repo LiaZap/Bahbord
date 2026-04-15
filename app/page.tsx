@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
+import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import { Columns3, CheckCircle2, Clock, AlertCircle, TrendingUp, Users } from 'lucide-react';
 
@@ -134,6 +135,7 @@ export default async function HomePage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto p-6">
+          <ApprovalGate>
           <div className="mx-auto max-w-[1200px] space-y-6">
             <div>
               <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
@@ -254,6 +256,7 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
+          </ApprovalGate>
         </main>
       </div>
     </div>
