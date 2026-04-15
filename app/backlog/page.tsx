@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 
@@ -32,6 +33,7 @@ export default async function BacklogPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto p-6">
+          <ApprovalGate>
           <div className="mx-auto max-w-[1200px]">
             <div className="mb-6">
               <h1 className="text-xl font-bold text-white">Backlog</h1>
@@ -96,6 +98,7 @@ export default async function BacklogPage() {
               )}
             </div>
           </div>
+          </ApprovalGate>
         </main>
       </div>
     </div>
