@@ -1,0 +1,16 @@
+import { SignUp } from '@clerk/nextjs';
+
+export default function SignUpPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f]">
+      <SignUp
+        appearance={{
+          elements: {
+            rootBox: 'mx-auto',
+            card: 'bg-[#1a1c1e] border border-white/[0.08]',
+          },
+        }}
+      />
+    </div>
+  );
+}

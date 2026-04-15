@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { Plus, Filter, Users, Sun, Moon } from 'lucide-react';
+import { UserButton } from '@clerk/nextjs';
 import NotificationCenter from '@/components/ui/NotificationCenter';
 import { useTheme } from '@/lib/theme-context';
 
@@ -58,6 +59,11 @@ export default function Header({ onCreateTicket }: HeaderProps) {
           {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <NotificationCenter />
+        <UserButton
+          appearance={{
+            elements: { avatarBox: 'h-7 w-7' },
+          }}
+        />
       </div>
     </header>
   );

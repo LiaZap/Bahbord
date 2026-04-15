@@ -1,5 +1,11 @@
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhooks(.*)',
+]);
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Frame-Options', 'DENY');
@@ -9,36 +15,16 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-export function middleware(req: NextRequest) {
-  const memberId = req.cookies.get('bahjira-member-id')?.value;
-  const { pathname } = req.nextUrl;
-
-  // Allow public paths through without auth check
-  const isPublicPath =
-    pathname === '/login' ||
-    pathname.startsWith('/api/') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon.ico') ||
-    pathname.endsWith('.svg') ||
-    pathname.endsWith('.png') ||
-    pathname.endsWith('.ico');
-
-  if (isPublicPath) {
-    if (memberId && pathname === '/login') {
-      return addSecurityHeaders(NextResponse.redirect(new URL('/board', req.url)));
-    }
-    return addSecurityHeaders(NextResponse.next());
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect();
   }
-
-  if (!memberId) {
-    return addSecurityHeaders(NextResponse.redirect(new URL('/login', req.url)));
-  }
-
   return addSecurityHeaders(NextResponse.next());
-}
+});
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 };

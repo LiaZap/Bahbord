@@ -1,22 +1,84 @@
-import { cookies } from 'next/headers';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { query } from './db';
 
-export async function getAuthMember(): Promise<{ id: string; workspace_id: string; role: string } | null> {
-  const cookieStore = await cookies();
-  const memberId = cookieStore.get('bahjira-member-id')?.value;
-  const workspaceId = cookieStore.get('bahjira-workspace-id')?.value;
+export interface AuthMember {
+  id: string;
+  clerk_id: string;
+  workspace_id: string;
+  role: string;
+  display_name: string;
+  email: string;
+}
 
-  if (!memberId || !workspaceId) return null;
+/**
+ * Get the authenticated member from Clerk + database.
+ *
+ * Flow:
+ * 1. Clerk validates the session (JWT)
+ * 2. We look up the member by clerk_user_id in our DB
+ * 3. If member doesn't exist yet, auto-create (first login = pending approval)
+ *
+ * Returns null if not authenticated.
+ */
+export async function getAuthMember(): Promise<AuthMember | null> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return null;
 
-  const result = await query<{ id: string; workspace_id: string; role: string }>(
-    `SELECT m.id, m.workspace_id, COALESCE(orr.role, 'viewer') AS role
-     FROM members m
-     LEFT JOIN org_roles orr ON orr.member_id = m.id AND orr.workspace_id = $2
-     WHERE m.id = $1`,
-    [memberId, workspaceId]
-  );
+    // Look up member by Clerk user ID
+    const result = await query<AuthMember>(
+      `SELECT m.id, m.workspace_id, m.display_name, m.email,
+        COALESCE(orr.role, 'viewer') AS role
+      FROM members m
+      LEFT JOIN org_roles orr ON orr.member_id = m.id AND orr.workspace_id = m.workspace_id
+      WHERE m.clerk_user_id = $1`,
+      [userId]
+    );
 
-  return result.rows[0] || null;
+    if (result.rows[0]) {
+      return { ...result.rows[0], clerk_id: userId };
+    }
+
+    // Member doesn't exist — auto-create on first login
+    const user = await currentUser();
+    if (!user) return null;
+
+    const wsResult = await query(`SELECT id FROM workspaces LIMIT 1`);
+    const workspaceId = wsResult.rows[0]?.id;
+    if (!workspaceId) return null;
+
+    const displayName = user.fullName || user.firstName || user.emailAddresses[0]?.emailAddress || 'Novo Membro';
+    const email = user.emailAddresses[0]?.emailAddress || '';
+
+    const newMember = await query<{ id: string }>(
+      `INSERT INTO members (workspace_id, user_id, clerk_user_id, display_name, email, role, is_approved)
+       VALUES ($1, $2, $3, $4, $5, 'member', false)
+       ON CONFLICT (workspace_id, user_id) DO UPDATE SET clerk_user_id = $3
+       RETURNING id`,
+      [workspaceId, userId, userId, displayName, email]
+    );
+
+    if (!newMember.rows[0]) return null;
+
+    // Create approval request for org access
+    await query(
+      `INSERT INTO approval_requests (workspace_id, requester_id, type, request_data)
+       VALUES ($1, $2, 'org_access', $3)
+       ON CONFLICT DO NOTHING`,
+      [workspaceId, newMember.rows[0].id, JSON.stringify({ name: displayName, email })]
+    );
+
+    return {
+      id: newMember.rows[0].id,
+      clerk_id: userId,
+      workspace_id: workspaceId,
+      role: 'viewer',
+      display_name: displayName,
+      email,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function isAdmin(role: string): boolean {
