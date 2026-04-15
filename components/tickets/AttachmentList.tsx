@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Paperclip, Upload, Trash2, FileText, Image, File } from 'lucide-react';
+import { Paperclip, Upload, Trash2, FileText, Image, File, Film, X } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
 interface Attachment {
@@ -28,6 +28,7 @@ function formatSize(bytes: number | null): string {
 function getFileIcon(mime: string | null) {
   if (!mime) return File;
   if (mime.startsWith('image/')) return Image;
+  if (mime.startsWith('video/')) return Film;
   return FileText;
 }
 
@@ -35,6 +36,7 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
   const { toast } = useToast();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [preview, setPreview] = useState<Attachment | null>(null);
 
   const fetchAttachments = useCallback(async () => {
     try {
@@ -126,7 +128,16 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
             return (
               <div key={a.id} className="group flex items-center gap-2 rounded px-2 py-1.5 transition hover:bg-surface">
                 {a.mime_type?.startsWith('image/') && a.file_url ? (
-                  <img src={a.file_url} alt={a.file_name} className="h-8 w-8 shrink-0 rounded object-cover" />
+                  <img
+                    src={a.file_url}
+                    alt={a.file_name}
+                    className="h-8 w-8 shrink-0 cursor-pointer rounded object-cover hover:ring-2 hover:ring-accent"
+                    onClick={() => setPreview(a)}
+                  />
+                ) : a.mime_type?.startsWith('video/') && a.file_url ? (
+                  <button onClick={() => setPreview(a)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-slate-700 hover:ring-2 hover:ring-accent">
+                    <Film size={14} className="text-slate-400" />
+                  </button>
                 ) : (
                   <Icon size={14} className="shrink-0 text-slate-500" />
                 )}
@@ -183,6 +194,22 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
           </label>
         </p>
       </div>
+      {/* Preview modal for images and videos */}
+      {preview && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreview(null)}>
+          <div className="relative max-h-[90vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setPreview(null)} className="absolute -right-3 -top-3 z-10 rounded-full bg-slate-800 p-1.5 text-white hover:bg-slate-700">
+              <X size={16} />
+            </button>
+            {preview.mime_type?.startsWith('image/') ? (
+              <img src={preview.file_url!} alt={preview.file_name} className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain" />
+            ) : preview.mime_type?.startsWith('video/') ? (
+              <video src={preview.file_url!} controls autoPlay className="max-h-[85vh] max-w-[85vw] rounded-lg" />
+            ) : null}
+            <p className="mt-2 text-center text-sm text-slate-400">{preview.file_name}</p>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
