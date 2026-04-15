@@ -99,23 +99,23 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         {/* Tags row: client, type, category, service */}
         <div className="mb-3 flex items-center gap-1.5 flex-wrap">
           {clientName && (
-            <span className="rounded-md px-1.5 py-[2px] text-[10px] font-medium bg-amber-500/10 text-amber-400 truncate max-w-[100px]" title={clientName}>
+            <span className="rounded px-2 py-[3px] text-[11px] font-semibold bg-amber-500/15 text-amber-400 uppercase tracking-wide truncate max-w-[120px]" title={clientName}>
               {clientName}
             </span>
           )}
           {typeName && (
-            <span className="rounded-md px-1.5 py-[2px] text-[10px] font-semibold bg-indigo-500/15 text-indigo-400">
+            <span className="rounded px-2 py-[3px] text-[11px] font-semibold bg-indigo-500/15 text-indigo-400 uppercase tracking-wide">
               {typeName}
             </span>
           )}
           {categoryName && (
-            <span className="rounded-md px-1.5 py-[2px] text-[10px] font-medium bg-white/[0.06] text-slate-400">
+            <span className="rounded px-2 py-[3px] text-[11px] font-medium bg-white/[0.08] text-slate-300">
               {categoryName}
             </span>
           )}
           {hasService && svc && (
             <span
-              className="rounded-md px-1.5 py-[2px] text-[10px] font-semibold"
+              className="rounded px-2 py-[3px] text-[11px] font-semibold uppercase tracking-wide"
               style={{ backgroundColor: svc.bg, color: svc.text }}
             >
               {service}

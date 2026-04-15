@@ -8,6 +8,7 @@ interface Comment {
   created_at: string;
   author_name: string;
   author_email: string;
+  author_avatar: string | null;
 }
 
 export function useComments(ticketId: string) {

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const result = await query(
       `SELECT
         c.id, c.body, c.created_at, c.updated_at,
-        m.display_name AS author_name, m.email AS author_email
+        m.display_name AS author_name, m.email AS author_email, m.avatar_url AS author_avatar
       FROM comments c
       JOIN members m ON m.id = c.author_id
       WHERE c.ticket_id = $1

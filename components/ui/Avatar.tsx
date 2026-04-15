@@ -24,20 +24,33 @@ export function getInitials(name: string): string {
 }
 
 const sizeMap = {
-  xs: { wh: 'h-[18px] w-[18px]', text: 'text-[7px]' },
-  sm: { wh: 'h-6 w-6', text: 'text-[8px]' },
-  md: { wh: 'h-8 w-8', text: 'text-[10px]' },
-  lg: { wh: 'h-10 w-10', text: 'text-[12px]' },
+  xs: { wh: 'h-[18px] w-[18px]', text: 'text-[7px]', px: 18 },
+  sm: { wh: 'h-6 w-6', text: 'text-[8px]', px: 24 },
+  md: { wh: 'h-8 w-8', text: 'text-[10px]', px: 32 },
+  lg: { wh: 'h-10 w-10', text: 'text-[12px]', px: 40 },
 } as const;
 
 interface AvatarProps {
   name: string;
+  imageUrl?: string | null;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export default function Avatar({ name, size = 'md', className }: AvatarProps) {
+export default function Avatar({ name, imageUrl, size = 'md', className }: AvatarProps) {
   const s = sizeMap[size];
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        title={name}
+        className={cn('shrink-0 rounded-full object-cover', s.wh, className)}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(

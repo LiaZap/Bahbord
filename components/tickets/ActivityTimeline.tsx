@@ -11,6 +11,7 @@ import CommentReactions from './CommentReactions';
 import MentionInput from './MentionInput';
 import Avatar from '@/components/ui/Avatar';
 import { cn } from '@/lib/utils/cn';
+import { useUser } from '@clerk/nextjs';
 
 interface Comment {
   id: string;
@@ -18,6 +19,7 @@ interface Comment {
   created_at: string;
   author_name: string;
   author_email: string;
+  author_avatar: string | null;
 }
 
 type TabKey = 'all' | 'comments' | 'history' | 'activity' | 'time_status';
@@ -41,6 +43,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
   const [editBody, setEditBody] = useState('');
   const { activities } = useActivityLog(ticketId);
   const { comments, isSubmitting, submitComment: rawSubmitComment, editComment, deleteComment } = useComments(ticketId);
+  const { user } = useUser();
 
   async function submitComment(text: string) {
     await rawSubmitComment(text);
@@ -111,7 +114,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
 
     return (
       <div key={c.id} className="group flex gap-3 py-4">
-        <Avatar name={c.author_name} size="md" />
+        <Avatar name={c.author_name} imageUrl={c.author_avatar} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
             <span className="text-[13px] font-semibold text-slate-200">{c.author_name}</span>
@@ -195,9 +198,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
       {/* Comment input + quick reactions */}
       <div className="mb-4">
         <div className="flex gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[10px] font-bold text-white">
-            PV
-          </div>
+          <Avatar name={user?.fullName || 'Eu'} imageUrl={user?.imageUrl} size="md" />
           <div className="flex-1">
             <MentionInput
               value={newComment}
