@@ -12,7 +12,9 @@ export const metadata: Metadata = {
   title: 'Bahboard',
   description: 'Sistema de gestão de projetos',
   icons: {
-    icon: '/favicon.svg',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
   },
 };
 
