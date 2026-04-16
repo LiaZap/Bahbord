@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save } from 'lucide-react';
+import { Save, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from '@/lib/theme-context';
 
 interface Workspace {
   id: string;
@@ -18,6 +19,7 @@ export default function GeneralSettings() {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     fetch('/api/settings')
@@ -98,6 +100,35 @@ export default function GeneralSettings() {
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
           {saved && <span className="text-xs text-success">Salvo com sucesso!</span>}
+        </div>
+      </div>
+
+      {/* Theme */}
+      <div className="rounded-lg border border-border/40 bg-surface2 p-5 space-y-3">
+        <label className="block text-xs font-medium text-slate-400">Tema</label>
+        <div className="flex gap-2">
+          {([
+            { key: 'light' as const, label: 'Claro', icon: Sun },
+            { key: 'dark' as const, label: 'Escuro', icon: Moon },
+            { key: 'system' as const, label: 'Sistema', icon: Monitor },
+          ]).map((t) => {
+            const Icon = t.icon;
+            const active = theme === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTheme(t.key)}
+                className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                  active
+                    ? 'bg-accent text-white'
+                    : 'bg-surface text-slate-400 hover:text-slate-200 border border-border/40'
+                }`}
+              >
+                <Icon size={16} />
+                {t.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

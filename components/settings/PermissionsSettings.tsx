@@ -297,7 +297,7 @@ export default function PermissionsSettings() {
           className={cn(
             'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition',
             tab === 'catalog'
-              ? 'bg-[#1e2126] text-white shadow-sm'
+              ? 'bg-[var(--modal-bg)] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           )}
         >
@@ -308,7 +308,7 @@ export default function PermissionsSettings() {
           className={cn(
             'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition',
             tab === 'roles'
-              ? 'bg-[#1e2126] text-white shadow-sm'
+              ? 'bg-[var(--modal-bg)] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-200'
           )}
         >
@@ -497,7 +497,7 @@ export default function PermissionsSettings() {
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
               <div
-                className="w-full max-w-lg rounded-xl border border-white/[0.08] bg-[#1e2126] p-6 shadow-2xl"
+                className="w-full max-w-lg rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] p-6 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal header */}

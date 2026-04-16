@@ -169,7 +169,7 @@ export default function MentionInput({
       {showDropdown && filtered.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 top-full z-50 mt-1 max-h-48 w-72 overflow-y-auto rounded-lg border border-white/[0.08] bg-[#232730] shadow-xl"
+          className="absolute left-0 top-full z-50 mt-1 max-h-48 w-72 overflow-y-auto rounded-lg border border-white/[0.08] bg-[var(--card-bg)] shadow-xl"
         >
           {filtered.map((member, idx) => (
             <button

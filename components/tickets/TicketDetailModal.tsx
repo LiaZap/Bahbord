@@ -168,7 +168,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="mt-8 mb-8 flex h-[calc(100vh-64px)] w-full max-w-[1100px] flex-col rounded-xl border border-white/[0.08] bg-[#1e2126] shadow-2xl shadow-black/60"
+            className="mt-8 mb-8 flex h-[calc(100vh-64px)] w-full max-w-[1100px] flex-col rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] shadow-2xl shadow-black/60"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Loading */}
@@ -305,7 +305,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                   </div>
 
                   {/* Right sidebar */}
-                  <div className="w-[320px] shrink-0 overflow-y-auto border-l border-white/[0.06] bg-[#1a1d21] px-5 py-5">
+                  <div className="w-[320px] shrink-0 overflow-y-auto border-l border-white/[0.06] bg-sidebar px-5 py-5">
                     <TicketSidebar ticket={ticket} onUpdate={updateField} />
                     <div className="mt-4">
                       <TimeTracker ticketId={ticket.id} />

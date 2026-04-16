@@ -29,7 +29,7 @@ export default function Header({ onCreateTicket }: HeaderProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#1a1c1e] px-5">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.06] bg-surface px-5">
       {/* Left side */}
       <div className="flex items-center gap-3 pl-10 md:pl-0">
         <h1 className="text-[15px] font-semibold text-white">{pageTitle}</h1>

@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="flex h-screen items-center justify-center bg-[#1a1c1e]">
+    <div className="flex h-screen items-center justify-center bg-surface">
       <div className="flex flex-col items-center gap-6">
         <img src="/logo-bahtech.svg" alt="BahTech" className="h-12 object-contain animate-pulse" />
         <div className="h-1 w-40 overflow-hidden rounded-full bg-white/[0.06]">

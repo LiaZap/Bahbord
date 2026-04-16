@@ -81,7 +81,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="w-full max-w-[400px] rounded-xl border border-white/[0.08] bg-[#1e2126] p-6 shadow-2xl shadow-black/60"
+              className="w-full max-w-[400px] rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] p-6 shadow-2xl shadow-black/60"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center">

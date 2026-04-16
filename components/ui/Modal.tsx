@@ -52,7 +52,7 @@ export default function Modal({
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={cn(
-              'flex max-h-[85vh] w-full flex-col rounded-xl border border-white/[0.08] bg-[#1e2126] shadow-2xl shadow-black/50',
+              'flex max-h-[85vh] w-full flex-col rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] shadow-2xl shadow-black/50',
               maxWidth
             )}
             onClick={(e) => e.stopPropagation()}

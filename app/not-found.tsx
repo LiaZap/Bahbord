@@ -3,7 +3,7 @@ import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-[#1a1c1e] text-[#c5c8c6]">
+    <div className="flex h-screen flex-col items-center justify-center bg-surface text-primary">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
           <img src="/logo-bahtech.svg" alt="BahTech" className="h-10 object-contain" />

@@ -157,7 +157,7 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
 
       {/* Quick create inline */}
       {quickCreate ? (
-        <div className="mt-1.5 rounded-md border border-white/[0.08] bg-[#232730] p-2">
+        <div className="mt-1.5 rounded-md border border-white/[0.08] bg-[var(--card-bg)] p-2">
           <input
             autoFocus
             value={quickTitle}

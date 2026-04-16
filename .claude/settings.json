@@ -8,7 +8,13 @@
       "Bash(find \"c:/Users/Paulo/Documents/Bahjira/app/api\" -type f -name \"*.ts\" -exec grep -l \"getDefaultMemberId\" {} \\\\;)",
       "Bash(find \"c:/Users/Paulo/Documents/Bahjira/lib\" -name \"*.ts\" -type f -exec grep -l \"any\" {} \\\\;)",
       "Bash(git commit -m ':*)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(grep -n \"ALTER TABLE categories\" /c/Users/Paulo/Documents/Bahjira/db/*.sql)",
+      "Bash(find /c/Users/Paulo/Documents/Bahjira/supabase/migrations -name \"*.sql\" -exec grep -l \"categor\" {} \\\\;)",
+      "Bash(git push *)",
+      "Bash(grep -c \"bg-\\\\[#\" /c/Users/Paulo/Documents/Bahjira/components/**/*.tsx)",
+      "Bash(grep \"var\\(--\" /c/Users/Paulo/Documents/Bahjira/components/**/*.tsx)",
+      "Bash(xargs sed *)"
     ]
   }
 }

@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         },
       }}
     >
-      <html lang="pt-BR" className="dark" suppressHydrationWarning>
+      <html lang="pt-BR" suppressHydrationWarning>
         <body>
           <ThemeProvider>
             <ProjectProvider>

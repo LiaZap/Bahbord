@@ -113,7 +113,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             value={currentValue || ''}
             onChange={(e) => handleSelect(fieldName, e.target.value)}
             onBlur={() => setEditingField(null)}
-            className="max-w-[180px] rounded border border-blue-500/30 bg-[#1e2126] px-2 py-1 text-[13px] text-slate-200 outline-none"
+            className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-slate-200 outline-none"
           >
             <option value="">Nenhum</option>
             {options.map((opt) => (
@@ -144,7 +144,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             value={ticket.status_id}
             onChange={(e) => handleSelect('status_id', e.target.value)}
             onBlur={() => setEditingField(null)}
-            className="rounded border border-blue-500/30 bg-[#1e2126] px-3 py-1.5 text-[13px] text-slate-200 outline-none"
+            className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-3 py-1.5 text-[13px] text-slate-200 outline-none"
           >
             {statuses.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -163,7 +163,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
       </div>
 
       {/* Informações */}
-      <div className="rounded-lg border border-white/[0.06] bg-[#1e2126]">
+      <div className="rounded-lg border border-white/[0.06] bg-[var(--modal-bg)]">
         <button
           onClick={() => setInfoOpen(!infoOpen)}
           className="flex w-full items-center justify-between px-4 py-3"
@@ -186,7 +186,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                   defaultValue={ticket.due_date ? ticket.due_date.substring(0, 10) : ''}
                   onChange={(e) => handleSelect('due_date', e.target.value)}
                   onBlur={() => setEditingField(null)}
-                  className="rounded border border-blue-500/30 bg-[#1e2126] px-2 py-0.5 text-[13px] text-slate-200 outline-none"
+                  className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-0.5 text-[13px] text-slate-200 outline-none"
                 />
               ) : (
                 <span className="flex items-center gap-1.5 text-slate-200" onClick={() => setEditingField('due_date')}>
@@ -206,7 +206,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                   value={ticket.priority}
                   onChange={(e) => { handleSelect('priority', e.target.value); }}
                   onBlur={() => setEditingField(null)}
-                  className="max-w-[180px] rounded border border-blue-500/30 bg-[#1e2126] px-2 py-1 text-[13px] text-slate-200 outline-none"
+                  className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-slate-200 outline-none"
                 >
                   {priorityOptions.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -311,7 +311,7 @@ function CollapsibleSection({ title, subtitle, icon, defaultOpen = false }: {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="mt-2 rounded-lg border border-white/[0.06] bg-[#1e2126]">
+    <div className="mt-2 rounded-lg border border-white/[0.06] bg-[var(--modal-bg)]">
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 px-4 py-3"

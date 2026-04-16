@@ -139,7 +139,7 @@ export default function ProjectsPage() {
           <div
             key={p.id}
             onClick={() => openProject(p)}
-            className="group cursor-pointer rounded-lg border border-border/40 bg-surface2 p-5 transition hover:border-white/[0.12] hover:bg-[#282d37]"
+            className="group cursor-pointer rounded-lg border border-border/40 bg-surface2 p-5 transition hover:border-white/[0.12] hover:bg-[var(--card-hover)]"
           >
             <div className="flex items-center gap-3 mb-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg text-[14px] font-bold text-white" style={{ backgroundColor: p.color }}>

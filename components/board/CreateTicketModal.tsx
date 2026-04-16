@@ -207,7 +207,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: -8 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="flex max-h-[92vh] w-full max-w-[520px] flex-col rounded-xl border border-white/[0.08] bg-[#1e2126] shadow-2xl shadow-black/50"
+              className="flex max-h-[92vh] w-full max-w-[520px] flex-col rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -375,7 +375,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t border-white/[0.06] bg-[#1e2126] px-5 py-3">
+                <div className="sticky bottom-0 flex items-center justify-between border-t border-white/[0.06] bg-[var(--modal-bg)] px-5 py-3">
                   <label className="flex items-center gap-2 text-[13px] text-slate-400 cursor-pointer">
                     <input
                       type="checkbox"

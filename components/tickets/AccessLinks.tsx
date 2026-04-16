@@ -104,7 +104,7 @@ export default function AccessLinks({ ticketId }: AccessLinksProps) {
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-300 outline-none"
+              className="rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-300 outline-none"
             >
               {Object.entries(typeConfig).map(([val, cfg]) => (
                 <option key={val} value={val}>{cfg.label}</option>
@@ -115,7 +115,7 @@ export default function AccessLinks({ ticketId }: AccessLinksProps) {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder="Nome do acesso"
-              className="flex-1 rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
+              className="flex-1 rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
             />
           </div>
           <input
@@ -123,7 +123,7 @@ export default function AccessLinks({ ticketId }: AccessLinksProps) {
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
             placeholder="https://..."
-            className="w-full rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
+            className="w-full rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
           />
           <div className="flex gap-2">
             <button onClick={handleAdd} className="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500">

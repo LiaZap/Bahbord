@@ -138,7 +138,7 @@ export default function DevLinks({ ticketId }: DevLinksProps) {
             <select
               value={formType}
               onChange={(e) => setFormType(e.target.value)}
-              className="rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-300 outline-none"
+              className="rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-300 outline-none"
             >
               <option value="branch">Branch</option>
               <option value="pull_request">Pull Request</option>
@@ -147,7 +147,7 @@ export default function DevLinks({ ticketId }: DevLinksProps) {
             <select
               value={formStatus}
               onChange={(e) => setFormStatus(e.target.value)}
-              className="rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-300 outline-none"
+              className="rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-300 outline-none"
             >
               <option value="open">open</option>
               <option value="merged">merged</option>
@@ -159,13 +159,13 @@ export default function DevLinks({ ticketId }: DevLinksProps) {
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
             placeholder="Nome da branch, PR ou commit..."
-            className="w-full rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
+            className="w-full rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
           />
           <input
             value={formUrl}
             onChange={(e) => setFormUrl(e.target.value)}
             placeholder="URL (opcional)"
-            className="w-full rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
+            className="w-full rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
           />
           <div className="flex gap-2">
             <button

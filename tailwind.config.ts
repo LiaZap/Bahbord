@@ -9,20 +9,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        surface: '#1a1c1e',
-        surface2: '#22252a',
-        sidebar: '#161819',
-        column: '#1e2024',
-        input: '#2a2d33',
-        border: '#2d3036',
+        surface: 'var(--bg-primary)',
+        surface2: 'var(--bg-secondary)',
+        sidebar: 'var(--bg-sidebar)',
+        column: 'var(--bg-column)',
+        input: 'var(--bg-input)',
+        border: 'var(--border-color)',
         accent: '#3b82f6',
         success: '#22c55e',
         warning: '#f59e0b',
         danger: '#ef4444'
       },
+      textColor: {
+        primary: 'var(--text-primary)',
+        secondary: 'var(--text-secondary)',
+      },
       boxShadow: {
-        'card': '0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)',
-        'card-hover': '0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)',
+        'card': '0 1px 3px var(--shadow-color, rgba(0,0,0,0.3)), 0 1px 2px var(--shadow-color, rgba(0,0,0,0.2))',
+        'card-hover': '0 4px 12px var(--shadow-color, rgba(0,0,0,0.4)), 0 2px 4px var(--shadow-color, rgba(0,0,0,0.3))',
       }
     }
   },

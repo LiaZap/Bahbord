@@ -72,10 +72,10 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
       {...listeners}
       onClick={() => { if (!isDragging) openTicket(id); }}
       className={cn(
-        'group cursor-pointer rounded-lg border border-white/[0.06] bg-[#232730] transition-all duration-150',
+        'group cursor-pointer rounded-lg border border-white/[0.06] bg-[var(--card-bg)] transition-all duration-150',
         'shadow-[0_1px_3px_rgba(0,0,0,0.3),0_4px_6px_rgba(0,0,0,0.15)]',
         'hover:shadow-[0_4px_12px_rgba(0,0,0,0.4),0_2px_4px_rgba(0,0,0,0.2)]',
-        'hover:border-white/[0.12] hover:bg-[#282d37] hover:-translate-y-[1px]',
+        'hover:border-white/[0.12] hover:bg-[var(--card-hover)] hover:-translate-y-[1px]',
         'border-l-[3px]',
         prio.border,
         isDragging && 'opacity-30 rotate-2 scale-105',
@@ -92,7 +92,7 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         </div>
 
         {/* Title */}
-        <h3 className="mb-2.5 text-[13px] font-medium leading-[1.4] text-[#cdd0d5] line-clamp-2 group-hover:text-white transition-colors">
+        <h3 className="mb-2.5 text-[13px] font-medium leading-[1.4] text-primary line-clamp-2 group-hover:text-white transition-colors">
           {title}
         </h3>
 

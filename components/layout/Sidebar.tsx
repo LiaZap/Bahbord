@@ -290,7 +290,7 @@ export default function Sidebar() {
       {/* Mobile hamburger */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-3 top-3 z-50 rounded-md bg-[#232730] p-2 text-slate-400 shadow-lg hover:text-white md:hidden"
+        className="fixed left-3 top-3 z-50 rounded-md bg-[var(--card-bg)] p-2 text-slate-400 shadow-lg hover:text-white md:hidden"
       >
         <Menu size={20} />
       </button>
@@ -302,7 +302,7 @@ export default function Sidebar() {
 
       {/* Mobile sidebar */}
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 w-[240px] flex-col bg-[#161819] transition-transform duration-200 md:hidden',
+        'fixed inset-y-0 left-0 z-50 w-[240px] flex-col bg-sidebar transition-transform duration-200 md:hidden',
         mobileOpen ? 'translate-x-0 flex' : '-translate-x-full'
       )}>
         {sidebarContent}
@@ -310,7 +310,7 @@ export default function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside className={cn(
-        'hidden shrink-0 flex-col bg-[#161819] transition-all duration-200 md:flex',
+        'hidden shrink-0 flex-col bg-sidebar transition-all duration-200 md:flex',
         collapsed ? 'w-[56px]' : 'w-[240px]'
       )}>
         {sidebarContent}

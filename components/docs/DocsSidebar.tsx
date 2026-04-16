@@ -352,7 +352,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
 
   if (collapsed) {
     return (
-      <div className="flex w-[48px] shrink-0 flex-col items-center border-r border-white/[0.06] bg-[#161819] py-3 gap-2">
+      <div className="flex w-[48px] shrink-0 flex-col items-center border-r border-white/[0.06] bg-sidebar py-3 gap-2">
         <button onClick={() => setCollapsed(false)} className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300" title="Expandir">
           <PanelLeft size={16} />
         </button>
@@ -367,7 +367,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
   }
 
   return (
-    <div className="flex w-[260px] shrink-0 flex-col border-r border-white/[0.06] bg-[#161819]">
+    <div className="flex w-[260px] shrink-0 flex-col border-r border-white/[0.06] bg-sidebar">
       <ContextMenu />
 
       {/* Header */}

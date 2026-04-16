@@ -154,7 +154,7 @@ export default function ApprovalsSettings() {
                           onChange={(e) => {
                             setApprovalConfig((prev) => ({ ...prev, [r.id]: { ...prev[r.id], project_id: e.target.value, board_id: '' } }));
                           }}
-                          className="w-full rounded border border-white/[0.08] bg-[#1e2126] px-2 py-1 text-[11px] text-slate-300 outline-none"
+                          className="w-full rounded border border-white/[0.08] bg-[var(--modal-bg)] px-2 py-1 text-[11px] text-slate-300 outline-none"
                         >
                           <option value="">Selecionar projeto...</option>
                           {projects.map((p) => <option key={p.id} value={p.id}>{p.prefix} - {p.name}</option>)}
@@ -163,7 +163,7 @@ export default function ApprovalsSettings() {
                           <select
                             value={approvalConfig[r.id]?.board_id || ''}
                             onChange={(e) => setApprovalConfig((prev) => ({ ...prev, [r.id]: { ...prev[r.id], board_id: e.target.value } }))}
-                            className="w-full rounded border border-white/[0.08] bg-[#1e2126] px-2 py-1 text-[11px] text-slate-300 outline-none"
+                            className="w-full rounded border border-white/[0.08] bg-[var(--modal-bg)] px-2 py-1 text-[11px] text-slate-300 outline-none"
                           >
                             <option value="">Selecionar board...</option>
                             {boards.filter((b) => b.project_id === approvalConfig[r.id]?.project_id).map((b) => (
@@ -174,7 +174,7 @@ export default function ApprovalsSettings() {
                         <select
                           value={approvalConfig[r.id]?.role || 'viewer'}
                           onChange={(e) => setApprovalConfig((prev) => ({ ...prev, [r.id]: { ...prev[r.id], role: e.target.value } }))}
-                          className="w-full rounded border border-white/[0.08] bg-[#1e2126] px-2 py-1 text-[11px] text-slate-300 outline-none"
+                          className="w-full rounded border border-white/[0.08] bg-[var(--modal-bg)] px-2 py-1 text-[11px] text-slate-300 outline-none"
                         >
                           <option value="viewer">Viewer (somente leitura)</option>
                           <option value="member">Member (criar tickets)</option>

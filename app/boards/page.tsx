@@ -28,7 +28,7 @@ export default async function BoardsPage() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#1a1c1e] text-[#c5c8c6]">
+    <div className="flex h-screen overflow-hidden bg-surface text-primary">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />

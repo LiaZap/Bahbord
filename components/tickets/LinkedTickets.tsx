@@ -118,7 +118,7 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="rounded border border-white/[0.06] bg-[#1e2126] px-2 py-1 text-[12px] text-slate-300 outline-none"
+              className="rounded border border-white/[0.06] bg-[var(--modal-bg)] px-2 py-1 text-[12px] text-slate-300 outline-none"
             >
               {Object.entries(linkTypeLabels).map(([val, label]) => (
                 <option key={val} value={val}>{label}</option>
@@ -131,7 +131,7 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Buscar ticket..."
-                className="w-full rounded border border-white/[0.06] bg-[#1e2126] py-1 pl-7 pr-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
+                className="w-full rounded border border-white/[0.06] bg-[var(--modal-bg)] py-1 pl-7 pr-2 text-[12px] text-slate-200 outline-none placeholder:text-slate-600 focus:border-blue-500/30"
               />
             </div>
             <button onClick={() => setShowAdd(false)} className="text-slate-500 hover:text-slate-300">
