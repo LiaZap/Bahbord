@@ -122,11 +122,11 @@ export default async function HomePage() {
   const sprint = sprintRow.rows[0] as any;
   const sprintName = sprint?.name || 'Sem sprint';
 
-  const cards = [
-    { label: 'Tickets ativos', value: stats.total_active, icon: Columns3, color: 'text-accent' },
-    { label: 'Sprint atual', value: sprintName, icon: Clock, color: 'text-violet-400' },
-    { label: 'Concluídos (30d)', value: stats.completed_month, icon: CheckCircle2, color: 'text-success' },
-    { label: 'Aguardando', value: stats.waiting, icon: AlertCircle, color: 'text-warning' }
+  const statCards = [
+    { label: 'Tickets ativos', value: stats.total_active, icon: Columns3, gradient: 'from-blue-600 to-blue-400', iconBg: 'bg-blue-500/20' },
+    { label: 'Sprint atual', value: sprintName, icon: Clock, gradient: 'from-violet-600 to-purple-400', iconBg: 'bg-violet-500/20' },
+    { label: 'Concluídos (30d)', value: stats.completed_month, icon: CheckCircle2, gradient: 'from-emerald-600 to-green-400', iconBg: 'bg-emerald-500/20' },
+    { label: 'Aguardando', value: stats.waiting, icon: AlertCircle, gradient: 'from-amber-600 to-yellow-400', iconBg: 'bg-amber-500/20' }
   ];
 
   return (
@@ -137,28 +137,34 @@ export default async function HomePage() {
         <main className="flex-1 overflow-auto p-6">
           <ApprovalGate>
           <div className="mx-auto max-w-[1200px] space-y-6">
+            {/* Header */}
             <div>
-              <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
               <p className="mt-1 text-sm text-slate-500">Visão geral do workspace Bah!Company</p>
             </div>
 
-            {/* Stats */}
+            {/* Stat Cards - Premium */}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {cards.map((card) => {
+              {statCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <div key={card.label} className="rounded-lg border border-border/40 bg-surface2 p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-500">{card.label}</span>
-                      <Icon size={16} className={card.color} />
+                  <div key={card.label} className="card-premium group overflow-hidden">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-[0.03] group-hover:opacity-[0.06] transition-opacity`} />
+                    <div className="relative p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</span>
+                        <div className={`rounded-lg p-2 ${card.iconBg}`}>
+                          <Icon size={16} className="text-white" />
+                        </div>
+                      </div>
+                      <p className="text-3xl font-bold text-white tracking-tight">{card.value}</p>
                     </div>
-                    <p className="mt-2 text-2xl font-bold text-white">{card.value}</p>
                   </div>
                 );
               })}
             </div>
 
-            {/* Charts row 1 */}
+            {/* Charts row 1 - Type delivery */}
             <DashboardCharts
               byStatus={byStatus.rows as any[]}
               byService={byService.rows as any[]}
@@ -166,57 +172,63 @@ export default async function HomePage() {
               byType={byType.rows as any[]}
             />
 
-            {/* Charts row 2 */}
+            {/* Charts row 2 - Weekly + Assignees */}
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Weekly completed */}
-              <div className="rounded-lg border border-border/40 bg-surface2 p-4">
-                <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <TrendingUp size={13} />
+              <div className="card-premium p-5">
+                <h3 className="mb-4 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">
+                  <div className="rounded-md bg-emerald-500/10 p-1.5">
+                    <TrendingUp size={14} className="text-emerald-400" />
+                  </div>
                   Tickets concluídos por semana
                 </h3>
                 {weeklyCompleted.rows.length > 0 ? (
-                  <div className="flex items-end gap-2" style={{ height: 120 }}>
+                  <div className="flex items-end gap-3" style={{ height: 140 }}>
                     {(weeklyCompleted.rows as any[]).map((w, i) => {
                       const max = Math.max(...(weeklyCompleted.rows as any[]).map((x: any) => x.value), 1);
                       const h = (w.value / max) * 100;
                       return (
-                        <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                          <span className="text-[10px] font-medium text-slate-300">{w.value}</span>
+                        <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                          <span className="text-[11px] font-bold text-slate-300">{w.value}</span>
                           <div
-                            className="w-full rounded-t bg-success/70 transition-all duration-500"
-                            style={{ height: `${Math.max(h, 4)}%` }}
+                            className="w-full rounded-lg bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-700 shadow-sm shadow-emerald-500/20"
+                            style={{ height: `${Math.max(h, 6)}%` }}
                           />
-                          <span className="text-[9px] text-slate-600">{w.week}</span>
+                          <span className="text-[10px] font-medium text-slate-500">{w.week}</span>
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-xs text-slate-600">Sem dados ainda</p>
+                  <div className="flex h-32 items-center justify-center">
+                    <p className="text-xs text-slate-600">Sem dados ainda</p>
+                  </div>
                 )}
               </div>
 
               {/* By assignee */}
-              <div className="rounded-lg border border-border/40 bg-surface2 p-4">
-                <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  <Users size={13} />
+              <div className="card-premium p-5">
+                <h3 className="mb-4 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-slate-500">
+                  <div className="rounded-md bg-blue-500/10 p-1.5">
+                    <Users size={14} className="text-blue-400" />
+                  </div>
                   Tickets por responsável
                 </h3>
                 {(byAssignee.rows as any[]).length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {(byAssignee.rows as any[]).map((a) => {
                       const max = Math.max(...(byAssignee.rows as any[]).map((x: any) => x.total), 1);
                       const pct = (a.total / max) * 100;
                       const donePct = a.total > 0 ? (a.done / a.total) * 100 : 0;
                       return (
                         <div key={a.name}>
-                          <div className="mb-0.5 flex items-center justify-between">
-                            <span className="truncate text-[11px] text-slate-300">{a.name}</span>
-                            <span className="text-[10px] text-slate-500">{a.done}/{a.total}</span>
+                          <div className="mb-1 flex items-center justify-between">
+                            <span className="truncate text-[12px] font-medium text-slate-300">{a.name}</span>
+                            <span className="text-[11px] font-semibold text-slate-400">{a.done}<span className="text-slate-600">/{a.total}</span></span>
                           </div>
-                          <div className="h-2 w-full overflow-hidden rounded-full bg-surface" style={{ width: `${pct}%` }}>
+                          <div className="h-2.5 w-full overflow-hidden rounded-full bg-surface" style={{ width: `${pct}%` }}>
                             <div
-                              className="h-full rounded-full bg-accent transition-all"
+                              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 shadow-sm shadow-blue-500/20"
                               style={{ width: `${donePct}%` }}
                             />
                           </div>
@@ -225,16 +237,18 @@ export default async function HomePage() {
                     })}
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-xs text-slate-600">Sem dados ainda</p>
+                  <div className="flex h-32 items-center justify-center">
+                    <p className="text-xs text-slate-600">Sem dados ainda</p>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Recent tickets */}
-            <div className="rounded-lg border border-border/40 bg-surface2">
-              <div className="flex items-center justify-between border-b border-border/30 px-4 py-3">
-                <h2 className="text-sm font-semibold text-slate-200">Tickets recentes</h2>
-                <Link href="/board" className="text-xs text-accent transition hover:text-blue-400">
+            {/* Recent tickets - Premium */}
+            <div className="card-premium overflow-hidden">
+              <div className="flex items-center justify-between border-b border-border/30 px-5 py-4">
+                <h2 className="text-[13px] font-bold uppercase tracking-wider text-slate-300">Tickets recentes</h2>
+                <Link href="/board" className="btn-premium btn-secondary text-[11px] py-1.5 px-3">
                   Ver board
                 </Link>
               </div>
@@ -243,14 +257,14 @@ export default async function HomePage() {
                   <Link
                     key={t.ticket_key}
                     href={`/ticket/${t.id}` as any}
-                    className="flex items-center gap-3 px-4 py-2.5 transition hover:bg-input/20"
+                    className="flex items-center gap-3 px-5 py-3 transition hover:bg-[var(--overlay-hover)]"
                   >
-                    <span className="w-20 shrink-0 font-mono text-[11px] text-slate-500">{t.ticket_key}</span>
-                    <span className="flex-1 truncate text-sm text-slate-300">{t.title}</span>
-                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: t.status_color + '20', color: t.status_color }}>
+                    <span className="w-20 shrink-0 font-mono text-[11px] font-bold text-slate-400">{t.ticket_key}</span>
+                    <span className="flex-1 truncate text-[13px] font-medium text-slate-300">{t.title}</span>
+                    <span className="shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold" style={{ backgroundColor: t.status_color + '15', color: t.status_color }}>
                       {t.status_name}
                     </span>
-                    <span className="hidden w-24 shrink-0 truncate text-right text-[11px] text-slate-600 sm:inline">{t.assignee_name || '-'}</span>
+                    <span className="hidden w-28 shrink-0 truncate text-right text-[11px] text-slate-500 sm:inline">{t.assignee_name || '-'}</span>
                   </Link>
                 ))}
               </div>
