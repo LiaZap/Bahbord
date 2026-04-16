@@ -148,8 +148,8 @@ export default async function HomePage() {
               {statCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <div key={card.label} className="card-premium group overflow-hidden">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-[0.03] group-hover:opacity-[0.06] transition-opacity`} />
+                  <div key={card.label} className="card-premium group overflow-hidden relative">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-[0.06] group-hover:opacity-[0.12] transition-opacity`} />
                     <div className="relative p-5">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{card.label}</span>

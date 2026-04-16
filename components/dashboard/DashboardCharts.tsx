@@ -156,17 +156,17 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
           <BarChart data={byStatus} margin={{ top: 5, right: 5, bottom: 5, left: -15 }}>
             <XAxis
               dataKey="name"
-              tick={{ fill: '#969896', fontSize: 10 }}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: '#969896', fontSize: 10 }}
+              tick={{ fill: 'var(--text-secondary)', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
             />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(55,59,65,0.2)' }} />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--overlay-subtle)' }} />
             <Bar dataKey="value" radius={[6, 6, 0, 0]}>
               {byStatus.map((entry, index) => (
                 <Cell key={index} fill={entry.color} />
