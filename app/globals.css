@@ -144,6 +144,20 @@ button, input, textarea, select {
   font: inherit;
 }
 
+/* Select/option styling for dark mode */
+html.dark select option {
+  background-color: #1e2126;
+  color: #c5c8c6;
+}
+html.dark select option:checked,
+html.dark select option:hover {
+  background-color: #2a2d33;
+  color: #ffffff;
+}
+select option {
+  padding: 8px 12px;
+}
+
 ::selection {
   background: rgba(59, 130, 246, 0.25);
 }
