@@ -39,6 +39,7 @@ function findContainer(items: BoardItems, id: string) {
 export function useBoard(initialItems: BoardItems, wipLimits: Record<string, number | null>) {
   const [items, setItems] = useState(initialItems);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [dragSourceColumn, setDragSourceColumn] = useState<string | null>(null);
   const [filters, setFilters] = useState<BoardFilterState>({
     search: '',
     services: [],
@@ -134,7 +135,8 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
     setSelectedCard(active.id as string);
-  }, []);
+    setDragSourceColumn(findContainer(items, active.id as string) || null);
+  }, [items]);
 
   const handleDragOver = useCallback(({ active, over }: DragOverEvent) => {
     if (!over) return;
@@ -160,31 +162,36 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
   }, [items, wipLimits]);
 
   const handleDragEnd = useCallback(async ({ active, over }: DragEndEvent) => {
+    const originalColumn = dragSourceColumn;
     setSelectedCard(null);
+    setDragSourceColumn(null);
     if (!over) return;
 
-    const activeContainer = findContainer(items, active.id as string);
+    const currentContainer = findContainer(items, active.id as string);
     const overContainer = findContainer(items, over.id as string) ?? (over.id as string);
-    if (!activeContainer || !overContainer) return;
+    if (!currentContainer || !overContainer) return;
 
-    // Validar WIP limit no drop final
-    if (activeContainer !== overContainer) {
-      const limit = wipLimits[overContainer];
-      if (limit && items[overContainer as keyof BoardItems].length > limit) {
-        toast(`Limite WIP atingido (${limit}) nesta coluna`, 'warning');
-        return;
-      }
-    }
+    // Use original column to detect if column actually changed
+    const sourceColumn = originalColumn || currentContainer;
 
-    if (activeContainer === overContainer) {
-      const activeIndex = items[activeContainer as keyof BoardItems].findIndex((item) => item.id === active.id);
+    // Same column — just reorder
+    if (sourceColumn === overContainer) {
+      const activeIndex = items[currentContainer as keyof BoardItems].findIndex((item) => item.id === active.id);
       const overIndex = items[overContainer as keyof BoardItems].findIndex((item) => item.id === over.id);
       if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
         setItems((prev) => ({
           ...prev,
-          [activeContainer]: arrayMove(prev[activeContainer as keyof BoardItems], activeIndex, overIndex)
+          [currentContainer]: arrayMove(prev[currentContainer as keyof BoardItems], activeIndex, overIndex)
         }));
       }
+      return;
+    }
+
+    // Different column — update status in API
+    // Validar WIP limit
+    const limit = wipLimits[overContainer];
+    if (limit && items[overContainer as keyof BoardItems].length > limit) {
+      toast(`Limite WIP atingido (${limit}) nesta coluna`, 'warning');
       return;
     }
 
