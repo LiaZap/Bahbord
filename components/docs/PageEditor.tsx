@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils/cn';
 import { Pencil, Save, X, Trash2, Clock, User } from 'lucide-react';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -193,7 +194,7 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
                     prose-pre:bg-[#0d0d0d] prose-pre:border prose-pre:border-white/[0.06]
                     prose-hr:border-white/[0.08]
                     prose-li:marker:text-slate-600"
-                  dangerouslySetInnerHTML={{ __html: page.content }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(page.content) }}
                 />
               ) : (
                 <p className="text-sm text-slate-600 italic">Página vazia. Clique em Editar para adicionar conteúdo.</p>

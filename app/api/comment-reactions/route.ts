@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultMemberId } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
     const { searchParams } = new URL(request.url);
     const commentId = searchParams.get('comment_id');
 
@@ -30,6 +32,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
     const body = await request.json();
     const { comment_id, emoji } = body;
 

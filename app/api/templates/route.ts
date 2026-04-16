@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
+    await getAuthMember();
     const result = await query(
       `SELECT id, name, description, config, is_system, created_at
        FROM project_templates

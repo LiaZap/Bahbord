@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { v4 as uuid4 } from 'uuid';
 import { getDb, COLLECTIONS } from '@/lib/mongodb';
 import type { AuditTrailDoc } from '@/lib/mongo-schemas';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
     const workspaceId = searchParams.get('workspace_id');
@@ -38,6 +40,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
     const body = await request.json();
     const { workspace_id, project_id, member_id, member_name, entity_type, entity_id, entity_name, action, changes, commit_hash } = body;
 

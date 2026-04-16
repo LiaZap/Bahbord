@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { v4 as uuid4 } from 'uuid';
 import { getDb, COLLECTIONS } from '@/lib/mongodb';
 import type { TimeLogDoc } from '@/lib/mongo-schemas';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
     const { searchParams } = new URL(request.url);
     const ticketId = searchParams.get('ticket_id');
     const memberId = searchParams.get('member_id');
@@ -70,6 +72,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await getAuthMember();
     const body = await request.json();
     const { workspace_id, ticket_id, ticket_key, member_id, member_name, started_at, ended_at, duration_minutes, description, is_billable, action } = body;
 
@@ -145,6 +148,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await getAuthMember();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

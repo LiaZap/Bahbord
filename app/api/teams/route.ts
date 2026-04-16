@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET() {
   try {
+    await getAuthMember();
     const workspaceId = await getDefaultWorkspaceId();
 
     const result = await query(
@@ -33,6 +35,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const body = await request.json();
     const { name, description, color } = body;
 
@@ -58,6 +64,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const body = await request.json();
     const { id, action, member_id, role, name, description, color } = body;
 
@@ -123,6 +133,10 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

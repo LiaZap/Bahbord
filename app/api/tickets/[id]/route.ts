@@ -118,7 +118,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Apenas administradores podem excluir tickets' }, { status: 403 });
     }
 

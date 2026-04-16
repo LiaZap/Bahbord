@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
+    await getAuthMember();
     const result = await query(
       `SELECT n.id, n.type, n.title, n.message, n.is_read, n.created_at,
         n.ticket_id,
@@ -24,6 +26,7 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    await getAuthMember();
     const body = await request.json();
 
     if (body.action === 'read_all') {

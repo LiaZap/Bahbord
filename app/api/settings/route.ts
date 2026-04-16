@@ -20,7 +20,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
@@ -93,7 +93,7 @@ export async function PATCH(request: Request) {
 export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 

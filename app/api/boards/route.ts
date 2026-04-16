@@ -87,15 +87,16 @@ export async function POST(request: Request) {
     }
 
     // Verificar permissão: precisa ser project admin ou org admin
-    if (auth) {
-      if (!isAdmin(auth.role)) {
-        const projRole = await query(
-          `SELECT role FROM project_roles WHERE member_id = $1 AND project_id = $2`,
-          [auth.id, project_id]
-        );
-        if (projRole.rows[0]?.role !== 'admin') {
-          return NextResponse.json({ error: 'Apenas administradores do projeto podem criar boards' }, { status: 403 });
-        }
+    if (!auth) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+    if (!isAdmin(auth.role)) {
+      const projRole = await query(
+        `SELECT role FROM project_roles WHERE member_id = $1 AND project_id = $2`,
+        [auth.id, project_id]
+      );
+      if (projRole.rows[0]?.role !== 'admin') {
+        return NextResponse.json({ error: 'Apenas administradores do projeto podem criar boards' }, { status: 403 });
       }
     }
 
@@ -133,7 +134,10 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+    if (!isAdmin(auth.role)) {
       // Verificar se é board admin ou project admin
       const body_check = await request.clone().json();
       if (body_check.id) {
@@ -188,7 +192,7 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (auth && !isAdmin(auth.role)) {
+    if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Apenas administradores podem remover boards' }, { status: 403 });
     }
 

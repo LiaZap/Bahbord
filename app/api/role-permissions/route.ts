@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const workspaceId = await getDefaultWorkspaceId();
@@ -32,6 +34,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const body = await request.json();
     const { role_name, permission_id } = body;
     const workspaceId = await getDefaultWorkspaceId();
@@ -57,6 +63,10 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

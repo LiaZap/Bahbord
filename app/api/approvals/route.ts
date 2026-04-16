@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET — listar pedidos de aprovação (pendentes, aprovados, rejeitados)
 export async function GET(request: Request) {
@@ -66,22 +67,17 @@ export async function POST(request: Request) {
 // PATCH — aprovar ou rejeitar pedido
 export async function PATCH(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Apenas administradores podem aprovar/rejeitar pedidos' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { id, action, reviewer_id, reviewer_note, board_id, project_id, role: assignRole } = body;
+    const { id, action, reviewer_note, board_id, project_id, role: assignRole } = body;
+    const reviewer_id = auth.id;
 
     if (!id || !action || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'id e action (approve/reject) são obrigatórios' }, { status: 400 });
-    }
-
-    // Verify reviewer is org admin/owner
-    if (reviewer_id) {
-      const reviewerRole = await query(
-        `SELECT role FROM org_roles WHERE member_id = $1 AND workspace_id = (SELECT workspace_id FROM approval_requests WHERE id = $2)`,
-        [reviewer_id, id]
-      );
-      if (!reviewerRole.rows[0] || !['owner', 'admin'].includes(reviewerRole.rows[0].role)) {
-        return NextResponse.json({ error: 'Apenas administradores podem aprovar/rejeitar pedidos' }, { status: 403 });
-      }
     }
 
     const newStatus = action === 'approve' ? 'approved' : 'rejected';
