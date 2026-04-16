@@ -45,8 +45,10 @@ export default function ClientsPage() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   async function fetchAll() {
+    setError(null);
     setLoading(true);
     try {
       const [c, o, p] = await Promise.all([
@@ -57,8 +59,8 @@ export default function ClientsPage() {
       setClients(c);
       setOrgs(o);
       setProducts(p);
-    } catch (err) {
-      console.error('Erro ao carregar dados:', err);
+    } catch {
+      setError('Erro ao carregar dados. Tente recarregar a página.');
     } finally {
       setLoading(false);
     }
@@ -76,6 +78,15 @@ export default function ClientsPage() {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3 text-center">
+        <p className="text-sm text-danger">{error}</p>
+        <button onClick={fetchAll} className="btn-premium btn-secondary text-xs">Tentar novamente</button>
       </div>
     );
   }

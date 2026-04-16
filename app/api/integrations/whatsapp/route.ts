@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { sendWhatsApp } from '@/lib/whatsapp';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET - returns WhatsApp config status
 export async function GET() {
   try {
+    await getAuthMember();
+
     const apiUrl = process.env.WHATSAPP_API_URL;
     const apiToken = process.env.WHATSAPP_API_TOKEN;
     const configured = Boolean(apiUrl && apiToken);
@@ -21,6 +24,11 @@ export async function GET() {
 // POST - send a test WhatsApp message
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { phone, message } = body;
 

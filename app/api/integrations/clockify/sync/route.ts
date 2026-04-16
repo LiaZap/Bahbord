@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 interface ClockifyConfig {
   api_key: string;
@@ -20,6 +21,11 @@ interface TimeEntry {
 // POST — sync unsynced time entries to Clockify
 export async function POST() {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const workspaceId = await getDefaultWorkspaceId();
 
     // 1. Get Clockify config

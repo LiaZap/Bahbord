@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q')?.trim();
     const pageParam = searchParams.get('page');

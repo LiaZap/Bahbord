@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET — returns current Clockify config (api_key masked)
 export async function GET() {
   try {
+    await getAuthMember();
+
     const workspaceId = await getDefaultWorkspaceId();
 
     const result = await query(
@@ -39,6 +42,11 @@ export async function GET() {
 // POST — save Clockify config
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { api_key, workspace_id: clockifyWorkspaceId, project_id } = body;
 
@@ -76,6 +84,11 @@ export async function POST(request: Request) {
 // DELETE — remove Clockify config
 export async function DELETE() {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const workspaceId = await getDefaultWorkspaceId();
 
     await query(

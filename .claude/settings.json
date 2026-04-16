@@ -14,7 +14,12 @@
       "Bash(git push *)",
       "Bash(grep -c \"bg-\\\\[#\" /c/Users/Paulo/Documents/Bahjira/components/**/*.tsx)",
       "Bash(grep \"var\\(--\" /c/Users/Paulo/Documents/Bahjira/components/**/*.tsx)",
-      "Bash(xargs sed *)"
+      "Bash(xargs sed *)",
+      "Bash(ls -la /c/Users/Paulo/Documents/Bahjira/app/not-found*)",
+      "Bash(grep -l \"export async function GET\\\\|export async function POST\\\\|export async function PATCH\\\\|export async function DELETE\" /c/Users/Paulo/Documents/Bahjira/app/api/**/route.ts)",
+      "Bash(grep -l \"import.*;\" /c/Users/Paulo/Documents/Bahjira/app/**/*.tsx)",
+      "Bash(xargs -I {} sh -c 'echo \"File: {}\" && grep \"^import\" {} | head -3')",
+      "Bash(grep -E \"^\\\\s*export async function \\(GET|POST|PATCH|DELETE\\)\" /c/Users/Paulo/Documents/Bahjira/app/api/*/route.ts)"
     ]
   }
 }

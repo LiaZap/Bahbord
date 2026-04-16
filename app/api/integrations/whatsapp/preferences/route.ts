@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET - list notification preferences for a member
 export async function GET(request: Request) {
   try {
+    await getAuthMember();
+
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get('memberId');
 
@@ -27,6 +30,11 @@ export async function GET(request: Request) {
 // POST - upsert a notification preference
 export async function POST(request: Request) {
   try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { memberId, event, channel, isEnabled } = body;
 

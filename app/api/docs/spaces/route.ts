@@ -4,6 +4,8 @@ import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
+    await getAuthMember();
+
     const workspaceId = await getDefaultWorkspaceId();
     const result = await query(
       `SELECT id, name, description, icon, is_public, created_at, updated_at

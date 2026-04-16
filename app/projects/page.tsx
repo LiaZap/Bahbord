@@ -43,7 +43,7 @@ export default function ProjectsPage() {
     ]).then(([p, t]) => {
       setProjects(p);
       setTemplates(t);
-    }).catch((err) => console.error('Erro:', err))
+    }).catch(() => toast('Erro ao carregar projetos', 'error'))
       .finally(() => setLoading(false));
   }, []);
 

@@ -65,8 +65,8 @@ export default function TeamsPage() {
       ]);
       setTeams(teamsRes);
       setAllMembers(membersRes);
-    } catch (err) {
-      console.error('Erro ao carregar equipes:', err);
+    } catch {
+      toast('Erro ao carregar equipes', 'error');
     } finally {
       setLoading(false);
     }
