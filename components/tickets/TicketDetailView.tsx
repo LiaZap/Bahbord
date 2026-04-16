@@ -76,8 +76,16 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
   const [descValue, setDescValue] = useState('');
   const [descOpen, setDescOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const titleRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.member?.role) setUserRole(data.member.role);
+    }).catch(() => {});
+  }, []);
 
   const fetchTicket = useCallback(async () => {
     try {
@@ -312,9 +320,11 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
         {/* Right column — sidebar */}
         <div className="w-full lg:w-[320px] shrink-0">
           <TicketSidebar ticket={ticket} onUpdate={updateField} />
-          <div className="mt-4">
-            <TimeTracker ticketId={ticket.id} />
-          </div>
+          {isAdmin && (
+            <div className="mt-4">
+              <TimeTracker ticketId={ticket.id} />
+            </div>
+          )}
 
           {/* Footer timestamps */}
           <div className="mt-6 space-y-1 text-[11px] text-slate-500">

@@ -75,7 +75,15 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
   const [descValue, setDescValue] = useState('');
   const [descOpen, setDescOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.member?.role) setUserRole(data.member.role);
+    }).catch(() => {});
+  }, []);
 
   const fetchTicket = useCallback(async () => {
     if (!ticketId) return;
@@ -309,17 +317,21 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                   {/* Right sidebar */}
                   <div className="w-full md:w-[320px] shrink-0 overflow-y-auto border-t md:border-t-0 md:border-l border-white/[0.06] bg-sidebar px-5 py-5">
                     <TicketSidebar ticket={ticket} onUpdate={updateField} />
-                    <div className="mt-4">
-                      <TimeTracker ticketId={ticket.id} />
-                    </div>
+                    {isAdmin && (
+                      <div className="mt-4">
+                        <TimeTracker ticketId={ticket.id} />
+                      </div>
+                    )}
                     <div className="mt-6 space-y-1 text-[11px] text-slate-500">
                       <p>Criado {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       <p>Atualizado {new Date(ticket.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
-                    <a href="/settings" className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300">
-                      <Settings2 size={12} />
-                      Configurar
-                    </a>
+                    {isAdmin && (
+                      <a href="/settings" className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300">
+                        <Settings2 size={12} />
+                        Configurar
+                      </a>
+                    )}
                   </div>
                 </div>
               </>
