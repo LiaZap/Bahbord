@@ -79,27 +79,32 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Missing ticket id or status_key' }, { status: 400 });
     }
 
-    const statusMap: Record<string, string> = {
-      todo: 'NÃO INICIADO',
-      waiting: 'AGUARDANDO RESPOSTA',
-      progress: 'EM PROGRESSO',
-      done: 'CONCLUÍDO'
+    // Map status_key to search patterns (flexible matching)
+    const statusPatterns: Record<string, string[]> = {
+      todo: ['INICIADO', 'TODO', 'ABERTO', 'NOVO'],
+      waiting: ['AGUARDANDO', 'RESPOSTA', 'WAITING', 'PENDENTE'],
+      progress: ['PROGRESSO', 'ANDAMENTO', 'PROGRESS', 'DOING'],
+      done: ['CONCLU', 'DONE', 'FINALIZADO', 'FEITO']
     };
 
-    const statusName = statusMap[statusKey];
-    if (!statusName) {
+    const patterns = statusPatterns[statusKey];
+    if (!patterns) {
       return NextResponse.json({ error: 'Invalid status_key' }, { status: 400 });
     }
 
-    // Find status by name (case-insensitive, with LIKE for partial match)
+    // Find status matching any pattern
     const statusResult = await query(
-      `SELECT id FROM statuses WHERE UPPER(name) = UPPER($1) LIMIT 1`,
-      [statusName]
+      `SELECT id, name FROM statuses
+       WHERE ${patterns.map((_, i) => `UPPER(name) LIKE '%' || $${i + 1} || '%'`).join(' OR ')}
+       ORDER BY position ASC LIMIT 1`,
+      patterns
     );
 
     if (!statusResult.rows[0]) {
-      return NextResponse.json({ error: `Status "${statusName}" não encontrado` }, { status: 404 });
+      return NextResponse.json({ error: `Nenhum status encontrado para "${statusKey}"` }, { status: 404 });
     }
+
+    console.log(`Drag: ticket ${ticketId} → status "${statusResult.rows[0].name}" (${statusResult.rows[0].id})`);
 
     const result = await query(
       `UPDATE tickets
