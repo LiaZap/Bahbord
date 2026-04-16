@@ -84,7 +84,7 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         {/* Row 1: Type + Key + Priority */}
         <div className="mb-2 flex items-center gap-1.5">
           <TicketTypeIcon typeIcon={typeIcon} size="sm" showBackground={false} />
-          <span className="font-mono text-[10px] font-medium text-slate-500">{ticketKey}</span>
+          <span className="font-mono text-[11px] font-bold text-slate-300">{ticketKey}</span>
           <span className="flex-1" />
           <div className={cn('h-[7px] w-[7px] rounded-full', prio.dot)} title={prio.label} />
         </div>
@@ -124,13 +124,13 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         {/* Footer: date + assignee */}
         <div className="flex items-center gap-1.5">
           {completedAt ? (
-            <span className="flex items-center gap-1 text-[10px] text-emerald-500">
-              <Check size={10} strokeWidth={2} />
+            <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+              <Check size={12} strokeWidth={2} />
               {completedAt}
             </span>
           ) : hasDue ? (
-            <span className="flex items-center gap-1 text-[10px] text-slate-600">
-              <Calendar size={10} strokeWidth={1.5} />
+            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-300">
+              <Calendar size={12} strokeWidth={1.5} />
               {due}
             </span>
           ) : null}
