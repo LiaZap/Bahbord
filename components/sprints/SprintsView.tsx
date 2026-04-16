@@ -16,22 +16,35 @@ interface Sprint {
   completed_at: string | null;
   ticket_count: number;
   done_count: number;
+  project_id: string | null;
+  project_name: string | null;
+}
+
+interface Project {
+  id: string;
+  name: string;
 }
 
 export default function SprintsView() {
   const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newGoal, setNewGoal] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
+  const [newProjectId, setNewProjectId] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchSprints = useCallback(async () => {
     try {
-      const res = await fetch('/api/sprints');
-      if (res.ok) setSprints(await res.json());
+      const [sprintRes, projRes] = await Promise.all([
+        fetch('/api/sprints'),
+        fetch('/api/options?type=projects'),
+      ]);
+      if (sprintRes.ok) setSprints(await sprintRes.json());
+      if (projRes.ok) setProjects(await projRes.json());
     } catch (err) { console.error('Erro ao carregar sprints:', err); }
     finally { setLoading(false); }
   }, []);
@@ -39,14 +52,15 @@ export default function SprintsView() {
   useEffect(() => { fetchSprints(); }, [fetchSprints]);
 
   async function handleCreate() {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newProjectId) return;
     await fetch('/api/sprints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim(), goal: newGoal || null, start_date: newStart || null, end_date: newEnd || null }),
+      body: JSON.stringify({ name: newName.trim(), goal: newGoal || null, start_date: newStart || null, end_date: newEnd || null, project_id: newProjectId }),
     });
     setNewName('');
     setNewGoal('');
+    setNewProjectId('');
     setNewStart('');
     setNewEnd('');
     setShowCreate(false);
@@ -120,6 +134,9 @@ export default function SprintsView() {
           )}
 
           <span className="text-sm font-medium text-white">{sprint.name}</span>
+          {sprint.project_name && (
+            <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-slate-400">{sprint.project_name}</span>
+          )}
 
           <span className="text-[11px] text-slate-500">
             {formatDate(sprint.start_date)} - {formatDate(sprint.end_date)}
@@ -218,8 +235,21 @@ export default function SprintsView() {
         <div className="rounded-lg border border-accent/30 bg-surface2 p-4 space-y-3">
           <h3 className="text-sm font-semibold text-white">Criar sprint</h3>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-[10px] font-medium text-slate-500">Projeto <span className="text-red-400">*</span></label>
+              <select
+                value={newProjectId}
+                onChange={(e) => setNewProjectId(e.target.value)}
+                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+              >
+                <option value="">Selecione um projeto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Nome</label>
+              <label className="mb-1 block text-[10px] font-medium text-slate-500">Nome <span className="text-red-400">*</span></label>
               <input
                 autoFocus
                 value={newName}

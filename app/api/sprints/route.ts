@@ -2,22 +2,36 @@ import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await getAuthMember();
     const wsId = await getDefaultWorkspaceId();
 
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get('project_id');
+
+    let whereClause = 's.workspace_id = $1';
+    const params: string[] = [wsId];
+
+    if (projectId) {
+      params.push(projectId);
+      whereClause += ` AND s.project_id = $${params.length}`;
+    }
+
     const result = await query(
-      `SELECT s.id, s.name, s.goal, s.start_date, s.end_date, s.is_active, s.is_completed, s.created_at, s.completed_at,
+      `SELECT s.id, s.name, s.goal, s.start_date, s.end_date, s.is_active, s.is_completed,
+        s.created_at, s.completed_at, s.project_id,
+        p.name AS project_name,
         COUNT(t.id)::int AS ticket_count,
         COUNT(t.id) FILTER (WHERE st.is_done = true)::int AS done_count
       FROM sprints s
+      LEFT JOIN projects p ON p.id = s.project_id
       LEFT JOIN tickets t ON t.sprint_id = s.id AND t.is_archived = false
       LEFT JOIN statuses st ON st.id = t.status_id
-      WHERE s.workspace_id = $1
-      GROUP BY s.id
+      WHERE ${whereClause}
+      GROUP BY s.id, p.name
       ORDER BY s.is_active DESC, s.created_at DESC`,
-      [wsId]
+      params
     );
 
     return NextResponse.json(result.rows);
@@ -34,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
     const body = await request.json();
-    const { name, goal, start_date, end_date } = body;
+    const { name, goal, start_date, end_date, project_id } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
@@ -43,10 +57,10 @@ export async function POST(request: Request) {
     const wsId = await getDefaultWorkspaceId();
 
     const result = await query(
-      `INSERT INTO sprints (workspace_id, name, goal, start_date, end_date, is_active, is_completed)
-       VALUES ($1, $2, $3, $4, $5, false, false)
+      `INSERT INTO sprints (workspace_id, project_id, name, goal, start_date, end_date, is_active, is_completed)
+       VALUES ($1, $2, $3, $4, $5, $6, false, false)
        RETURNING *`,
-      [wsId, name.trim(), goal || null, start_date || null, end_date || null]
+      [wsId, project_id || null, name.trim(), goal || null, start_date || null, end_date || null]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
@@ -70,12 +84,16 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'activate') {
-      const wsId = await getDefaultWorkspaceId();
-      // Desativa todos primeiro
-      await query(
-        `UPDATE sprints SET is_active = false WHERE workspace_id = $1`,
-        [wsId]
-      );
+      // Deactivate only sprints from the same project
+      const sprintData = await query(`SELECT project_id, workspace_id FROM sprints WHERE id = $1`, [id]);
+      const sprint = sprintData.rows[0];
+      if (sprint) {
+        if (sprint.project_id) {
+          await query(`UPDATE sprints SET is_active = false WHERE project_id = $1`, [sprint.project_id]);
+        } else {
+          await query(`UPDATE sprints SET is_active = false WHERE workspace_id = $1 AND project_id IS NULL`, [sprint.workspace_id]);
+        }
+      }
       const result = await query(
         `UPDATE sprints SET is_active = true WHERE id = $1 RETURNING *`,
         [id]
@@ -97,7 +115,7 @@ export async function PATCH(request: Request) {
     let idx = 1;
 
     for (const [key, val] of Object.entries(fields)) {
-      if (['name', 'goal', 'start_date', 'end_date'].includes(key)) {
+      if (['name', 'goal', 'start_date', 'end_date', 'project_id'].includes(key)) {
         sets.push(`${key} = $${idx}`);
         values.push(val);
         idx++;
@@ -134,7 +152,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
 
-    // Verificar se tem tickets associados
     const check = await query(`SELECT COUNT(*)::int AS cnt FROM tickets WHERE sprint_id = $1`, [id]);
     if (check.rows[0].cnt > 0) {
       return NextResponse.json(
