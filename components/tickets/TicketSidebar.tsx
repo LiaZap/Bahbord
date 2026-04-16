@@ -295,37 +295,6 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
         )}
       </div>
 
-      {/* Collapsible sections */}
-      <CollapsibleSection title="Desenvolvimento" defaultOpen={false} />
-      <CollapsibleSection title="Automação" subtitle="Execuções de regras" icon="⚡" defaultOpen={false} />
-    </div>
-  );
-}
-
-function CollapsibleSection({ title, subtitle, icon, defaultOpen = false }: {
-  title: string;
-  subtitle?: string;
-  icon?: string;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="mt-2 rounded-lg border border-white/[0.06] bg-[var(--modal-bg)]">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-4 py-3"
-      >
-        {open ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-        {icon && <span className="text-[13px]">{icon}</span>}
-        <span className="text-[13px] font-semibold text-slate-200">{title}</span>
-        {subtitle && <span className="text-[11px] text-slate-500">{subtitle}</span>}
-      </button>
-      {open && (
-        <div className="border-t border-white/[0.04] px-4 py-3 text-[12px] text-slate-500">
-          Nenhum dado disponível
-        </div>
-      )}
     </div>
   );
 }

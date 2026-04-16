@@ -2,7 +2,7 @@ export default function Loading() {
   return (
     <div className="flex h-screen items-center justify-center bg-surface">
       <div className="flex flex-col items-center gap-6">
-        <img src="/logo-bahtech.svg" alt="BahTech" className="h-12 object-contain animate-pulse" />
+        <img src="/logo-bahtech.svg" alt="BahTech" className="h-12 object-contain animate-pulse dark:invert-0 invert" />
         <div className="h-1 w-40 overflow-hidden rounded-full bg-white/[0.06]">
           <div className="h-full rounded-full bg-blue-500/60"
                style={{ animation: 'loading-bar 1.2s ease-in-out infinite' }} />

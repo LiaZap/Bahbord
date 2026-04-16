@@ -78,7 +78,7 @@ export default function SearchModal() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => doSearch(query), 200);
+    const timer = setTimeout(() => doSearch(query), 350);
     return () => clearTimeout(timer);
   }, [query, doSearch]);
 

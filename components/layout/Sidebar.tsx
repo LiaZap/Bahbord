@@ -51,16 +51,12 @@ export default function Sidebar() {
         const mid = me?.member?.id;
         setUserRole(me?.member?.role || null);
         setIsApproved(me?.member?.is_approved !== false);
-        const projRes = await fetch(mid ? `/api/projects?member_id=${mid}` : '/api/projects');
-        const projs = projRes.ok ? await projRes.json() : [];
-        setProjects(projs);
-        const boardResults = await Promise.all(
-          projs.map(async (p: { id: string }) => {
-            const bRes = await fetch(`/api/boards?project_id=${p.id}${mid ? `&member_id=${mid}` : ''}`);
-            return bRes.ok ? bRes.json() : [];
-          })
-        );
-        setBoards(boardResults.flat());
+        const [projRes, boardRes] = await Promise.all([
+          fetch(mid ? `/api/projects?member_id=${mid}` : '/api/projects'),
+          fetch(mid ? `/api/boards?member_id=${mid}` : '/api/boards'),
+        ]);
+        setProjects(projRes.ok ? await projRes.json() : []);
+        setBoards(boardRes.ok ? await boardRes.json() : []);
       } catch {}
     }
     loadUserProjects();
@@ -93,10 +89,10 @@ export default function Sidebar() {
       {/* Organization header (top level) */}
       <div className={cn('flex items-center gap-2.5 px-4 py-3', collapsed && 'justify-center px-2')}>
         {collapsed ? (
-          <img src="/logo-bahtech.svg" alt="BahTech" className="h-6 w-6 object-contain object-left shrink-0" />
+          <img src="/logo-bahtech.svg" alt="BahTech" className="h-6 w-6 object-contain object-left shrink-0 dark:invert-0 invert" />
         ) : (
           <div className="flex-1 min-w-0">
-            <img src="/logo-bahtech.svg" alt="BahTech" className="h-5 object-contain object-left" />
+            <img src="/logo-bahtech.svg" alt="BahTech" className="h-5 object-contain object-left dark:invert-0 invert" />
             <span className="text-[10px] text-slate-500 mt-0.5 block">Organização</span>
           </div>
         )}

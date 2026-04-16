@@ -5,6 +5,7 @@ import Header from '@/components/layout/Header';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
+import { Inbox } from 'lucide-react';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 const priorityLabels: Record<string, { label: string; color: string }> = {
@@ -68,8 +69,12 @@ export default async function BacklogPage() {
 
               {/* Rows */}
               {tickets.length === 0 ? (
-                <div className="px-4 py-8 text-center text-sm text-slate-500">
-                  Nenhum ticket no backlog. Todos os tickets estão em sprints.
+                <div className="flex flex-col items-center py-12 text-center">
+                  <div className="rounded-full bg-accent/10 p-3 mb-3">
+                    <Inbox size={24} className="text-accent" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-300">Backlog vazio</p>
+                  <p className="mt-1 text-xs text-slate-500">Todos os tickets estão em sprints.</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border/20">

@@ -6,7 +6,7 @@ export default function NotFound() {
     <div className="flex h-screen flex-col items-center justify-center bg-surface text-primary">
       <div className="text-center">
         <div className="mb-4 flex justify-center">
-          <img src="/logo-bahtech.svg" alt="BahTech" className="h-10 object-contain" />
+          <img src="/logo-bahtech.svg" alt="BahTech" className="h-10 object-contain dark:invert-0 invert" />
         </div>
         <h1 className="text-6xl font-bold text-white">404</h1>
         <p className="mt-2 text-lg text-slate-400">Página não encontrada</p>
