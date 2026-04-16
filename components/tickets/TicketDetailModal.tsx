@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Share2, Maximize2, X as XIcon,
-  ChevronDown, ChevronRight, Settings2
+  ChevronDown, ChevronRight, Settings2, Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SubtaskList from './SubtaskList';
@@ -16,6 +16,7 @@ import AttachmentList from './AttachmentList';
 import AccessLinks from './AccessLinks';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import DOMPurify from 'dompurify';
 
@@ -78,6 +79,30 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
   const [userRole, setUserRole] = useState<string | null>(null);
   const isAdmin = userRole === 'owner' || userRole === 'admin';
   const { toast } = useToast();
+  const { confirm } = useConfirm();
+
+  async function handleDeleteTicket() {
+    if (!ticket) return;
+    const ok = await confirm({
+      title: 'Excluir ticket',
+      message: `Tem certeza que deseja excluir ${ticket.ticket_key}? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/tickets/${ticket.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast('Ticket excluído', 'success');
+        onClose();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err.error || 'Erro ao excluir', 'error');
+      }
+    } catch {
+      toast('Erro ao excluir', 'error');
+    }
+  }
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
@@ -228,6 +253,16 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                     >
                       <Maximize2 size={14} />
                     </button>
+                    {isAdmin && (
+                      <button
+                        onClick={handleDeleteTicket}
+                        className="rounded-md p-1.5 text-slate-500 hover:bg-red-500/10 hover:text-red-400"
+                        title="Excluir ticket"
+                        aria-label="Excluir ticket"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                     <button onClick={onClose} className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><XIcon size={14} /></button>
                   </div>
                 </div>
