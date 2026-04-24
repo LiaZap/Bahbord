@@ -95,7 +95,18 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
             if (activeSprint && !sprintId) setSprintId(activeSprint.id);
           }
           if (svRes.ok) setAllServices(await svRes.json());
-          if (clRes.ok) setClients(await clRes.json());
+          // Filter clients by project context if available
+          if (currentProjectId) {
+            const byProjRes = await fetch(`/api/clients/by-project?project_id=${currentProjectId}`);
+            if (byProjRes.ok) {
+              const projClients = await byProjRes.json();
+              setClients(projClients);
+            } else if (clRes.ok) {
+              setClients(await clRes.json());
+            }
+          } else if (clRes.ok) {
+            setClients(await clRes.json());
+          }
 
           // Auto-set reporter to current user
           if (!reporterId) {
@@ -338,16 +349,18 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     </select>
                   </div>
 
-                  {/* Cliente (único por nome) */}
-                  <div>
-                    <label className={labelClass}>Cliente</label>
-                    <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={selectClass}>
-                      <option value="">Selecionar cliente</option>
-                      {Array.from(new Map(clients.map((c) => [c.name, c])).values()).map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Cliente — filtrado por projeto do contexto */}
+                  {clients.length > 0 && (
+                    <div>
+                      <label className={labelClass}>Cliente</label>
+                      <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={selectClass}>
+                        <option value="">Selecionar cliente</option>
+                        {Array.from(new Map(clients.map((c) => [c.name, c])).values()).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Categorias */}
                   <div>
