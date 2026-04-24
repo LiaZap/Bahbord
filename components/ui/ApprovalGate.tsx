@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, LogOut } from 'lucide-react';
+import { useClerk } from '@clerk/nextjs';
 
 export default function ApprovalGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'approved' | 'pending'>('loading');
+  const { signOut } = useClerk();
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -31,15 +33,23 @@ export default function ApprovalGate({ children }: { children: React.ReactNode }
 
   if (status === 'pending') {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center text-center">
-        <div className="rounded-full bg-amber-500/10 p-4 mb-4">
-          <Clock size={32} className="text-amber-400" />
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-surface text-center p-6">
+        <img src="/logo-bahtech.svg" alt="BahTech" className="h-8 mb-8 object-contain dark:invert-0 invert" />
+        <div className="rounded-full bg-amber-500/10 p-5 mb-5">
+          <Clock size={40} className="text-amber-400" />
         </div>
-        <h2 className="text-xl font-semibold text-white">Aguardando aprovação</h2>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
+        <h2 className="text-2xl font-bold text-primary">Aguardando aprovação</h2>
+        <p className="mt-3 max-w-md text-sm text-secondary leading-relaxed">
           Seu acesso está sendo analisado pelo administrador da organização.
           Você será notificado quando for aprovado.
         </p>
+        <button
+          onClick={() => signOut({ redirectUrl: '/sign-in' })}
+          className="btn-premium btn-secondary mt-8"
+        >
+          <LogOut size={14} />
+          Sair
+        </button>
       </div>
     );
   }

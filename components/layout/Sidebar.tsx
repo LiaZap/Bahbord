@@ -261,6 +261,11 @@ export default function Sidebar() {
     </>
   );
 
+  // Hide sidebar for unapproved users
+  if (!isApproved) {
+    return <SidebarContext.Provider value={{ collapsed: false }}><></></SidebarContext.Provider>;
+  }
+
   return (
     <SidebarContext.Provider value={{ collapsed }}>
       {/* Mobile hamburger */}
