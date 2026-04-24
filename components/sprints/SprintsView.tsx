@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Play, CheckCircle, Calendar, Target, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -26,28 +27,47 @@ interface Project {
 }
 
 export default function SprintsView() {
+  const searchParams = useSearchParams();
+  const boardIdParam = searchParams.get('board_id');
+  const projectIdParam = searchParams.get('project_id');
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(projectIdParam);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [newName, setNewName] = useState('');
   const [newGoal, setNewGoal] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
-  const [newProjectId, setNewProjectId] = useState('');
+  const [newProjectId, setNewProjectId] = useState(projectIdParam || '');
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchSprints = useCallback(async () => {
     try {
+      // If board_id in URL, resolve to project_id
+      let projectId = projectIdParam;
+      if (boardIdParam && !projectId) {
+        const bRes = await fetch('/api/boards');
+        if (bRes.ok) {
+          const boards = await bRes.json();
+          const board = boards.find((b: any) => b.id === boardIdParam);
+          projectId = board?.project_id || null;
+          setCurrentProjectId(projectId);
+          if (projectId) setNewProjectId(projectId);
+        }
+      }
+
+      const sprintUrl = projectId ? `/api/sprints?project_id=${projectId}` : '/api/sprints';
       const [sprintRes, projRes] = await Promise.all([
-        fetch('/api/sprints'),
+        fetch(sprintUrl),
         fetch('/api/options?type=projects'),
       ]);
       if (sprintRes.ok) setSprints(await sprintRes.json());
       if (projRes.ok) setProjects(await projRes.json());
     } catch (err) { console.error('Erro ao carregar sprints:', err); }
     finally { setLoading(false); }
-  }, []);
+  }, [boardIdParam, projectIdParam]);
 
   useEffect(() => { fetchSprints(); }, [fetchSprints]);
 
@@ -73,12 +93,48 @@ export default function SprintsView() {
   }
 
   async function handleAction(id: string, action: string) {
-    if (action === 'complete' && !confirm('Concluir este sprint?')) return;
+    if (action === 'complete' && !confirm('Concluir este sprint? Um próximo sprint será criado automaticamente.')) return;
     await fetch('/api/sprints', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action }),
     });
+
+    // Auto-create next sprint when completing
+    if (action === 'complete') {
+      const completed = sprints.find((s) => s.id === id);
+      if (completed && completed.project_id) {
+        // Calculate next sprint number from name
+        const match = completed.name.match(/(\d+)/);
+        const nextNum = match ? parseInt(match[1]) + 1 : 1;
+        const nextName = match ? completed.name.replace(/\d+/, String(nextNum)) : `Sprint ${nextNum}`;
+
+        // Calculate next dates (same duration)
+        let nextStart: string | undefined;
+        let nextEnd: string | undefined;
+        if (completed.start_date && completed.end_date) {
+          const start = new Date(completed.start_date);
+          const end = new Date(completed.end_date);
+          const duration = end.getTime() - start.getTime();
+          const newStart = new Date(end.getTime() + 86400000); // +1 day after end
+          const newEnd = new Date(newStart.getTime() + duration);
+          nextStart = newStart.toISOString().split('T')[0];
+          nextEnd = newEnd.toISOString().split('T')[0];
+        }
+
+        await fetch('/api/sprints', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: nextName,
+            project_id: completed.project_id,
+            start_date: nextStart,
+            end_date: nextEnd,
+          }),
+        });
+      }
+    }
+
     await fetchSprints();
   }
 
@@ -318,11 +374,17 @@ export default function SprintsView() {
         </div>
       )}
 
-      {/* Completed sprints */}
+      {/* Completed sprints - collapsible history */}
       {completedSprints.length > 0 && (
         <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Concluídos</h2>
-          <div className="space-y-1">{completedSprints.map(renderSprint)}</div>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition"
+          >
+            {showHistory ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            Histórico ({completedSprints.length})
+          </button>
+          {showHistory && <div className="space-y-1">{completedSprints.map(renderSprint)}</div>}
         </div>
       )}
 
