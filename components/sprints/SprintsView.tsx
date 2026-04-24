@@ -222,9 +222,12 @@ export default function SprintsView() {
         {isExpanded && (
           <div className="border-t border-border/30 px-4 py-3 space-y-3">
             {sprint.goal && (
-              <div className="flex items-start gap-2">
-                <Target size={13} className="mt-0.5 text-slate-500" />
-                <p className="text-xs text-slate-400">{sprint.goal}</p>
+              <div className="mb-3 flex items-start gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
+                <Target size={14} className="mt-0.5 text-accent shrink-0" />
+                <p className="text-[13px] text-slate-300">
+                  <span className="font-semibold text-accent">Objetivo: </span>
+                  {sprint.goal}
+                </p>
               </div>
             )}
 
@@ -321,13 +324,14 @@ export default function SprintsView() {
                 className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Objetivo</label>
-              <input
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-[10px] font-medium text-slate-500">Objetivo (opcional)</label>
+              <textarea
                 value={newGoal}
                 onChange={(e) => setNewGoal(e.target.value)}
-                placeholder="Objetivo do sprint"
-                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+                placeholder="Ex: Lançar MVP do módulo X, finalizar testes de integração..."
+                rows={3}
+                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60 resize-y"
               />
             </div>
             <div>

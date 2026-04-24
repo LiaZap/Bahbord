@@ -13,6 +13,7 @@ interface Member {
   phone: string | null;
   project_role?: string | null;
   board_name?: string | null;
+  is_client?: boolean;
 }
 
 interface ProjectGroup {
@@ -203,8 +204,18 @@ export default function MembersSettings() {
     <tr key={m.id} className="border-b border-border/20 last:border-0">
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <Avatar name={m.display_name} size="sm" />
+          <Avatar name={m.display_name} imageUrl={m.avatar_url} size="sm" />
           <span className="text-slate-200">{m.display_name}</span>
+          {m.is_client && (
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-400">
+              Cliente
+            </span>
+          )}
+          {!m.is_client && (m.role === 'owner' || m.role === 'admin') && (
+            <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-accent">
+              Interno
+            </span>
+          )}
         </div>
       </td>
       <td className="px-4 py-3 text-slate-400">{m.email}</td>

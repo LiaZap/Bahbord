@@ -29,19 +29,39 @@ export default function Header({ onCreateTicket }: HeaderProps) {
   const searchParams = useSearchParams();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [boardName, setBoardName] = useState<string | null>(null);
+  const [sprintGoal, setSprintGoal] = useState<string | null>(null);
   const boardId = searchParams.get('board_id');
 
   useEffect(() => {
     if (pathname === '/board' && boardId) {
       fetch('/api/boards')
         .then((r) => r.ok ? r.json() : [])
-        .then((boards) => {
+        .then(async (boards) => {
           const board = boards.find((b: any) => b.id === boardId);
           setBoardName(board?.name || null);
+
+          // Try to find a sprint with the same name (auto-created sprint boards share the name)
+          if (board?.name && board?.project_id) {
+            try {
+              const sRes = await fetch(`/api/sprints?project_id=${board.project_id}`);
+              if (sRes.ok) {
+                const sprints = await sRes.json();
+                const match = sprints.find((s: any) => s.name === board.name);
+                setSprintGoal(match?.goal || null);
+              } else {
+                setSprintGoal(null);
+              }
+            } catch {
+              setSprintGoal(null);
+            }
+          } else {
+            setSprintGoal(null);
+          }
         })
         .catch(() => {});
     } else {
       setBoardName(null);
+      setSprintGoal(null);
     }
   }, [pathname, boardId]);
 
@@ -51,7 +71,10 @@ export default function Header({ onCreateTicket }: HeaderProps) {
       <div className="flex items-center gap-3 pl-10 md:pl-0">
         <h1 className="text-[15px] font-semibold text-primary">{pageTitle}</h1>
         {pathname === '/board' && boardName && (
-          <span className="badge bg-accent/10 text-accent">
+          <span
+            className="badge bg-accent/10 text-accent"
+            title={sprintGoal ? `Objetivo: ${sprintGoal}` : undefined}
+          >
             {boardName}
           </span>
         )}

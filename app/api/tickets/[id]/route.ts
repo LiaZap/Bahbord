@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { createNotification } from '@/lib/notifications';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
@@ -54,11 +55,21 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-  await getAuthMember();
+  const auth = await getAuthMember();
 
   const body = await request.json();
   const ticketId = params.id;
   const expectedUpdatedAt = body._updated_at; // OCC: versão esperada
+
+  // Capturar assignee anterior para detectar mudança e evitar notificação duplicada
+  let previousAssigneeId: string | null = null;
+  if ('assignee_id' in body) {
+    const prevRes = await query(
+      `SELECT assignee_id FROM tickets WHERE id = $1`,
+      [ticketId]
+    );
+    previousAssigneeId = prevRes.rows[0]?.assignee_id ?? null;
+  }
 
   const allowedFields: Record<string, string> = {
     title: 'title',
@@ -108,6 +119,36 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const ticket = result.rows[0];
   dispatchWebhook('ticket.updated', ticket);
+
+  // Notificar nova atribuição se assignee_id mudou para alguém diferente do ator
+  if (
+    'assignee_id' in body &&
+    ticket.assignee_id &&
+    ticket.assignee_id !== previousAssigneeId &&
+    ticket.assignee_id !== auth?.id
+  ) {
+    try {
+      const keyRes = await query(
+        `SELECT ticket_key FROM tickets_full WHERE id = $1`,
+        [ticket.id]
+      );
+      const ticketKey = keyRes.rows[0]?.ticket_key || '';
+      await createNotification({
+        workspace_id: ticket.workspace_id,
+        recipient_id: ticket.assignee_id,
+        actor_id: auth?.id,
+        type: 'assigned',
+        entity_type: 'ticket',
+        entity_id: ticket.id,
+        title: `Você foi atribuído ao ticket${ticketKey ? ` ${ticketKey}` : ''}`,
+        message: ticket.title,
+        link: `/ticket/${ticket.id}`,
+      });
+    } catch (notifyErr) {
+      console.error('Erro ao notificar atribuição na atualização do ticket:', notifyErr);
+    }
+  }
+
   return NextResponse.json(ticket);
   } catch (err) {
     console.error('PATCH /api/tickets/[id] error:', err);

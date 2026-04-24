@@ -14,6 +14,7 @@ export async function GET() {
       SELECT
         p.id AS project_id, p.name AS project_name, p.color AS project_color, p.prefix AS project_prefix,
         m.id AS member_id, m.display_name, m.email, m.phone, m.avatar_url,
+        COALESCE(m.is_client, false) AS is_client,
         COALESCE(orr.role, m.role, 'member') AS org_role,
         COALESCE(pr.role, br.role) AS project_role,
         br.board_id,

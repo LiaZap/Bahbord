@@ -111,6 +111,74 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'complete') {
+      // Fetch completing sprint to know its project
+      const sprintData = await query(
+        `SELECT id, project_id, workspace_id FROM sprints WHERE id = $1`,
+        [id]
+      );
+      const completingSprint = sprintData.rows[0];
+
+      if (completingSprint) {
+        // Find the next sprint (same project, not active, not completed, oldest first)
+        let nextSprintRes;
+        if (completingSprint.project_id) {
+          nextSprintRes = await query(
+            `SELECT id FROM sprints
+             WHERE project_id = $1
+               AND is_active = false
+               AND is_completed = false
+               AND id <> $2
+             ORDER BY created_at ASC
+             LIMIT 1`,
+            [completingSprint.project_id, id]
+          );
+        } else {
+          nextSprintRes = await query(
+            `SELECT id FROM sprints
+             WHERE workspace_id = $1
+               AND project_id IS NULL
+               AND is_active = false
+               AND is_completed = false
+               AND id <> $2
+             ORDER BY created_at ASC
+             LIMIT 1`,
+            [completingSprint.workspace_id, id]
+          );
+        }
+
+        const nextSprint = nextSprintRes.rows[0];
+
+        if (nextSprint) {
+          // Move unfinished tickets to the next sprint
+          await query(
+            `UPDATE tickets
+             SET sprint_id = $1
+             WHERE sprint_id = $2
+               AND id IN (
+                 SELECT t.id FROM tickets t
+                 LEFT JOIN statuses st ON st.id = t.status_id
+                 WHERE t.sprint_id = $2
+                   AND (st.is_done IS NULL OR st.is_done = false)
+               )`,
+            [nextSprint.id, id]
+          );
+        } else {
+          // No next sprint: send unfinished tickets to backlog (sprint_id = NULL)
+          await query(
+            `UPDATE tickets
+             SET sprint_id = NULL
+             WHERE sprint_id = $1
+               AND id IN (
+                 SELECT t.id FROM tickets t
+                 LEFT JOIN statuses st ON st.id = t.status_id
+                 WHERE t.sprint_id = $1
+                   AND (st.is_done IS NULL OR st.is_done = false)
+               )`,
+            [id]
+          );
+        }
+      }
+
       const result = await query(
         `UPDATE sprints SET is_completed = true, is_active = false, completed_at = NOW() WHERE id = $1 RETURNING *`,
         [id]

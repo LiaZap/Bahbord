@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
+import { createNotification } from '@/lib/notifications';
 
 export async function GET(request: Request) {
   try {
@@ -225,6 +226,32 @@ export async function POST(request: Request) {
 
     const ticket = result.rows[0];
     dispatchWebhook('ticket.created', ticket);
+
+    // Notificar assignee caso o ticket tenha sido atribuído na criação a outra pessoa
+    if (ticket.assignee_id && ticket.assignee_id !== auth?.id) {
+      try {
+        // Buscar ticket_key a partir da view
+        const keyRes = await query(
+          `SELECT ticket_key FROM tickets_full WHERE id = $1`,
+          [ticket.id]
+        );
+        const ticketKey = keyRes.rows[0]?.ticket_key || '';
+        await createNotification({
+          workspace_id: workspaceId,
+          recipient_id: ticket.assignee_id,
+          actor_id: auth?.id,
+          type: 'assigned',
+          entity_type: 'ticket',
+          entity_id: ticket.id,
+          title: `Você foi atribuído ao ticket${ticketKey ? ` ${ticketKey}` : ''}`,
+          message: ticket.title,
+          link: `/ticket/${ticket.id}`,
+        });
+      } catch (notifyErr) {
+        console.error('Erro ao notificar atribuição na criação do ticket:', notifyErr);
+      }
+    }
+
     return NextResponse.json(ticket, { status: 201 });
   } catch (err) {
     console.error('POST /api/tickets error:', err);

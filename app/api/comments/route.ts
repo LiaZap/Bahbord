@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, getDefaultMemberId } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
+import { createNotification, extractMentions } from '@/lib/notifications';
 
 export async function GET(request: Request) {
   try {
@@ -62,6 +63,55 @@ export async function POST(request: Request) {
 
     const comment = result.rows[0];
     dispatchWebhook('comment.created', { ...comment, ticket_id });
+
+    // Notificações de @menção (fire-and-forget: falhas não quebram a resposta)
+    try {
+      const mentions = extractMentions(content);
+      if (mentions.length > 0) {
+        // Busca ticket_key + workspace_id uma única vez
+        const ticketRes = await query(
+          `SELECT t.workspace_id, tf.ticket_key, tf.title
+           FROM tickets t
+           LEFT JOIN tickets_full tf ON tf.id = t.id
+           WHERE t.id = $1`,
+          [ticket_id]
+        );
+        const ticketRow = ticketRes.rows[0];
+        const ticketKey = ticketRow?.ticket_key || '';
+        const ticketWorkspaceId = ticketRow?.workspace_id;
+
+        const notified = new Set<string>();
+        for (const name of mentions) {
+          const memberRes = await query(
+            `SELECT id, workspace_id, display_name
+             FROM members
+             WHERE LOWER(display_name) LIKE LOWER($1)
+             ORDER BY LENGTH(display_name) ASC
+             LIMIT 1`,
+            [`%${name}%`]
+          );
+          const target = memberRes.rows[0];
+          if (!target) continue;
+          if (notified.has(target.id)) continue;
+          notified.add(target.id);
+
+          await createNotification({
+            workspace_id: target.workspace_id || ticketWorkspaceId,
+            recipient_id: target.id,
+            actor_id: auth?.id,
+            type: 'mention',
+            entity_type: 'comment',
+            entity_id: comment.id,
+            title: `${auth?.display_name || 'Alguém'} mencionou você${ticketKey ? ` em ${ticketKey}` : ''}`,
+            message: content.trim().substring(0, 140),
+            link: `/ticket/${ticket_id}`,
+          });
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Erro ao processar menções do comentário:', notifyErr);
+    }
+
     return NextResponse.json(comment, { status: 201 });
   } catch (err) {
     console.error('POST /api/comments error:', err);
