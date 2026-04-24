@@ -148,7 +148,13 @@ export default function MembersSettings() {
 
   async function handleRemoveMemberBoard(boardId: string) {
     if (!assignBoardMemberId) return;
-    if (!confirm('Remover acesso a este board?')) return;
+    const ok = await confirm({
+      title: 'Remover acesso',
+      message: 'Deseja remover acesso a este board?',
+      confirmText: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch('/api/members/assign-board', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
