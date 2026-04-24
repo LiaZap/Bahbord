@@ -5,9 +5,9 @@ import Header from '@/components/layout/Header';
 import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import ProjectFilter from '@/components/dashboard/ProjectFilter';
+import Sparkline from '@/components/dashboard/Sparkline';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
-import { Columns3, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 export default async function HomePage({ searchParams }: { searchParams: { project_id?: string; board_id?: string } }) {
   const sp = await searchParams;
@@ -38,7 +38,7 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
   const sprintFilter = safeProjectId ? `AND project_id = '${safeProjectId}'` : '';
 
   const [
-    ticketStats, sprintRow, recentTickets,
+    ticketStats, statsDelta, sprintRow, recentTickets,
     byStatus, byService, byPriority,
     weeklyCompleted, byAssignee, sprintBurndown,
     byType, projectsList
@@ -46,9 +46,18 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
     query(`
       SELECT
         COUNT(*) FILTER (WHERE is_archived = false ${projectFilter}) AS total_active,
-        COUNT(*) FILTER (WHERE is_done = true AND completed_at > NOW() - INTERVAL '30 days' ${projectFilter}) AS completed_month,
+        COUNT(*) FILTER (WHERE is_done = true AND completed_at > NOW() - INTERVAL '7 days' ${projectFilter}) AS completed_week,
         COUNT(*) FILTER (WHERE is_archived = false AND status_name = 'AGUARDANDO' ${projectFilter}) AS waiting,
         COUNT(*) FILTER (WHERE is_archived = false AND priority = 'urgent' ${projectFilter}) AS urgent
+      FROM tickets_full
+    `),
+    // Deltas semana atual vs anterior
+    query(`
+      SELECT
+        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days' ${projectFilter})::int AS new_week,
+        COUNT(*) FILTER (WHERE created_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days' ${projectFilter})::int AS new_prev_week,
+        COUNT(*) FILTER (WHERE is_done = true AND completed_at > NOW() - INTERVAL '7 days' ${projectFilter})::int AS done_week,
+        COUNT(*) FILTER (WHERE is_done = true AND completed_at BETWEEN NOW() - INTERVAL '14 days' AND NOW() - INTERVAL '7 days' ${projectFilter})::int AS done_prev_week
       FROM tickets_full
     `),
     query(`SELECT id, name, start_date, end_date FROM sprints WHERE is_active = true ${sprintFilter} LIMIT 1`),
@@ -149,20 +158,61 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
     query(`SELECT id, name, color FROM projects WHERE is_archived = false ORDER BY name ASC`)
   ]);
 
-  const stats = ticketStats.rows[0] || { total_active: 0, completed_month: 0, waiting: 0, urgent: 0 };
+  const stats = ticketStats.rows[0] || { total_active: 0, completed_week: 0, waiting: 0, urgent: 0 };
+  const delta = statsDelta.rows[0] || { new_week: 0, new_prev_week: 0, done_week: 0, done_prev_week: 0 };
   const sprint = sprintRow.rows[0] as any;
   const sprintName = sprint?.name || 'Sem sprint';
+  const weeklySeries = (weeklyCompleted.rows as Array<{ value: number }>).map((r) => r.value);
+
+  function deltaPct(curr: number, prev: number): { value: string; positive: boolean } | null {
+    if (prev === 0) return curr > 0 ? { value: `+${curr}`, positive: true } : null;
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    return { value: `${pct >= 0 ? '+' : ''}${pct}%`, positive: pct >= 0 };
+  }
+
+  const newDelta = deltaPct(delta.new_week, delta.new_prev_week);
+  const doneDelta = deltaPct(delta.done_week, delta.done_prev_week);
 
   const statCards = [
-    { label: 'Tickets ativos', value: stats.total_active, icon: Columns3 },
-    { label: 'Sprint atual', value: sprintName, icon: Clock },
-    { label: 'Concluídos · 30d', value: stats.completed_month, icon: CheckCircle2 },
-    { label: 'Aguardando', value: stats.waiting, icon: AlertCircle }
+    {
+      label: 'Tickets ativos',
+      value: stats.total_active,
+      delta: newDelta ? `${newDelta.value} esta semana` : null,
+      deltaPositive: newDelta?.positive ?? null,
+      sparkline: weeklySeries
+    },
+    {
+      label: 'Concluídos · 7d',
+      value: stats.completed_week,
+      delta: doneDelta ? `${doneDelta.value} vs semana ant.` : null,
+      deltaPositive: doneDelta?.positive ?? null,
+      sparkline: weeklySeries
+    },
+    {
+      label: 'Aguardando',
+      value: stats.waiting,
+      delta: null,
+      deltaPositive: null,
+      sparkline: null
+    },
+    {
+      label: 'Sprint atual',
+      value: sprintName,
+      delta: sprint?.end_date
+        ? `${Math.max(0, Math.ceil((new Date(sprint.end_date).getTime() - Date.now()) / 86400000))} dias restantes`
+        : null,
+      deltaPositive: null,
+      sparkline: null
+    }
   ];
 
   const currentProject = safeProjectId
     ? (projectsList.rows as Array<{ id: string; name: string }>).find((p) => p.id === safeProjectId)
     : undefined;
+
+  // Date breadcrumb (in pt-BR)
+  const today = new Date();
+  const dateLabel = today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, (c) => c.toUpperCase());
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-primary">
@@ -173,33 +223,47 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
         <main className="flex-1 overflow-auto p-6">
           <ApprovalGate>
           <div className="mx-auto max-w-[1200px] space-y-8">
-            {/* Header */}
-            <div className="flex items-end justify-between flex-wrap gap-3">
-              <div>
-                <h1 className="text-[22px] font-semibold text-primary tracking-tight">
-                  {currentProject ? `${currentProject.name}` : 'Dashboard'}
+            {/* Editorial header */}
+            <div className="flex items-end justify-between flex-wrap gap-4">
+              <div className="space-y-2">
+                <p className="page-eyebrow">{dateLabel}</p>
+                <h1 className="page-title">
+                  {currentProject ? (
+                    <>{currentProject.name} <span className="em">— visão do projeto.</span></>
+                  ) : (
+                    <>Dashboard <span className="em">— visão geral do workspace.</span></>
+                  )}
                 </h1>
-                <p className="mt-1 text-[13px] text-secondary">
-                  {currentProject ? `Visão geral do projeto` : 'Visão geral do workspace'}
-                </p>
               </div>
               <ProjectFilter projects={projectsList.rows as any[]} />
             </div>
 
-            {/* Stat Cards - flat */}
+            {/* Stat Cards - editorial with sparklines */}
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {statCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.label} className="card-premium p-4">
-                    <div className="flex items-center gap-2 text-secondary">
-                      <Icon size={13} strokeWidth={1.75} />
-                      <span className="text-[12px] font-medium">{card.label}</span>
-                    </div>
-                    <p className="mt-3 text-[28px] font-semibold text-primary tracking-tight tabular-nums leading-none">{card.value}</p>
+              {statCards.map((card) => (
+                <div key={card.label} className="card-premium p-4 flex flex-col">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="section-eyebrow">{card.label}</span>
+                    {card.sparkline && card.sparkline.length > 1 && (
+                      <Sparkline data={card.sparkline} width={56} height={16} />
+                    )}
                   </div>
-                );
-              })}
+                  <p className="mt-3 text-[32px] font-semibold text-primary tracking-tight tabular-nums leading-none font-serif">
+                    {card.value}
+                  </p>
+                  {card.delta && (
+                    <p className={`mt-3 text-[12px] font-medium ${
+                      card.deltaPositive === true ? 'text-[var(--success)]' :
+                      card.deltaPositive === false ? 'text-[var(--danger)]' :
+                      'text-secondary'
+                    }`}>
+                      {card.deltaPositive === true && '↑ '}
+                      {card.deltaPositive === false && '↓ '}
+                      {card.delta}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* All Charts */}
