@@ -85,7 +85,27 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
             fetch('/api/options?type=services'),
             fetch('/api/options?type=clients'),
           ]);
-          if (mRes.ok) setMembers(await mRes.json());
+          if (mRes.ok) {
+            const allMembers = await mRes.json();
+            // Filter members by project access if in project context
+            if (currentBoardId || currentProjectId) {
+              try {
+                const url = currentBoardId
+                  ? `/api/members/by-access?board_id=${currentBoardId}`
+                  : `/api/members/by-access?project_id=${currentProjectId}`;
+                const accessRes = await fetch(url);
+                if (accessRes.ok) {
+                  setMembers(await accessRes.json());
+                } else {
+                  setMembers(allMembers);
+                }
+              } catch {
+                setMembers(allMembers);
+              }
+            } else {
+              setMembers(allMembers);
+            }
+          }
           if (cRes.ok) setCategories(await cRes.json());
           if (sRes.ok) {
             const sprintList = await sRes.json();
