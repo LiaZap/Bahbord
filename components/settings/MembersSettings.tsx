@@ -1,55 +1,70 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserPlus, Trash2, Link2, ChevronDown, ChevronRight, FolderOpen, RefreshCw } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, X, Plus } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
+
+interface ProjectAssignment {
+  project_id: string;
+  project_name: string;
+  project_color: string | null;
+  project_prefix: string | null;
+  role: string;
+}
 
 interface Member {
   id: string;
   display_name: string;
   email: string;
-  role: string;
-  avatar_url: string | null;
   phone: string | null;
-  project_role?: string | null;
-  board_name?: string | null;
-  is_client?: boolean;
+  avatar_url: string | null;
+  is_approved: boolean;
+  is_client: boolean;
+  role: string;
+  projects: ProjectAssignment[];
 }
 
-interface ProjectGroup {
-  project_id: string;
-  project_name: string;
-  project_color: string | null;
-  project_prefix: string | null;
-  members: Member[];
-}
-
-interface GroupedResponse {
-  projects: ProjectGroup[];
-  unassigned: Member[];
+interface ProjectOption {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export default function MembersSettings() {
   const { confirm } = useConfirm();
   const { toast } = useToast();
-  const [groups, setGroups] = useState<ProjectGroup[]>([]);
-  const [unassigned, setUnassigned] = useState<Member[]>([]);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [members, setMembers] = useState<Member[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null);
   const [phoneValue, setPhoneValue] = useState('');
   const [showInvite, setShowInvite] = useState(false);
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [assignBoardMemberId, setAssignBoardMemberId] = useState<string | null>(null);
-  const [boards, setBoards] = useState<Array<{ id: string; name: string; project_id: string }>>([]);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
-  const [selectedBoard, setSelectedBoard] = useState('');
-  const [selectedBoardRole, setSelectedBoardRole] = useState('member');
-  const [memberBoards, setMemberBoards] = useState<Array<{ board_id: string; board_name: string; project_name: string; role: string }>>([]);
-  const [syncing, setSyncing] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
+
+  async function loadAll() {
+    try {
+      const [mRes, pRes] = await Promise.all([
+        fetch('/api/members/with-projects'),
+        fetch('/api/options?type=projects'),
+      ]);
+      if (mRes.ok) setMembers(await mRes.json());
+      if (pRes.ok) setProjects(await pRes.json());
+    } catch (err) {
+      console.error('Erro ao carregar:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   async function handleSyncClerk(autoApprove: boolean) {
     setSyncing(true);
@@ -65,130 +80,55 @@ export default function MembersSettings() {
         return;
       }
       const summary = await res.json();
-      const msg = `${summary.created} criado(s), ${summary.linked_by_email} vinculado(s) por email, ${summary.updated} atualizado(s)`;
-      toast(msg, 'success');
-      await loadGrouped();
-    } catch (err) {
+      toast(
+        `${summary.created} criado(s), ${summary.linked_by_email} vinculado(s), ${summary.updated} atualizado(s)`,
+        'success'
+      );
+      await loadAll();
+    } catch {
       toast('Falha na sincronização', 'error');
     } finally {
       setSyncing(false);
     }
   }
 
-  async function loadMemberBoards(memberId: string) {
-    try {
-      const res = await fetch(`/api/members/boards?member_id=${memberId}`);
-      if (res.ok) {
-        setMemberBoards(await res.json());
-      }
-    } catch {}
-  }
-
-  async function loadGrouped() {
-    const res = await fetch('/api/members/grouped-by-project');
-    if (res.ok) {
-      const data: GroupedResponse = await res.json();
-      setGroups(data.projects || []);
-      setUnassigned(data.unassigned || []);
-      // Default: all collapsed except the first one
-      setExpanded((prev) => {
-        // preserve previous state if exists, else set default
-        if (Object.keys(prev).length > 0) return prev;
-        const next: Record<string, boolean> = {};
-        (data.projects || []).forEach((p, idx) => {
-          next[p.project_id] = idx === 0;
-        });
-        next['__unassigned__'] = false;
-        return next;
-      });
-    }
-  }
-
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/members/grouped-by-project').then((r) => r.ok ? r.json() : { projects: [], unassigned: [] }),
-      fetch('/api/boards').then((r) => r.ok ? r.json() : []),
-      fetch('/api/options?type=projects').then((r) => r.ok ? r.json() : []),
-    ]).then(([g, b, p]) => {
-      setGroups(g.projects || []);
-      setUnassigned(g.unassigned || []);
-      setBoards(b);
-      setProjects(p);
-      // Default: all collapsed except the first one
-      const next: Record<string, boolean> = {};
-      (g.projects || []).forEach((proj: ProjectGroup, idx: number) => {
-        next[proj.project_id] = idx === 0;
-      });
-      next['__unassigned__'] = false;
-      setExpanded(next);
-      setLoading(false);
-    }).catch((err) => { console.error('Erro ao carregar:', err); setLoading(false); });
-  }, []);
-
-  function toggleExpanded(key: string) {
-    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function updateMemberEverywhere(id: string, patch: Partial<Member>) {
-    setGroups((prev) => prev.map((g) => ({
-      ...g,
-      members: g.members.map((m) => m.id === id ? { ...m, ...patch } : m),
-    })));
-    setUnassigned((prev) => prev.map((m) => m.id === id ? { ...m, ...patch } : m));
-  }
-
-  function removeMemberEverywhere(id: string) {
-    setGroups((prev) => prev.map((g) => ({
-      ...g,
-      members: g.members.filter((m) => m.id !== id),
-    })));
-    setUnassigned((prev) => prev.filter((m) => m.id !== id));
-  }
-
-  function findMemberById(id: string): Member | undefined {
-    for (const g of groups) {
-      const m = g.members.find((x) => x.id === id);
-      if (m) return m;
-    }
-    return unassigned.find((x) => x.id === id);
-  }
-
-  async function handleAssignBoard() {
-    if (!assignBoardMemberId || !selectedBoard) return;
-    const res = await fetch('/api/members/assign-board', {
+  async function handleInvite() {
+    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    const res = await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: assignBoardMemberId, board_id: selectedBoard, role: selectedBoardRole }),
+      body: JSON.stringify({
+        table: 'members',
+        display_name: inviteName.trim(),
+        email: inviteEmail.trim(),
+        user_id: crypto.randomUUID(),
+        role: 'member',
+      }),
     });
     if (res.ok) {
-      if (assignBoardMemberId) await loadMemberBoards(assignBoardMemberId);
-      setSelectedBoard('');
-      toast('Board atribuído com sucesso', 'success');
-      // Refresh grouped list since access changed
-      await loadGrouped();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      alert(err.error || 'Erro ao atribuir');
+      toast('Membro criado', 'success');
+      setInviteName('');
+      setInviteEmail('');
+      setShowInvite(false);
+      await loadAll();
     }
   }
 
-  async function handleRemoveMemberBoard(boardId: string) {
-    if (!assignBoardMemberId) return;
+  async function handleDeleteMember(id: string, name: string) {
     const ok = await confirm({
-      title: 'Remover acesso',
-      message: 'Deseja remover acesso a este board?',
+      title: 'Remover membro',
+      message: `Remover ${name}? Tickets e comentários permanecem mas ficam desvinculados.`,
       confirmText: 'Remover',
       variant: 'danger',
     });
     if (!ok) return;
-    const res = await fetch('/api/members/assign-board', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: assignBoardMemberId, board_id: boardId }),
-    });
+    const res = await fetch(`/api/settings?table=members&id=${id}`, { method: 'DELETE' });
     if (res.ok) {
-      await loadMemberBoards(assignBoardMemberId);
-      await loadGrouped();
+      setMembers((prev) => prev.filter((m) => m.id !== id));
+      toast('Membro removido', 'success');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast(err.error || 'Erro ao remover (membro pode ter tickets vinculados)', 'error');
     }
   }
 
@@ -198,7 +138,19 @@ export default function MembersSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ member_id: id, role }),
     });
-    updateMemberEverywhere(id, { role });
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role } : m)));
+  }
+
+  async function handleApprove(id: string) {
+    const res = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'members', id, is_approved: true }),
+    });
+    if (res.ok) {
+      setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, is_approved: true } : m)));
+      toast('Membro aprovado', 'success');
+    }
   }
 
   async function handlePhoneSave(id: string) {
@@ -207,346 +159,309 @@ export default function MembersSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'members', id, phone: phoneValue }),
     });
-    updateMemberEverywhere(id, { phone: phoneValue || null });
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, phone: phoneValue || null } : m)));
     setEditingPhoneId(null);
   }
 
-  async function handleInvite() {
-    if (!inviteName.trim() || !inviteEmail.trim()) return;
-    await fetch('/api/settings', {
+  async function handleAddProject(memberId: string, projectId: string) {
+    if (!projectId) return;
+    const res = await fetch('/api/members/assign-project', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: 'members', display_name: inviteName.trim(), email: inviteEmail.trim(), user_id: crypto.randomUUID(), role: 'member' }),
+      body: JSON.stringify({ member_id: memberId, project_id: projectId, role: 'member' }),
     });
-    setInviteName('');
-    setInviteEmail('');
-    setShowInvite(false);
-    await loadGrouped();
-  }
-
-  async function handleDeleteMember(id: string) {
-    const member = findMemberById(id);
-    const ok = await confirm({
-      title: 'Remover membro',
-      message: `Tem certeza que deseja remover ${member?.display_name || 'este membro'}? Todos os tickets e comentários deste usuário serão preservados mas desvinculados.`,
-      confirmText: 'Remover',
-      variant: 'danger',
-    });
-    if (!ok) return;
-    const res = await fetch(`/api/settings?table=members&id=${id}`, { method: 'DELETE' });
     if (res.ok) {
-      removeMemberEverywhere(id);
-      toast('Membro removido', 'success');
+      const project = projects.find((p) => p.id === projectId);
+      if (project) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.id === memberId
+              ? {
+                  ...m,
+                  is_approved: true,
+                  projects: m.projects.find((pj) => pj.project_id === projectId)
+                    ? m.projects
+                    : [
+                        ...m.projects,
+                        {
+                          project_id: project.id,
+                          project_name: project.name,
+                          project_color: project.color,
+                          project_prefix: null,
+                          role: 'member',
+                        },
+                      ],
+                }
+              : m
+          )
+        );
+      }
+      toast('Projeto atribuído', 'success');
     } else {
-      const err = await res.json().catch(() => ({}));
-      toast(err.error || 'Erro ao remover membro. Pode ter tickets vinculados.', 'error');
+      toast('Erro ao atribuir projeto', 'error');
     }
   }
 
-  if (loading) {
-    return <div className="flex h-32 items-center justify-center"><div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+  async function handleRemoveProject(memberId: string, projectId: string) {
+    const res = await fetch('/api/members/assign-project', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, project_id: projectId }),
+    });
+    if (res.ok) {
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.id === memberId ? { ...m, projects: m.projects.filter((p) => p.project_id !== projectId) } : m
+        )
+      );
+    }
   }
 
-  const renderMemberRow = (m: Member) => (
-    <tr key={m.id} className="border-b border-border/20 last:border-0">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Avatar name={m.display_name} imageUrl={m.avatar_url} size="sm" />
-          <span className="text-slate-200">{m.display_name}</span>
-          {m.is_client && (
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-400">
-              Cliente
-            </span>
-          )}
-          {!m.is_client && (m.role === 'owner' || m.role === 'admin') && (
-            <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-accent">
-              Interno
-            </span>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-3 text-slate-400">{m.email}</td>
-      <td className="px-4 py-3 text-slate-400">
-        {editingPhoneId === m.id ? (
-          <input
-            autoFocus
-            value={phoneValue}
-            onChange={(e) => setPhoneValue(e.target.value)}
-            onBlur={() => handlePhoneSave(m.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handlePhoneSave(m.id); if (e.key === 'Escape') setEditingPhoneId(null); }}
-            className="w-full rounded border border-border/40 bg-surface px-2 py-1 text-xs text-slate-200 outline-none"
-            placeholder="(00) 00000-0000"
-          />
-        ) : (
-          <button
-            onClick={() => { setEditingPhoneId(m.id); setPhoneValue(m.phone || ''); }}
-            className="text-xs text-slate-500 hover:text-slate-300"
-          >
-            {m.phone || 'Adicionar'}
-          </button>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <select
-          value={m.role}
-          onChange={(e) => handleRoleChange(m.id, e.target.value)}
-          className="rounded border border-border/40 bg-surface px-2 py-1 text-xs text-slate-200 outline-none"
-        >
-          <option value="owner">Owner</option>
-          <option value="admin">Admin</option>
-          <option value="member">Membro</option>
-          <option value="viewer">Visualizador</option>
-        </select>
-      </td>
-      <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => { setAssignBoardMemberId(m.id); loadMemberBoards(m.id); }}
-            title="Atribuir acesso a board"
-            className="text-slate-600 transition hover:text-accent"
-          >
-            <Link2 size={14} />
-          </button>
-          <button onClick={() => handleDeleteMember(m.id)} className="text-slate-600 transition hover:text-danger">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
+  const filtered = members.filter((m) => {
+    if (showOnlyPending && m.is_approved) return false;
+    if (filter) {
+      const q = filter.toLowerCase();
+      return m.display_name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q);
+    }
+    return true;
+  });
 
-  const renderTableHeader = () => (
-    <thead>
-      <tr className="border-b border-border/40 text-left text-xs text-slate-500">
-        <th className="px-4 py-3 font-medium">Membro</th>
-        <th className="px-4 py-3 font-medium">Email</th>
-        <th className="px-4 py-3 font-medium">Telefone</th>
-        <th className="px-4 py-3 font-medium">Função</th>
-        <th className="px-4 py-3 font-medium w-16"></th>
-      </tr>
-    </thead>
-  );
+  const pendingCount = members.filter((m) => !m.is_approved).length;
 
-  const assignedMember = assignBoardMemberId ? findMemberById(assignBoardMemberId) : undefined;
+  if (loading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Membros</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-slate-500">Membros entram via aprovação</span>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-[15px] font-semibold text-primary">Membros</h2>
+          <p className="text-[12px] text-secondary mt-0.5">
+            {members.length} no total{pendingCount > 0 && ` · ${pendingCount} aguardando aprovação`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => handleSyncClerk(false)}
             disabled={syncing}
             title="Puxa todos os usuários do Clerk e cria pedidos de aprovação"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-surface2 px-2.5 py-1 text-xs text-slate-200 transition hover:border-accent/60 hover:text-accent disabled:opacity-50"
+            className="btn-premium btn-secondary text-[12px]"
           >
             <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Sincronizando…' : 'Sincronizar com Clerk'}
+            {syncing ? 'Sincronizando…' : 'Sincronizar Clerk'}
           </button>
           <button
             onClick={() => handleSyncClerk(true)}
             disabled={syncing}
-            title="Puxa do Clerk e já aprova automaticamente (cuidado: dá acesso imediato)"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-surface2 px-2.5 py-1 text-xs text-slate-200 transition hover:border-emerald-500/60 hover:text-emerald-400 disabled:opacity-50"
+            title="Puxa do Clerk e aprova automaticamente todos"
+            className="btn-premium btn-secondary text-[12px] hover:!border-emerald-500/60 hover:!text-emerald-400"
           >
             Sync + auto-aprovar
           </button>
-          <button
-            onClick={() => setShowInvite((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border/40 bg-surface2 px-2.5 py-1 text-xs text-slate-200 transition hover:border-accent/60 hover:text-accent"
-          >
+          <button onClick={() => setShowInvite((v) => !v)} className="btn-premium btn-secondary text-[12px]">
             <UserPlus size={12} /> Convidar
           </button>
         </div>
       </div>
 
+      {/* Invite form */}
       {showInvite && (
-        <div className="rounded-lg border border-border/40 bg-surface2 p-4 space-y-3">
+        <div className="card-premium p-4 space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
               value={inviteName}
               onChange={(e) => setInviteName(e.target.value)}
               placeholder="Nome"
-              className="rounded border border-border/40 bg-surface px-3 py-2 text-sm text-slate-200 outline-none"
+              className="input-premium"
             />
             <input
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="Email"
               type="email"
-              className="rounded border border-border/40 bg-surface px-3 py-2 text-sm text-slate-200 outline-none"
+              className="input-premium"
             />
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowInvite(false)} className="btn-premium btn-secondary">Cancelar</button>
-            <button onClick={handleInvite} disabled={!inviteName.trim() || !inviteEmail.trim()} className="btn-premium btn-primary disabled:opacity-50">Convidar</button>
+            <button onClick={() => setShowInvite(false)} className="btn-premium btn-secondary">
+              Cancelar
+            </button>
+            <button
+              onClick={handleInvite}
+              disabled={!inviteName.trim() || !inviteEmail.trim()}
+              className="btn-premium btn-primary disabled:opacity-50"
+            >
+              Convidar
+            </button>
           </div>
         </div>
       )}
 
-      <div className="space-y-3">
-        {groups.length === 0 && unassigned.length === 0 && (
-          <div className="rounded-lg border border-border/40 bg-surface2 p-6 text-center text-sm text-slate-500">
-            Nenhum membro encontrado.
-          </div>
-        )}
-
-        {groups.map((g) => {
-          const isOpen = !!expanded[g.project_id];
-          return (
-            <div key={g.project_id} className="rounded-lg border border-border/40 bg-surface2 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleExpanded(g.project_id)}
-                className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-surface3/40"
-              >
-                <div className="flex items-center gap-2">
-                  {isOpen ? (
-                    <ChevronDown size={14} className="text-slate-400" />
-                  ) : (
-                    <ChevronRight size={14} className="text-slate-400" />
-                  )}
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: g.project_color || '#3b82f6' }}
-                  />
-                  <span className="text-sm font-medium text-slate-100">{g.project_name}</span>
-                  {g.project_prefix && (
-                    <span className="text-[10px] uppercase tracking-wide text-slate-500">{g.project_prefix}</span>
-                  )}
-                </div>
-                <span className="text-xs text-slate-500">
-                  {g.members.length} {g.members.length === 1 ? 'membro' : 'membros'}
-                </span>
-              </button>
-
-              {isOpen && (
-                <div className="border-t border-border/40">
-                  {g.members.length === 0 ? (
-                    <div className="px-4 py-4 text-xs text-slate-500">Nenhum membro atribuído.</div>
-                  ) : (
-                    <table className="w-full text-sm">
-                      {renderTableHeader()}
-                      <tbody>{g.members.map(renderMemberRow)}</tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {unassigned.length > 0 && (
-          <div className="rounded-lg border border-border/40 bg-surface2 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => toggleExpanded('__unassigned__')}
-              className="flex w-full items-center justify-between px-4 py-3 transition hover:bg-surface3/40"
-            >
-              <div className="flex items-center gap-2">
-                {expanded['__unassigned__'] ? (
-                  <ChevronDown size={14} className="text-slate-400" />
-                ) : (
-                  <ChevronRight size={14} className="text-slate-400" />
-                )}
-                <FolderOpen size={14} className="text-slate-500" />
-                <span className="text-sm font-medium text-slate-100">Sem projeto</span>
-                <span className="text-[10px] uppercase tracking-wide text-slate-500">admins/não atribuídos</span>
-              </div>
-              <span className="text-xs text-slate-500">
-                {unassigned.length} {unassigned.length === 1 ? 'membro' : 'membros'}
-              </span>
-            </button>
-
-            {expanded['__unassigned__'] && (
-              <div className="border-t border-border/40">
-                <table className="w-full text-sm">
-                  {renderTableHeader()}
-                  <tbody>{unassigned.map(renderMemberRow)}</tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Buscar nome ou email…"
+          className="input-premium flex-1 min-w-[180px]"
+        />
+        <button
+          onClick={() => setShowOnlyPending((v) => !v)}
+          className={`btn-premium btn-secondary text-[12px] ${
+            showOnlyPending ? '!border-amber-500/60 !text-amber-400' : ''
+          }`}
+        >
+          {showOnlyPending ? 'Mostrando pendentes' : 'Só pendentes'}
+        </button>
       </div>
 
-      {/* Modal de atribuir board */}
-      {assignBoardMemberId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setAssignBoardMemberId(null)}>
-          <div className="glass w-full max-w-md rounded-2xl p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-4">Atribuir acesso a board</h3>
-            <p className="text-sm text-slate-400 mb-4">
-              Membro: <span className="font-medium text-slate-200">{assignedMember?.display_name}</span>
-            </p>
-
-            {/* Current board accesses */}
-            {memberBoards.length > 0 && (
-              <div className="mb-4 space-y-2">
-                <label className="block text-xs font-medium text-slate-400">Acessos atuais</label>
-                <div className="space-y-1">
-                  {memberBoards.map((mb) => (
-                    <div key={mb.board_id} className="flex items-center justify-between rounded-md border border-border/40 bg-surface px-3 py-2">
-                      <div className="text-sm">
-                        <span className="font-medium text-slate-200">{mb.board_name}</span>
-                        <span className="text-slate-500 text-xs"> · {mb.project_name} · {mb.role}</span>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveMemberBoard(mb.board_id)}
-                        className="text-slate-600 hover:text-danger text-xs"
-                      >
-                        Remover
-                      </button>
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div className="card-premium p-6 text-center text-[13px] text-secondary">
+          Nenhum membro encontrado.
+        </div>
+      ) : (
+        <div className="card-premium overflow-hidden">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-[var(--card-border)] text-left text-[11px] uppercase tracking-wider text-secondary">
+                <th className="px-3 py-2.5 font-medium">Membro</th>
+                <th className="px-3 py-2.5 font-medium">Email</th>
+                <th className="px-3 py-2.5 font-medium">Role</th>
+                <th className="px-3 py-2.5 font-medium">Projetos</th>
+                <th className="px-3 py-2.5 font-medium">Telefone</th>
+                <th className="px-3 py-2.5 font-medium w-12"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((m) => (
+                <tr key={m.id} className="border-b border-[var(--card-border)] last:border-0 align-middle hover:bg-[var(--overlay-subtle)]">
+                  {/* Nome + status */}
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={m.display_name} imageUrl={m.avatar_url} size="sm" />
+                      <span className="text-primary font-medium">{m.display_name || '—'}</span>
+                      {!m.is_approved && (
+                        <button
+                          onClick={() => handleApprove(m.id)}
+                          className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-400 hover:bg-amber-500/25"
+                          title="Clique para aprovar"
+                        >
+                          Pendente
+                        </button>
+                      )}
+                      {m.is_client && (
+                        <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-amber-400">
+                          Cliente
+                        </span>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                  </td>
 
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Adicionar novo board</label>
-                <select
-                  value={selectedBoard}
-                  onChange={(e) => setSelectedBoard(e.target.value)}
-                  className="input-premium w-full"
-                >
-                  <option value="">Selecionar board</option>
-                  {projects.map((p) => {
-                    const projectBoards = boards.filter((b) => b.project_id === p.id);
-                    if (projectBoards.length === 0) return null;
-                    return (
-                      <optgroup key={p.id} label={p.name}>
-                        {projectBoards.map((b) => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </optgroup>
-                    );
-                  })}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Função no board</label>
-                <select
-                  value={selectedBoardRole}
-                  onChange={(e) => setSelectedBoardRole(e.target.value)}
-                  className="input-premium w-full"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="member">Membro</option>
-                  <option value="viewer">Visualizador</option>
-                </select>
-              </div>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => { setAssignBoardMemberId(null); setMemberBoards([]); }} className="btn-premium btn-secondary">
-                Fechar
-              </button>
-              <button onClick={handleAssignBoard} disabled={!selectedBoard} className="btn-premium btn-primary disabled:opacity-50">
-                Adicionar board
-              </button>
-            </div>
-          </div>
+                  {/* Email */}
+                  <td className="px-3 py-2.5 text-secondary truncate max-w-[200px]">{m.email || '—'}</td>
+
+                  {/* Role */}
+                  <td className="px-3 py-2.5">
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                      className="input-premium !py-1 !px-2 text-[12px]"
+                    >
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                      <option value="member">Membro</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  </td>
+
+                  {/* Projetos atribuídos + dropdown pra adicionar */}
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-1">
+                      {m.projects.map((pj) => (
+                        <span
+                          key={pj.project_id}
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
+                          style={{
+                            backgroundColor: (pj.project_color || '#3b6cf5') + '20',
+                            color: pj.project_color || '#3b6cf5',
+                          }}
+                        >
+                          {pj.project_name}
+                          <button
+                            onClick={() => handleRemoveProject(m.id, pj.project_id)}
+                            className="opacity-60 hover:opacity-100"
+                            aria-label={`Remover ${pj.project_name}`}
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                      <select
+                        value=""
+                        onChange={(e) => handleAddProject(m.id, e.target.value)}
+                        className="input-premium !py-0.5 !px-1.5 text-[11px] text-secondary"
+                      >
+                        <option value="">+ projeto</option>
+                        {projects
+                          .filter((p) => !m.projects.find((pj) => pj.project_id === p.id))
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </td>
+
+                  {/* Telefone */}
+                  <td className="px-3 py-2.5">
+                    {editingPhoneId === m.id ? (
+                      <input
+                        autoFocus
+                        value={phoneValue}
+                        onChange={(e) => setPhoneValue(e.target.value)}
+                        onBlur={() => handlePhoneSave(m.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handlePhoneSave(m.id);
+                          if (e.key === 'Escape') setEditingPhoneId(null);
+                        }}
+                        className="input-premium !py-1 !px-2 text-[12px] w-[130px]"
+                        placeholder="(00) 00000-0000"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingPhoneId(m.id);
+                          setPhoneValue(m.phone || '');
+                        }}
+                        className="text-[12px] text-secondary hover:text-primary"
+                      >
+                        {m.phone || '—'}
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-3 py-2.5 text-right">
+                    <button
+                      onClick={() => handleDeleteMember(m.id, m.display_name)}
+                      className="text-[var(--text-tertiary)] transition hover:text-[var(--danger)]"
+                      title="Remover membro"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

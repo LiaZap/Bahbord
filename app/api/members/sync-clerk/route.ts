@@ -70,8 +70,13 @@ export async function POST(request: Request) {
 
         if (existing.rows[0]) {
           await query(
-            `UPDATE members SET display_name = $1, email = $2, avatar_url = COALESCE($3, avatar_url) WHERE clerk_user_id = $4`,
-            [displayName, email, u.avatar_url, u.id]
+            `UPDATE members
+             SET display_name = $1,
+                 email = $2,
+                 avatar_url = COALESCE($3, avatar_url),
+                 is_approved = CASE WHEN $4 THEN true ELSE is_approved END
+             WHERE clerk_user_id = $5`,
+            [displayName, email, u.avatar_url, autoApprove, u.id]
           );
           summary.updated += 1;
           continue;
@@ -80,9 +85,13 @@ export async function POST(request: Request) {
         // Try to link by email
         if (email) {
           const linked = await query<{ id: string }>(
-            `UPDATE members SET clerk_user_id = $1, display_name = $2, avatar_url = COALESCE($3, avatar_url)
-             WHERE email = $4 AND clerk_user_id IS NULL RETURNING id`,
-            [u.id, displayName, u.avatar_url, email]
+            `UPDATE members
+             SET clerk_user_id = $1,
+                 display_name = $2,
+                 avatar_url = COALESCE($3, avatar_url),
+                 is_approved = CASE WHEN $4 THEN true ELSE is_approved END
+             WHERE email = $5 AND clerk_user_id IS NULL RETURNING id`,
+            [u.id, displayName, u.avatar_url, autoApprove, email]
           );
           if (linked.rows[0]) {
             summary.linked_by_email += 1;
