@@ -16,16 +16,23 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
   low: { label: 'Baixa', color: '#60a5fa' }
 };
 
-export default async function BacklogPage() {
+export default async function BacklogPage({ searchParams }: { searchParams: { board_id?: string; project_id?: string } }) {
+  const { board_id, project_id } = await searchParams;
   const auth = await getAuthMember();
   const userIsAdmin = auth ? isAdmin(auth.role) : false;
 
   let whereClause = 'WHERE is_archived = false AND sprint_id IS NULL';
   const params: string[] = [];
 
-  if (auth && !userIsAdmin) {
+  if (board_id) {
+    params.push(board_id);
+    whereClause = `WHERE is_archived = false AND sprint_id IS NULL AND board_id = $${params.length}`;
+  } else if (project_id) {
+    params.push(project_id);
+    whereClause = `WHERE is_archived = false AND sprint_id IS NULL AND project_id = $${params.length}`;
+  } else if (auth && !userIsAdmin) {
     params.push(auth.id);
-    whereClause = `WHERE is_archived = false AND sprint_id IS NULL AND board_id IN (SELECT board_id FROM board_roles WHERE member_id = $1)`;
+    whereClause = `WHERE is_archived = false AND sprint_id IS NULL AND board_id IN (SELECT board_id FROM board_roles WHERE member_id = $${params.length})`;
   }
 
   const result = await query(`

@@ -7,16 +7,23 @@ import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
-export default async function ListPage() {
+export default async function ListPage({ searchParams }: { searchParams: { board_id?: string; project_id?: string } }) {
+  const { board_id, project_id } = await searchParams;
   const auth = await getAuthMember();
   const userIsAdmin = auth ? isAdmin(auth.role) : false;
 
   let ticketWhere = 'WHERE is_archived = false';
   const ticketParams: string[] = [];
 
-  if (auth && !userIsAdmin) {
+  if (board_id) {
+    ticketParams.push(board_id);
+    ticketWhere = `WHERE board_id = $${ticketParams.length} AND is_archived = false`;
+  } else if (project_id) {
+    ticketParams.push(project_id);
+    ticketWhere = `WHERE project_id = $${ticketParams.length} AND is_archived = false`;
+  } else if (auth && !userIsAdmin) {
     ticketParams.push(auth.id);
-    ticketWhere = `WHERE is_archived = false AND board_id IN (SELECT board_id FROM board_roles WHERE member_id = $1)`;
+    ticketWhere = `WHERE is_archived = false AND board_id IN (SELECT board_id FROM board_roles WHERE member_id = $${ticketParams.length})`;
   }
 
   const [ticketsResult, statusesResult, membersResult] = await Promise.all([
