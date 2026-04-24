@@ -338,12 +338,12 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     </select>
                   </div>
 
-                  {/* Cliente */}
+                  {/* Cliente (único por nome) */}
                   <div>
                     <label className={labelClass}>Cliente</label>
                     <select value={clientId} onChange={(e) => setClientId(e.target.value)} className={selectClass}>
                       <option value="">Selecionar cliente</option>
-                      {clients.map((c) => (
+                      {Array.from(new Map(clients.map((c) => [c.name, c])).values()).map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
