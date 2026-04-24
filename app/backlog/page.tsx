@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
@@ -8,6 +9,7 @@ import { query } from '@/lib/db';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { Inbox } from 'lucide-react';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 
 const priorityLabels: Record<string, { label: string; color: string }> = {
   urgent: { label: 'Urgente', color: '#ef4444' },
@@ -20,6 +22,17 @@ export default async function BacklogPage({ searchParams }: { searchParams: { bo
   const { board_id, project_id } = await searchParams;
   const auth = await getAuthMember();
   const userIsAdmin = auth ? isAdmin(auth.role) : false;
+
+  // Validate access BEFORE querying tickets (skip for admins)
+  if (auth && !userIsAdmin) {
+    if (board_id) {
+      const ok = await hasBoardAccess(auth, board_id);
+      if (!ok) redirect('/');
+    } else if (project_id) {
+      const ok = await hasProjectAccess(auth, project_id);
+      if (!ok) redirect('/');
+    }
+  }
 
   let whereClause = 'WHERE is_archived = false AND sprint_id IS NULL';
   const params: string[] = [];

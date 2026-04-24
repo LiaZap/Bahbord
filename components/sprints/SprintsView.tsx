@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Plus, Play, CheckCircle, Calendar, Target, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import SprintBurndown from './SprintBurndown';
 
 interface Sprint {
   id: string;
@@ -241,6 +242,9 @@ export default function SprintsView() {
                 <div className="h-full rounded-full bg-success transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
             </div>
+
+            {/* Burndown chart - only for active sprints */}
+            {sprint.is_active && <SprintBurndown sprintId={sprint.id} />}
 
             {/* Actions */}
             <div className="flex gap-2">

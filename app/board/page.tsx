@@ -1,8 +1,10 @@
 export const dynamic = "force-dynamic";
+import { redirect } from 'next/navigation';
 import KanbanBoard from '@/components/board/KanbanBoard';
 import BoardShell from '@/components/board/BoardShell';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 
 type BoardTicket = {
   id: string;
@@ -63,6 +65,17 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
   const { board_id, project_id } = await searchParams;
   const auth = await getAuthMember();
   const userIsAdmin = auth ? isAdmin(auth.role) : false;
+
+  // Validate access BEFORE querying tickets (skip for admins)
+  if (auth && !userIsAdmin) {
+    if (board_id) {
+      const ok = await hasBoardAccess(auth, board_id);
+      if (!ok) redirect('/');
+    } else if (project_id) {
+      const ok = await hasProjectAccess(auth, project_id);
+      if (!ok) redirect('/');
+    }
+  }
 
   let whereClause = 'WHERE is_archived = false';
   const queryParams: string[] = [];

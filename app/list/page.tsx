@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import { redirect } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
@@ -6,11 +7,23 @@ import ListView from '@/components/list/ListView';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 
 export default async function ListPage({ searchParams }: { searchParams: { board_id?: string; project_id?: string } }) {
   const { board_id, project_id } = await searchParams;
   const auth = await getAuthMember();
   const userIsAdmin = auth ? isAdmin(auth.role) : false;
+
+  // Validate access BEFORE querying tickets (skip for admins)
+  if (auth && !userIsAdmin) {
+    if (board_id) {
+      const ok = await hasBoardAccess(auth, board_id);
+      if (!ok) redirect('/');
+    } else if (project_id) {
+      const ok = await hasProjectAccess(auth, project_id);
+      if (!ok) redirect('/');
+    }
+  }
 
   let ticketWhere = 'WHERE is_archived = false';
   const ticketParams: string[] = [];

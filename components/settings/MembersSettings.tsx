@@ -138,6 +138,7 @@ export default function MembersSettings() {
     if (res.ok) {
       if (assignBoardMemberId) await loadMemberBoards(assignBoardMemberId);
       setSelectedBoard('');
+      toast('Board atribuído com sucesso', 'success');
       // Refresh grouped list since access changed
       await loadGrouped();
     } else {

@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { hasTicketAccess } from '@/lib/access-check';
 import { createNotification } from '@/lib/notifications';
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+
+    // Validate access to this specific ticket (admins bypass inside helper)
+    const canAccess = await hasTicketAccess(auth, params.id);
+    if (!canAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
 
     const result = await query(
       `SELECT
