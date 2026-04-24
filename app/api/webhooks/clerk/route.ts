@@ -57,11 +57,22 @@ export async function POST(request: Request) {
               [displayName, email, id]
             );
           } else {
-            await query(
+            const newMember = await query<{ id: string }>(
               `INSERT INTO members (workspace_id, user_id, clerk_user_id, display_name, email, role, is_approved)
-               VALUES ($1, gen_random_uuid(), $2, $3, $4, 'member', false)`,
+               VALUES ($1, gen_random_uuid(), $2, $3, $4, 'member', false)
+               RETURNING id`,
               [workspaceId, id, displayName, email]
             );
+
+            // Create approval request so admin sees the new user
+            if (newMember.rows[0]) {
+              await query(
+                `INSERT INTO approval_requests (workspace_id, requester_id, type, request_data)
+                 VALUES ($1, $2, 'org_access', $3)
+                 ON CONFLICT DO NOTHING`,
+                [workspaceId, newMember.rows[0].id, JSON.stringify({ name: displayName, email })]
+              );
+            }
           }
         }
         break;

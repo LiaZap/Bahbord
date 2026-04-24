@@ -20,7 +20,7 @@ export default function ApprovalGate({ children }: { children: React.ReactNode }
           setStatus('approved');
         }
       })
-      .catch(() => setStatus('approved'));
+      .catch(() => setStatus('pending'));
   }, []);
 
   if (status === 'loading') {

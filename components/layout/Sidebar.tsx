@@ -38,6 +38,7 @@ export default function Sidebar() {
   const [boards, setBoards] = useState<Array<{ id: string; name: string; type: string; project_id: string }>>([]);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(true);
+  const [pendingApprovals, setPendingApprovals] = useState<number>(0);
   const { currentProjectId, currentBoardId, recentBoards, setProject, setBoard } = useProject();
 
   const isAdminUser = userRole === 'owner' || userRole === 'admin';
@@ -57,6 +58,18 @@ export default function Sidebar() {
         ]);
         setProjects(projRes.ok ? await projRes.json() : []);
         setBoards(boardRes.ok ? await boardRes.json() : []);
+
+        // Load pending approvals count for admins
+        const isAdminRole = me?.member?.role === 'owner' || me?.member?.role === 'admin';
+        if (isAdminRole) {
+          try {
+            const apRes = await fetch('/api/approvals?status=pending');
+            if (apRes.ok) {
+              const data = await apRes.json();
+              setPendingApprovals(Array.isArray(data) ? data.length : 0);
+            }
+          } catch {}
+        }
       } catch {}
     }
     loadUserProjects();
@@ -242,7 +255,7 @@ export default function Sidebar() {
             <History size={16} />
           </button>
         ))}
-        {isAdminUser && <NavItem href="/settings" label="Configurações" icon={Settings} />}
+        {isAdminUser && <NavItem href="/settings?tab=approvals" label={pendingApprovals > 0 ? `Aprovações (${pendingApprovals})` : 'Configurações'} icon={Settings} />}
       </div>
 
       {/* Collapse toggle (desktop only) */}

@@ -107,3 +107,15 @@ export async function getAuthMember(): Promise<AuthMember | null> {
 export function isAdmin(role: string): boolean {
   return role === 'owner' || role === 'admin';
 }
+
+/**
+ * Returns the authenticated member only if approved.
+ * Admin/owner bypass approval check.
+ */
+export async function getApprovedMember(): Promise<AuthMember | null> {
+  const auth = await getAuthMember();
+  if (!auth) return null;
+  if (isAdmin(auth.role)) return auth;
+  if (!auth.is_approved) return null;
+  return auth;
+}
