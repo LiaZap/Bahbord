@@ -5,24 +5,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import {
-  LayoutDashboard, Columns3, List, Inbox, Zap, Search, Settings,
-  ChevronDown, Menu, X, CalendarDays, Clock, ChevronRight, PanelLeftClose, PanelLeft,
+  LayoutDashboard, Columns3, Search, Settings,
+  Menu, X, ChevronRight, PanelLeftClose, PanelLeft,
   FolderKanban, History, Filter, Users, BookOpen
 } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import ChangelogPanel from '@/components/changelog/ChangelogPanel';
 
-const mainNavBase = [
-  { href: '/board', label: 'Quadro', icon: Columns3 },
-  { href: '/list', label: 'Lista', icon: List },
-  { href: '/backlog', label: 'Backlog', icon: Inbox },
-];
-
-const planningNav = [
-  { href: '/sprints', label: 'Sprints', icon: Zap },
-  { href: '/timeline', label: 'Cronograma', icon: CalendarDays },
-  { href: '/timesheet', label: 'Timesheet', icon: Clock },
-];
 
 // Context para outros componentes saberem se sidebar está collapsed
 const SidebarContext = createContext<{ collapsed: boolean }>({ collapsed: false });
@@ -32,7 +21,6 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [planningOpen, setPlanningOpen] = useState(true);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [projects, setProjects] = useState<Array<{ id: string; name: string; prefix: string; color: string }>>([]);
   const [boards, setBoards] = useState<Array<{ id: string; name: string; type: string; project_id: string }>>([]);
@@ -198,29 +186,6 @@ export default function Sidebar() {
         {isAdminUser && <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />}
         {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
 
-        {!collapsed && (
-          <div className="pt-2 pb-0.5">
-            <span className="px-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Visualizações</span>
-          </div>
-        )}
-        {collapsed && <div className="my-2 mx-2 h-px bg-white/[0.06]" />}
-        {mainNavBase.map((item) => {
-          const boardParam = currentBoardId ? `?board_id=${currentBoardId}` : '';
-          return <NavItem key={item.href} {...item} href={`${item.href}${boardParam}`} />;
-        })}
-
-        {isAdminUser && (!collapsed ? (
-          <button
-            onClick={() => setPlanningOpen(!planningOpen)}
-            className="mt-2 flex w-full items-center gap-1 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600 hover:text-slate-400"
-          >
-            <ChevronRight size={11} className={cn('transition-transform', planningOpen && 'rotate-90')} />
-            Planejamento
-          </button>
-        ) : (
-          <div className="my-2 mx-2 h-px bg-white/[0.06]" />
-        ))}
-        {isAdminUser && (collapsed || planningOpen) && planningNav.map((item) => <NavItem key={item.href} {...item} />)}
       </nav>
 
       {/* Aguardando aprovação */}

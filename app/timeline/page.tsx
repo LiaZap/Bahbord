@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
 import TimelineView from '@/components/timeline/TimelineView';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 
@@ -37,6 +38,7 @@ export default async function TimelinePage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
+        <ViewTabsWrapper />
         <main className="flex-1 overflow-hidden">
           <TimelineView
             tickets={ticketsResult.rows as any[]}

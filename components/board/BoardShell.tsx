@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState, createContext, useContext } from 'react';
+import { useRef, useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import ViewTabs from '@/components/layout/ViewTabs';
 import CreateTicketModal, { type CreateTicketModalRef } from './CreateTicketModal';
 import TicketDetailModal from '@/components/tickets/TicketDetailModal';
 import RecentBoardTracker from './RecentBoardTracker';
@@ -41,7 +42,15 @@ const statusKeyToName: Record<string, string> = {
 export default function BoardShell({ services, statuses, ticketTypes, children }: BoardShellProps) {
   const modalRef = useRef<CreateTicketModalRef>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
+      const role = data?.member?.role;
+      setIsAdmin(role === 'owner' || role === 'admin');
+    }).catch(() => {});
+  }, []);
 
   function createInColumn(statusKey: string) {
     const statusName = statusKeyToName[statusKey];
@@ -55,6 +64,7 @@ export default function BoardShell({ services, statuses, ticketTypes, children }
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <Header onCreateTicket={() => modalRef.current?.open()} />
+          <ViewTabs isAdmin={isAdmin} />
           <main className="flex-1 overflow-auto p-5">
             <ApprovalGate>{children}</ApprovalGate>
           </main>

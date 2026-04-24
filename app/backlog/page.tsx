@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
+import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
@@ -53,6 +54,7 @@ export default async function BacklogPage() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
+        <ViewTabsWrapper />
         <main className="flex-1 overflow-auto p-6">
           <ApprovalGate>
           <div className="mx-auto max-w-[1200px]">
