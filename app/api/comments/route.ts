@@ -3,6 +3,7 @@ import { query, getDefaultMemberId } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
 import { createNotification, extractMentions } from '@/lib/notifications';
+import { createCommentSchema, validateBody } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
@@ -37,12 +38,11 @@ export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
 
-    const body = await request.json();
-    const { ticket_id, content } = body;
-
-    if (!ticket_id || !content?.trim()) {
-      return NextResponse.json({ error: 'ticket_id e content são obrigatórios' }, { status: 400 });
+    const validation = await validateBody(request, createCommentSchema);
+    if ('error' in validation) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
+    const { ticket_id, content } = validation.data;
 
     // Usar membro autenticado como autor
     let memberId = auth?.id;

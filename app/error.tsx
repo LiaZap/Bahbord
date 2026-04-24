@@ -1,53 +1,34 @@
 'use client';
-
 import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import Link from 'next/link';
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error('BahBoard error:', error);
+    console.error('Root error:', error);
   }, [error]);
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-surface text-primary">
-      <div className="text-center">
-        <div className="mb-4 flex justify-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-danger/10 text-danger">
-            <AlertTriangle size={28} />
-          </div>
-        </div>
-        <h1 className="text-2xl font-bold text-white">Algo deu errado</h1>
-        <p className="mt-2 max-w-md text-sm text-slate-400">
-          Ocorreu um erro inesperado. Tente recarregar a página ou voltar ao dashboard.
-        </p>
-        {error.message && (
-          <p className="mt-3 rounded-lg border border-border/40 bg-surface2 px-4 py-2 text-xs font-mono text-slate-500">
-            {error.message}
-          </p>
-        )}
-        <div className="mt-8 flex items-center justify-center gap-3">
-          <button
-            onClick={reset}
-            className="flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-500"
-          >
-            <RefreshCw size={16} />
-            Tentar novamente
-          </button>
-          <Link
-            href="/"
-            className="flex items-center gap-2 rounded-lg border border-border/40 bg-surface2 px-5 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-input/40"
-          >
-            <Home size={16} />
-            Dashboard
-          </Link>
-        </div>
+    <div className="flex h-screen flex-col items-center justify-center bg-surface p-6 text-center">
+      <div className="rounded-full bg-red-500/10 p-4 mb-5">
+        <AlertTriangle size={40} className="text-red-400" />
+      </div>
+      <h2 className="text-2xl font-bold text-primary">Algo deu errado</h2>
+      <p className="mt-2 max-w-md text-sm text-secondary">
+        Ocorreu um erro inesperado. Tente recarregar a página ou voltar ao dashboard.
+      </p>
+      {error.digest && (
+        <code className="mt-4 rounded bg-surface2 px-3 py-1.5 text-[11px] text-slate-500">
+          ID: {error.digest}
+        </code>
+      )}
+      <div className="mt-6 flex gap-3">
+        <button onClick={reset} className="btn-premium btn-primary">
+          <RefreshCw size={14} /> Tentar novamente
+        </button>
+        <Link href="/" className="btn-premium btn-secondary">
+          <Home size={14} /> Dashboard
+        </Link>
       </div>
     </div>
   );

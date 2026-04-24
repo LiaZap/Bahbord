@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { createProjectSchema } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
@@ -75,15 +76,24 @@ export async function POST(request: Request) {
     if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
-    const body = await request.json();
-    const { name, prefix, description, color, template_id } = body;
 
-    if (!name || !prefix) {
-      return NextResponse.json({ error: 'name e prefix são obrigatórios' }, { status: 400 });
+    // Capture raw body to preserve non-schema fields (e.g. requester_id)
+    let rawBody: Record<string, unknown>;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
+    const parsed = createProjectSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+    const { name, prefix, description, color, template_id } = parsed.data;
+
     const workspaceId = await getDefaultWorkspaceId();
-    const requesterId = body.requester_id;
+    const requesterId = typeof rawBody.requester_id === 'string' ? rawBody.requester_id : undefined;
 
     // Se requester_id informado, verificar se é owner/admin da org
     // Se não for, criar pedido de aprovação ao invés de criar direto

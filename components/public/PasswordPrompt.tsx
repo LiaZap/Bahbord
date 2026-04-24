@@ -19,7 +19,7 @@ export default function PasswordPrompt({ slug, error }: PasswordPromptProps) {
     if (!password.trim()) return;
     setSubmitting(true);
     const target = `/share/${slug}?auth=${encodeURIComponent(password.trim())}`;
-    router.push(target);
+    router.push(target as any);
   }
 
   return (

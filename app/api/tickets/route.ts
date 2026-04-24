@@ -4,6 +4,7 @@ import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
 import { createNotification } from '@/lib/notifications';
 import { runAutomations } from '@/lib/automations';
+import { createTicketSchema } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
@@ -133,7 +134,25 @@ export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
 
-    const body = await request.json();
+    // Capture raw JSON first to preserve non-schema fields (e.g. workspace_slug)
+    let rawBody: Record<string, unknown>;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const parsed = createTicketSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+
+    // Merge validated/typed fields with raw body so workspace_slug (and other
+    // auxiliary fields) remain accessible while the schema-validated fields
+    // are guaranteed well-formed.
+    const body: Record<string, unknown> = { ...rawBody, ...parsed.data };
+    const workspaceSlug = typeof rawBody.workspace_slug === 'string' ? rawBody.workspace_slug : undefined;
 
     // Auto-set reporter to authenticated user if not provided
     if (!body.reporter_id && auth?.id) {
@@ -173,8 +192,8 @@ export async function POST(request: Request) {
         }
       }
     }
-    const workspaceId = body.workspace_slug
-      ? (await query(`SELECT id FROM workspaces WHERE slug = $1`, [body.workspace_slug])).rows[0]?.id
+    const workspaceId = workspaceSlug
+      ? (await query(`SELECT id FROM workspaces WHERE slug = $1`, [workspaceSlug])).rows[0]?.id
       : await getDefaultWorkspaceId();
 
     if (!workspaceId) {

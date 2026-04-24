@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { createSprintSchema, validateBody } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
@@ -47,12 +48,12 @@ export async function POST(request: Request) {
     if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
-    const body = await request.json();
-    const { name, goal, start_date, end_date, project_id } = body;
 
-    if (!name?.trim()) {
-      return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
+    const validation = await validateBody(request, createSprintSchema);
+    if ('error' in validation) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
+    const { name, goal, start_date, end_date, project_id } = validation.data;
 
     const wsId = await getDefaultWorkspaceId();
 

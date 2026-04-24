@@ -9,6 +9,7 @@
     "build:local": "set DATABASE_URL=postgres://humaniza:humaniza123@localhost:5432/bahboard&& next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },

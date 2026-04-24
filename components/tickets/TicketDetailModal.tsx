@@ -10,6 +10,7 @@ import SubtaskList from './SubtaskList';
 import LinkedTickets from './LinkedTickets';
 import ActivityTimeline from './ActivityTimeline';
 import DevLinks from './DevLinks';
+import GitHubLinks from './GitHubLinks';
 import TicketSidebar from './TicketSidebar';
 import TimeTracker from './TimeTracker';
 import AttachmentList from './AttachmentList';
@@ -327,6 +328,11 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
                     {/* Desenvolvimento */}
                     <section className="mb-6 border-t border-white/[0.04] pt-5">
                       <DevLinks ticketId={ticket.id} />
+                    </section>
+
+                    {/* GitHub (webhook-synced) */}
+                    <section className="mb-6 border-t border-white/[0.04] pt-5">
+                      <GitHubLinks ticketId={ticket.id} />
                     </section>
 
                     {/* Acessos */}
