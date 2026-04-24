@@ -141,7 +141,21 @@ export default function Sidebar() {
               return (
                 <div key={p.id}>
                   <button
-                    onClick={() => setProject(p.id)}
+                    onClick={() => {
+                      setProject(p.id);
+                      // Se o projeto já está ativo, só colapsa
+                      if (active) {
+                        setProject('');
+                        return;
+                      }
+                      // Abre o primeiro board do projeto automaticamente
+                      const firstBoard = projectBoards[0];
+                      if (firstBoard) {
+                        setBoard(firstBoard.id);
+                        setMobileOpen(false);
+                        window.location.href = `/board?board_id=${firstBoard.id}`;
+                      }
+                    }}
                     className={cn(
                       'flex w-full items-center gap-2 rounded-md px-2.5 py-[6px] text-[12px] font-medium transition',
                       active ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
