@@ -39,3 +39,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
+    const { member_id, board_id } = await request.json();
+
+    if (!member_id || !board_id) {
+      return NextResponse.json({ error: 'member_id e board_id são obrigatórios' }, { status: 400 });
+    }
+
+    await query(
+      `DELETE FROM board_roles WHERE member_id = $1 AND board_id = $2`,
+      [member_id, board_id]
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /api/members/assign-board error:', err);
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  }
+}

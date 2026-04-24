@@ -27,6 +27,16 @@ export default function MembersSettings() {
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedBoard, setSelectedBoard] = useState('');
   const [selectedBoardRole, setSelectedBoardRole] = useState('member');
+  const [memberBoards, setMemberBoards] = useState<Array<{ board_id: string; board_name: string; project_name: string; role: string }>>([]);
+
+  async function loadMemberBoards(memberId: string) {
+    try {
+      const res = await fetch(`/api/members/boards?member_id=${memberId}`);
+      if (res.ok) {
+        setMemberBoards(await res.json());
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     Promise.all([
@@ -49,13 +59,25 @@ export default function MembersSettings() {
       body: JSON.stringify({ member_id: assignBoardMemberId, board_id: selectedBoard, role: selectedBoardRole }),
     });
     if (res.ok) {
-      alert('Acesso atribuído com sucesso');
-      setAssignBoardMemberId(null);
+      // Reload member boards to show the newly added one
+      if (assignBoardMemberId) await loadMemberBoards(assignBoardMemberId);
       setSelectedBoard('');
-      setSelectedBoardRole('member');
     } else {
       const err = await res.json().catch(() => ({}));
       alert(err.error || 'Erro ao atribuir');
+    }
+  }
+
+  async function handleRemoveMemberBoard(boardId: string) {
+    if (!assignBoardMemberId) return;
+    if (!confirm('Remover acesso a este board?')) return;
+    const res = await fetch('/api/members/assign-board', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: assignBoardMemberId, board_id: boardId }),
+    });
+    if (res.ok) {
+      await loadMemberBoards(assignBoardMemberId);
     }
   }
 
@@ -167,7 +189,7 @@ export default function MembersSettings() {
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => setAssignBoardMemberId(m.id)}
+                      onClick={() => { setAssignBoardMemberId(m.id); loadMemberBoards(m.id); }}
                       title="Atribuir acesso a board"
                       className="text-slate-600 transition hover:text-accent"
                     >
@@ -192,9 +214,33 @@ export default function MembersSettings() {
             <p className="text-sm text-slate-400 mb-4">
               Membro: <span className="font-medium text-slate-200">{members.find(m => m.id === assignBoardMemberId)?.display_name}</span>
             </p>
+
+            {/* Current board accesses */}
+            {memberBoards.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <label className="block text-xs font-medium text-slate-400">Acessos atuais</label>
+                <div className="space-y-1">
+                  {memberBoards.map((mb) => (
+                    <div key={mb.board_id} className="flex items-center justify-between rounded-md border border-border/40 bg-surface px-3 py-2">
+                      <div className="text-sm">
+                        <span className="font-medium text-slate-200">{mb.board_name}</span>
+                        <span className="text-slate-500 text-xs"> · {mb.project_name} · {mb.role}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveMemberBoard(mb.board_id)}
+                        className="text-slate-600 hover:text-danger text-xs"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Board</label>
+                <label className="mb-1 block text-xs font-medium text-slate-400">Adicionar novo board</label>
                 <select
                   value={selectedBoard}
                   onChange={(e) => setSelectedBoard(e.target.value)}
@@ -228,11 +274,11 @@ export default function MembersSettings() {
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setAssignBoardMemberId(null)} className="btn-premium btn-secondary">
-                Cancelar
+              <button onClick={() => { setAssignBoardMemberId(null); setMemberBoards([]); }} className="btn-premium btn-secondary">
+                Fechar
               </button>
               <button onClick={handleAssignBoard} disabled={!selectedBoard} className="btn-premium btn-primary disabled:opacity-50">
-                Atribuir
+                Adicionar board
               </button>
             </div>
           </div>
