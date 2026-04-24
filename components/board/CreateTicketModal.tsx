@@ -81,10 +81,27 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
       if (!isOpen) return;
       async function load() {
         try {
+          // Resolve project_id from context or board_id
+          let projectIdForSprints: string | null = currentProjectId || null;
+          const boardIdForLookup = currentBoardId || urlBoardId;
+          if (!projectIdForSprints && boardIdForLookup) {
+            try {
+              const bRes = await fetch(`/api/options?type=boards`);
+              if (bRes.ok) {
+                const allBoards = await bRes.json();
+                const match = allBoards.find((b: any) => b.id === boardIdForLookup);
+                if (match?.project_id) projectIdForSprints = match.project_id;
+              }
+            } catch {}
+          }
+          const sprintsUrl = projectIdForSprints
+            ? `/api/options?type=sprints&project_id=${projectIdForSprints}`
+            : `/api/options?type=sprints`;
+
           const [mRes, cRes, sRes, svRes, clRes] = await Promise.all([
             fetch('/api/options?type=members'),
             fetch('/api/options?type=categories'),
-            fetch('/api/options?type=sprints'),
+            fetch(sprintsUrl),
             fetch('/api/options?type=services'),
             fetch('/api/options?type=clients'),
           ]);
