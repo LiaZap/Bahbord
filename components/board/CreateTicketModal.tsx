@@ -277,8 +277,8 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
     const modalTitle = `Criar ${selectedType?.name || 'Ticket'}`;
 
     const selectClass = 'input-premium w-full';
-    const labelClass = 'mb-1.5 block text-[12px] font-semibold text-slate-400';
-    const requiredDot = <span className="text-red-400 ml-0.5">*</span>;
+    const labelClass = 'mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-secondary';
+    const requiredDot = <span className="text-[var(--danger)] ml-0.5">*</span>;
 
     return (
       <AnimatePresence>
@@ -289,25 +289,25 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[4vh] backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-[4vh]"
             onClick={() => setIsOpen(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: -8 }}
+              initial={{ opacity: 0, scale: 0.98, y: -6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: -8 }}
+              exit={{ opacity: 0, scale: 0.98, y: -6 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="glass flex max-h-[92vh] w-full max-w-[520px] mx-3 md:mx-0 flex-col rounded-2xl shadow-2xl shadow-black/40"
+              className="flex max-h-[92vh] w-full max-w-[540px] mx-3 md:mx-0 flex-col rounded-lg border border-[var(--card-border)] bg-[var(--modal-bg)] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
-                <h2 className="text-[16px] font-semibold text-white">{modalTitle}</h2>
-                <div className="flex items-center gap-1">
-                  <button type="button" className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><Minus size={14} /></button>
-                  <button type="button" className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><Maximize2 size={14} /></button>
-                  <button type="button" className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><MoreHorizontal size={14} /></button>
-                  <button type="button" onClick={() => setIsOpen(false)} className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"><X size={14} /></button>
+              {/* Header — editorial */}
+              <div className="flex shrink-0 items-center justify-between border-b border-[var(--card-border)] px-5 py-3">
+                <h2 className="font-serif text-[18px] font-medium text-primary tracking-tight">{modalTitle}</h2>
+                <div className="flex items-center gap-0.5">
+                  <button type="button" className="rounded p-1.5 text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"><Minus size={13} /></button>
+                  <button type="button" className="rounded p-1.5 text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"><Maximize2 size={13} /></button>
+                  <button type="button" className="rounded p-1.5 text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"><MoreHorizontal size={13} /></button>
+                  <button type="button" onClick={() => setIsOpen(false)} className="rounded p-1.5 text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"><X size={13} /></button>
                 </div>
               </div>
 
@@ -322,13 +322,13 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     </div>
                   )}
 
-                  <p className="text-[11px] text-slate-500">Os campos obrigatórios estão marcados com asterisco <span className="text-red-400">*</span></p>
+                  <p className="text-[11px] text-secondary">Os campos obrigatórios estão marcados com asterisco <span className="text-[var(--danger)]">*</span></p>
 
                   {/* Espaço */}
                   <div>
                     <label className={labelClass}>Espaço {requiredDot}</label>
-                    <div className="flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[13px] text-slate-300">
-                      <img src="/logo-bahtech.svg" alt="" className="h-3.5 object-contain" />
+                    <div className="flex items-center gap-2 rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-3 py-2 text-[13px] text-primary">
+                      <img src="/logo-bahtech.svg" alt="" className="h-3.5 object-contain dark:invert-0 invert" />
                       Bah!Company (BAH)
                     </div>
                   </div>
@@ -363,7 +363,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      className="w-full rounded-md border-2 border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-[14px] font-medium text-white outline-none transition focus:border-blue-500/60"
+                      className="input-premium w-full !text-[14px] !font-medium !py-2.5"
                       placeholder="Resumo do ticket"
                       autoFocus
                     />
@@ -494,13 +494,13 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 flex items-center justify-between border-t border-white/[0.06] bg-[var(--modal-bg)] px-5 py-3">
-                  <label className="flex items-center gap-2 text-[13px] text-slate-400 cursor-pointer">
+                <div className="sticky bottom-0 flex items-center justify-between border-t border-[var(--card-border)] bg-[var(--modal-bg)] px-5 py-2.5">
+                  <label className="flex items-center gap-2 text-[12.5px] text-secondary cursor-pointer">
                     <input
                       type="checkbox"
                       checked={createAnother}
                       onChange={(e) => setCreateAnother(e.target.checked)}
-                      className="rounded border-white/[0.1] bg-white/[0.03]"
+                      className="rounded border-[var(--card-border)] bg-[var(--overlay-subtle)] accent-[var(--accent)]"
                     />
                     Criar outro
                   </label>
@@ -508,16 +508,16 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                     <button
                       type="button"
                       onClick={() => setIsOpen(false)}
-                      className="rounded-md px-4 py-2 text-[13px] font-medium text-slate-400 transition hover:bg-white/[0.06] hover:text-slate-200"
+                      className="btn-premium btn-ghost"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="rounded-md bg-blue-600 px-5 py-2 text-[13px] font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-500 active:scale-[0.98] disabled:opacity-50"
+                      className="btn-premium btn-primary disabled:opacity-50"
                     >
-                      {isSubmitting ? 'Criando...' : 'Criar'}
+                      {isSubmitting ? 'Criando...' : 'Criar ticket'}
                     </button>
                   </div>
                 </div>
