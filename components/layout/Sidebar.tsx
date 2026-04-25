@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard, Search, Settings, Bell,
   Menu, X, PanelLeftClose, PanelLeft, Plus,
-  FolderKanban, History, Filter, Users, BookOpen, FileBarChart, Columns3, Zap, Clock
+  FolderKanban, History, Filter, Users, BookOpen, FileBarChart, Columns3, Zap, Clock,
+  Inbox, Star, Calendar
 } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import ChangelogPanel from '@/components/changelog/ChangelogPanel';
@@ -34,6 +35,7 @@ export default function Sidebar() {
   const [me, setMe] = useState<MeData | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [pendingApprovals, setPendingApprovals] = useState<number>(0);
+  const [counts, setCounts] = useState<{ inbox: number; my_tasks: number; this_week: number }>({ inbox: 0, my_tasks: 0, this_week: 0 });
   const { currentProjectId, setProject, setBoard } = useProject();
 
   const isAdminUser = me?.role === 'owner' || me?.role === 'admin';
@@ -70,6 +72,14 @@ export default function Sidebar() {
               const data = await optRes.json();
               setMemberCount(Array.isArray(data) ? data.length : 0);
             }
+          } catch {}
+        }
+
+        // Personal counts (inbox / my tasks / this week)
+        if (mid) {
+          try {
+            const cRes = await fetch('/api/personal/counts');
+            if (cRes.ok) setCounts(await cRes.json());
           } catch {}
         }
       } catch {}
@@ -181,6 +191,9 @@ export default function Sidebar() {
         {/* Main nav */}
         <nav className="px-3 space-y-0.5">
           {isAdminUser && <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />}
+          <NavItem href="/inbox" label="Caixa de entrada" icon={Inbox} badge={counts.inbox} />
+          <NavItem href="/my-tasks" label="Minhas tarefas" icon={Star} badge={counts.my_tasks} />
+          <NavItem href="/this-week" label="Esta semana" icon={Calendar} badge={counts.this_week} />
           {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
           {isAdminUser && <NavItem href="/reports" label="Relatórios" icon={FileBarChart} />}
         </nav>
