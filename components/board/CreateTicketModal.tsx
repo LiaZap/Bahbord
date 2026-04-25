@@ -289,7 +289,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 pt-[4vh]"
+            className="fixed inset-0 z-50 flex items-stretch md:items-start justify-center bg-black/70 md:pt-[4vh]"
             onClick={() => setIsOpen(false)}
           >
             <motion.div
@@ -297,7 +297,7 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: -6 }}
               transition={{ duration: 0.15, ease: 'easeOut' }}
-              className="flex max-h-[92vh] w-full max-w-[540px] mx-3 md:mx-0 flex-col rounded-lg border border-[var(--card-border)] bg-[var(--modal-bg)] overflow-hidden"
+              className="flex max-h-screen md:max-h-[92vh] w-full max-w-[540px] mx-0 md:mx-3 flex-col rounded-none md:rounded-lg border-0 md:border md:border-[var(--card-border)] bg-[var(--modal-bg)] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header — editorial */}

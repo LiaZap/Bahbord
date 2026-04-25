@@ -32,7 +32,7 @@
 .page-title {
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: 36px;
+  font-size: clamp(24px, 5vw, 36px);
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--text-primary);

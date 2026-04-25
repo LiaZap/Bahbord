@@ -196,7 +196,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/70"
+          className="fixed inset-0 z-50 flex items-stretch md:items-start justify-center bg-black/70"
           onClick={onClose}
         >
           <motion.div
@@ -204,7 +204,7 @@ export default function TicketDetailModal({ ticketId, onClose }: TicketDetailMod
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="mt-4 mb-4 md:mt-8 md:mb-8 flex h-[calc(100vh-32px)] md:h-[calc(100vh-64px)] w-full max-w-[1100px] mx-2 md:mx-0 flex-col rounded-lg border border-[var(--card-border)] bg-[var(--modal-bg)] overflow-hidden"
+            className="mt-0 md:mt-8 mb-0 md:mb-8 flex h-screen md:h-[calc(100vh-64px)] w-full max-w-[1100px] mx-0 md:mx-2 flex-col rounded-none md:rounded-lg border-0 md:border md:border-[var(--card-border)] bg-[var(--modal-bg)] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Loading */}

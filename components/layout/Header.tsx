@@ -76,15 +76,15 @@ export default function Header({ onCreateTicket }: HeaderProps) {
 
   return (
     <header role="banner" className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--card-border)] bg-[var(--bg-primary)] px-4 z-10">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 pl-10 md:pl-0 text-[12.5px]">
-        <span className="text-secondary">Bah!Company</span>
-        <span className="text-[var(--text-tertiary)]">/</span>
-        <span className="text-primary font-medium">{pageTitle}</span>
+      {/* Breadcrumb — collapse no mobile */}
+      <div className="flex items-center gap-2 pl-12 md:pl-0 text-[12.5px] min-w-0 flex-1">
+        <span className="text-secondary hidden sm:inline">Bah!Company</span>
+        <span className="text-[var(--text-tertiary)] hidden sm:inline">/</span>
+        <span className="text-primary font-medium truncate">{pageTitle}</span>
         {pathname === '/board' && boardName && (
           <>
-            <span className="text-[var(--text-tertiary)]">/</span>
-            <span className="text-secondary truncate max-w-[200px]">{boardName}</span>
+            <span className="text-[var(--text-tertiary)] hidden sm:inline">/</span>
+            <span className="text-secondary truncate max-w-[140px] md:max-w-[200px] hidden sm:inline">{boardName}</span>
           </>
         )}
       </div>
