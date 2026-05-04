@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Clock, User, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -30,6 +31,10 @@ type Period = '7' | '14' | '30';
 type BillableFilter = 'all' | 'billable' | 'non_billable';
 
 export default function TimesheetView() {
+  const searchParams = useSearchParams();
+  const boardId = searchParams.get('board_id');
+  const projectIdParam = searchParams.get('project_id');
+
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [summary, setSummary] = useState<MemberSummary[]>([]);
   const [period, setPeriod] = useState<Period>('7');
@@ -39,7 +44,24 @@ export default function TimesheetView() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/timesheet?period=${period}`);
+      // Resolve project_id a partir do board_id se necessário
+      let projectId = projectIdParam;
+      if (!projectId && boardId) {
+        try {
+          const bRes = await fetch('/api/options?type=boards');
+          if (bRes.ok) {
+            const allBoards = await bRes.json();
+            const match = allBoards.find((b: { id: string; project_id: string }) => b.id === boardId);
+            if (match?.project_id) projectId = match.project_id;
+          }
+        } catch {}
+      }
+
+      const params = new URLSearchParams({ period });
+      if (projectId) params.set('project_id', projectId);
+      else if (boardId) params.set('board_id', boardId);
+
+      const res = await fetch(`/api/timesheet?${params}`);
       if (res.ok) {
         const data = await res.json();
         setEntries(data.entries);
@@ -47,7 +69,7 @@ export default function TimesheetView() {
       }
     } catch (err) { console.error('Erro ao carregar timesheet:', err); }
     finally { setLoading(false); }
-  }, [period]);
+  }, [period, boardId, projectIdParam]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
