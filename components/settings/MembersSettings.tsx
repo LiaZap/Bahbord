@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Trash2, RefreshCw, X, ChevronDown, ChevronRight, FolderOpen, UserMinus } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, X, ChevronDown, ChevronRight, FolderOpen, UserMinus, Plus } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -367,94 +367,79 @@ export default function MembersSettings() {
         </div>
 
         {/* Projetos coluna */}
-        <div className="flex flex-wrap items-center gap-1 min-w-0">
-          {showProjectsColumn ? (
-            <>
-              {m.projects.map((pj) => (
-                <span
-                  key={pj.project_id}
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
-                  style={{
-                    backgroundColor: (pj.project_color || '#3b6cf5') + '20',
-                    color: pj.project_color || '#3b6cf5',
-                  }}
-                >
-                  {pj.project_name}
-                  <button
-                    onClick={() => handleRemoveProject(m.id, pj.project_id)}
-                    className="opacity-60 hover:opacity-100"
-                    aria-label={`Remover ${pj.project_name}`}
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
-              <select
-                value=""
-                onChange={(e) => handleAddProject(m.id, e.target.value)}
-                className="input-premium !py-0.5 !px-1.5 text-[11px] text-secondary"
-              >
-                <option value="">+ projeto</option>
-                {projects
-                  .filter((p) => !m.projects.find((pj) => pj.project_id === p.id))
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </select>
-            </>
-          ) : (
-            sectionProjectId && (
+        <div className="flex items-center gap-1 min-w-0">
+          {(() => {
+            const visibleProjects = showProjectsColumn
+              ? m.projects
+              : m.projects.filter((pj) => pj.project_id !== sectionProjectId);
+            const availableToAdd = projects.filter(
+              (p) => !m.projects.find((pj) => pj.project_id === p.id)
+            );
+
+            return (
               <>
-                {/* Outros projetos do membro (exceto o atual da section) */}
-                {m.projects.filter((pj) => pj.project_id !== sectionProjectId).map((pj) => (
-                  <span
-                    key={pj.project_id}
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
-                    style={{
-                      backgroundColor: (pj.project_color || '#3b6cf5') + '20',
-                      color: pj.project_color || '#3b6cf5',
-                    }}
-                  >
-                    {pj.project_name}
-                    <button
-                      onClick={() => handleRemoveProject(m.id, pj.project_id)}
-                      className="opacity-60 hover:opacity-100"
-                      aria-label={`Remover ${pj.project_name}`}
+                {/* Chips dos projetos (com truncate) */}
+                <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
+                  {visibleProjects.map((pj) => (
+                    <span
+                      key={pj.project_id}
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] font-medium shrink-0 max-w-[110px]"
+                      style={{
+                        backgroundColor: (pj.project_color || '#3b6cf5') + '20',
+                        color: pj.project_color || '#3b6cf5',
+                      }}
+                      title={pj.project_name}
                     >
-                      <X size={10} />
+                      <span className="truncate">{pj.project_name}</span>
+                      <button
+                        onClick={() => handleRemoveProject(m.id, pj.project_id)}
+                        className="shrink-0 opacity-50 hover:opacity-100"
+                        aria-label={`Remover ${pj.project_name}`}
+                      >
+                        <X size={9} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Botão "+" pra adicionar (icon-only, abre native select) */}
+                {availableToAdd.length > 0 && (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-tertiary)] hover:bg-[var(--overlay-hover)] hover:text-[var(--accent)]"
+                      title="Adicionar a outro projeto"
+                    >
+                      <Plus size={11} />
                     </button>
-                  </span>
-                ))}
-                {/* Dropdown pra adicionar a outro projeto */}
-                <select
-                  value=""
-                  onChange={(e) => handleAddProject(m.id, e.target.value)}
-                  className="input-premium !py-0.5 !px-1.5 text-[11px] text-secondary"
-                  title="Adicionar a outro projeto"
-                >
-                  <option value="">+ projeto</option>
-                  {projects
-                    .filter((p) => !m.projects.find((pj) => pj.project_id === p.id))
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-                {/* Remover deste projeto (em ícone só) */}
-                <button
-                  onClick={() => handleRemoveProject(m.id, sectionProjectId)}
-                  className="rounded p-1 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
-                  title="Remover deste projeto"
-                  aria-label="Remover deste projeto"
-                >
-                  <UserMinus size={11} />
-                </button>
+                    <select
+                      value=""
+                      onChange={(e) => handleAddProject(m.id, e.target.value)}
+                      className="absolute inset-0 cursor-pointer opacity-0"
+                      aria-label="Adicionar a outro projeto"
+                    >
+                      <option value="">Adicionar projeto…</option>
+                      {availableToAdd.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Remover deste projeto (só em sections com sectionProjectId) */}
+                {sectionProjectId && (
+                  <button
+                    onClick={() => handleRemoveProject(m.id, sectionProjectId)}
+                    className="shrink-0 rounded p-1 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                    title="Remover deste projeto"
+                    aria-label="Remover deste projeto"
+                  >
+                    <UserMinus size={11} />
+                  </button>
+                )}
               </>
-            )
-          )}
+            );
+          })()}
         </div>
 
         {/* Time Tracking toggle */}
