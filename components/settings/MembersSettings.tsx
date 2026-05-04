@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { UserPlus, Trash2, RefreshCw, X, ChevronDown, ChevronRight, FolderOpen, Plus } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useConfirm } from '@/components/ui/ConfirmModal';
@@ -48,21 +49,26 @@ export default function MembersSettings() {
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [openProjectsPopover, setOpenProjectsPopover] = useState<string | null>(null);
+  const [openPopover, setOpenPopover] = useState<{ key: string; rect: DOMRect } | null>(null);
 
   // Click-outside fecha popover
   useEffect(() => {
     function onClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
-      if (!target.closest('[data-projects-popover]')) {
-        setOpenProjectsPopover(null);
+      if (!target.closest('[data-projects-popover]') && !target.closest('[data-projects-popover-portal]')) {
+        setOpenPopover(null);
       }
     }
-    if (openProjectsPopover) {
+    function onScroll() { setOpenPopover(null); }
+    if (openPopover) {
       document.addEventListener('click', onClick);
-      return () => document.removeEventListener('click', onClick);
+      window.addEventListener('scroll', onScroll, true);
+      return () => {
+        document.removeEventListener('click', onClick);
+        window.removeEventListener('scroll', onScroll, true);
+      };
     }
-  }, [openProjectsPopover]);
+  }, [openPopover]);
 
   async function loadAll() {
     setLoadError(null);
@@ -382,122 +388,54 @@ export default function MembersSettings() {
         </div>
 
         {/* Projetos coluna */}
-        <div className="relative" data-projects-popover>
+        <div data-projects-popover>
           {(() => {
             const popoverKey = `${sectionProjectId || 'flat'}-${m.id}`;
-            const isOpen = openProjectsPopover === popoverKey;
-            const availableToAdd = projects.filter(
-              (p) => !m.projects.find((pj) => pj.project_id === p.id)
-            );
+            const isOpen = openPopover?.key === popoverKey;
 
             return (
-              <>
-                {/* Botão trigger: mostra contagem + dots coloridos dos projetos */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOpenProjectsPopover(isOpen ? null : popoverKey);
-                  }}
-                  className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium transition ${
-                    isOpen
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-primary'
-                      : m.projects.length === 0
-                        ? 'border-dashed border-[var(--card-border)] text-secondary hover:border-[var(--accent)]/40 hover:text-primary'
-                        : 'border-[var(--card-border)] text-primary hover:border-[var(--accent)]/40'
-                  }`}
-                >
-                  {m.projects.length === 0 ? (
-                    <>
-                      <Plus size={11} />
-                      <span>Atribuir</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex -space-x-0.5">
-                        {m.projects.slice(0, 3).map((pj) => (
-                          <span
-                            key={pj.project_id}
-                            className="h-2 w-2 rounded-full ring-1 ring-[var(--card-bg)]"
-                            style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
-                          />
-                        ))}
-                      </div>
-                      <span className="tabular-nums">
-                        {m.projects.length} {m.projects.length === 1 ? 'projeto' : 'projetos'}
-                      </span>
-                      <ChevronDown size={9} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                    </>
-                  )}
-                </button>
-
-                {/* Popover */}
-                {isOpen && (
-                  <div
-                    className="absolute z-30 left-0 top-full mt-1 w-[260px] rounded-md border border-[var(--card-border)] bg-[var(--modal-bg)] shadow-xl shadow-black/40"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Header */}
-                    <div className="border-b border-[var(--card-border)] px-3 py-2">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-secondary">Projetos do membro</p>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isOpen) {
+                    setOpenPopover(null);
+                  } else {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setOpenPopover({ key: popoverKey, rect });
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium transition ${
+                  isOpen
+                    ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-primary'
+                    : m.projects.length === 0
+                      ? 'border-dashed border-[var(--card-border)] text-secondary hover:border-[var(--accent)]/40 hover:text-primary'
+                      : 'border-[var(--card-border)] text-primary hover:border-[var(--accent)]/40'
+                }`}
+              >
+                {m.projects.length === 0 ? (
+                  <>
+                    <Plus size={11} />
+                    <span>Atribuir</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex -space-x-0.5">
+                      {m.projects.slice(0, 3).map((pj) => (
+                        <span
+                          key={pj.project_id}
+                          className="h-2 w-2 rounded-full ring-1 ring-[var(--card-bg)]"
+                          style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
+                        />
+                      ))}
                     </div>
-
-                    {/* Lista de projetos */}
-                    <div className="max-h-[200px] overflow-y-auto">
-                      {m.projects.length === 0 ? (
-                        <p className="px-3 py-3 text-[12px] text-secondary italic">Nenhum projeto atribuído</p>
-                      ) : (
-                        m.projects.map((pj) => (
-                          <div
-                            key={pj.project_id}
-                            className={`flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-[var(--overlay-subtle)] ${
-                              pj.project_id === sectionProjectId ? 'bg-[var(--accent)]/5' : ''
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className="h-2 w-2 rounded-full shrink-0"
-                                style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
-                              />
-                              <span className="text-[12px] text-primary truncate">{pj.project_name}</span>
-                              {pj.project_id === sectionProjectId && (
-                                <span className="text-[9px] uppercase tracking-wider text-[var(--accent)] shrink-0">atual</span>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleRemoveProject(m.id, pj.project_id)}
-                              className="shrink-0 rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                              title="Remover deste projeto"
-                              aria-label={`Remover ${pj.project_name}`}
-                            >
-                              <X size={11} />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Adicionar a outro projeto */}
-                    {availableToAdd.length > 0 && (
-                      <div className="border-t border-[var(--card-border)] p-2">
-                        <select
-                          value=""
-                          onChange={(e) => {
-                            handleAddProject(m.id, e.target.value);
-                            setOpenProjectsPopover(null);
-                          }}
-                          className="input-premium w-full text-[12px]"
-                        >
-                          <option value="">+ Adicionar a outro projeto…</option>
-                          {availableToAdd.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                  </div>
+                    <span className="tabular-nums">
+                      {m.projects.length} {m.projects.length === 1 ? 'projeto' : 'projetos'}
+                    </span>
+                    <ChevronDown size={9} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </>
                 )}
-              </>
+              </button>
             );
           })()}
         </div>
@@ -765,6 +703,98 @@ export default function MembersSettings() {
           </div>
         )}
       </div>
+
+      {/* Popover de projetos (portal — fora do overflow das sections) */}
+      {openPopover && typeof window !== 'undefined' && createPortal(
+        (() => {
+          const memberId = openPopover.key.split('-').slice(1).join('-');
+          const member = members.find((mm) => mm.id === memberId);
+          if (!member) return null;
+          const sectionId = openPopover.key.split('-')[0];
+          const sectionProjectIdActual = sectionId !== 'flat' ? sectionId : undefined;
+          const availableToAdd = projects.filter(
+            (p) => !member.projects.find((pj) => pj.project_id === p.id)
+          );
+          // Posiciona abaixo do botão; se não couber, acima
+          const POPOVER_HEIGHT = 320;
+          const spaceBelow = window.innerHeight - openPopover.rect.bottom;
+          const above = spaceBelow < POPOVER_HEIGHT && openPopover.rect.top > POPOVER_HEIGHT;
+          const top = above
+            ? openPopover.rect.top - 4
+            : openPopover.rect.bottom + 4;
+          const left = Math.min(
+            openPopover.rect.left,
+            window.innerWidth - 280
+          );
+          return (
+            <div
+              data-projects-popover-portal
+              className="fixed z-[100] w-[260px] rounded-md border border-[var(--card-border)] bg-[var(--modal-bg)] shadow-2xl shadow-black/50"
+              style={{
+                top: above ? undefined : top,
+                bottom: above ? window.innerHeight - top : undefined,
+                left,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-[var(--card-border)] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-secondary">Projetos do membro</p>
+              </div>
+              <div className="max-h-[200px] overflow-y-auto">
+                {member.projects.length === 0 ? (
+                  <p className="px-3 py-3 text-[12px] text-secondary italic">Nenhum projeto atribuído</p>
+                ) : (
+                  member.projects.map((pj) => (
+                    <div
+                      key={pj.project_id}
+                      className={`flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-[var(--overlay-subtle)] ${
+                        pj.project_id === sectionProjectIdActual ? 'bg-[var(--accent)]/5' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
+                        />
+                        <span className="text-[12px] text-primary truncate">{pj.project_name}</span>
+                        {pj.project_id === sectionProjectIdActual && (
+                          <span className="text-[9px] uppercase tracking-wider text-[var(--accent)] shrink-0">atual</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveProject(member.id, pj.project_id)}
+                        className="shrink-0 rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                        title="Remover deste projeto"
+                        aria-label={`Remover ${pj.project_name}`}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {availableToAdd.length > 0 && (
+                <div className="border-t border-[var(--card-border)] p-2">
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      handleAddProject(member.id, e.target.value);
+                      setOpenPopover(null);
+                    }}
+                    className="input-premium w-full text-[12px]"
+                  >
+                    <option value="">+ Adicionar a outro projeto…</option>
+                    {availableToAdd.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          );
+        })(),
+        document.body
+      )}
     </div>
   );
 }
