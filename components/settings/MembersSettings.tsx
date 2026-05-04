@@ -406,13 +406,53 @@ export default function MembersSettings() {
             </>
           ) : (
             sectionProjectId && (
-              <button
-                onClick={() => handleRemoveProject(m.id, sectionProjectId)}
-                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-secondary hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
-                title="Remover deste projeto"
-              >
-                <UserMinus size={11} /> Remover
-              </button>
+              <>
+                {/* Outros projetos do membro (exceto o atual da section) */}
+                {m.projects.filter((pj) => pj.project_id !== sectionProjectId).map((pj) => (
+                  <span
+                    key={pj.project_id}
+                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
+                    style={{
+                      backgroundColor: (pj.project_color || '#3b6cf5') + '20',
+                      color: pj.project_color || '#3b6cf5',
+                    }}
+                  >
+                    {pj.project_name}
+                    <button
+                      onClick={() => handleRemoveProject(m.id, pj.project_id)}
+                      className="opacity-60 hover:opacity-100"
+                      aria-label={`Remover ${pj.project_name}`}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                {/* Dropdown pra adicionar a outro projeto */}
+                <select
+                  value=""
+                  onChange={(e) => handleAddProject(m.id, e.target.value)}
+                  className="input-premium !py-0.5 !px-1.5 text-[11px] text-secondary"
+                  title="Adicionar a outro projeto"
+                >
+                  <option value="">+ projeto</option>
+                  {projects
+                    .filter((p) => !m.projects.find((pj) => pj.project_id === p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+                {/* Remover deste projeto (em ícone só) */}
+                <button
+                  onClick={() => handleRemoveProject(m.id, sectionProjectId)}
+                  className="rounded p-1 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
+                  title="Remover deste projeto"
+                  aria-label="Remover deste projeto"
+                >
+                  <UserMinus size={11} />
+                </button>
+              </>
             )
           )}
         </div>
