@@ -390,7 +390,7 @@ export default function MembersSettings() {
         {/* Projetos coluna */}
         <div data-projects-popover>
           {(() => {
-            const popoverKey = `${sectionProjectId || 'flat'}-${m.id}`;
+            const popoverKey = `${sectionProjectId || 'flat'}|${m.id}`;
             const isOpen = openPopover?.key === popoverKey;
 
             return (
@@ -707,10 +707,9 @@ export default function MembersSettings() {
       {/* Popover de projetos (portal — fora do overflow das sections) */}
       {openPopover && typeof window !== 'undefined' && createPortal(
         (() => {
-          const memberId = openPopover.key.split('-').slice(1).join('-');
+          const [sectionId, memberId] = openPopover.key.split('|');
           const member = members.find((mm) => mm.id === memberId);
           if (!member) return null;
-          const sectionId = openPopover.key.split('-')[0];
           const sectionProjectIdActual = sectionId !== 'flat' ? sectionId : undefined;
           const availableToAdd = projects.filter(
             (p) => !member.projects.find((pj) => pj.project_id === p.id)
