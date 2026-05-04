@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { UserPlus, Trash2, RefreshCw, X, ChevronDown, ChevronRight, FolderOpen, UserMinus, Plus } from 'lucide-react';
+import { UserPlus, Trash2, RefreshCw, X, ChevronDown, ChevronRight, FolderOpen, Plus } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/components/ui/Toast';
@@ -48,6 +48,21 @@ export default function MembersSettings() {
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [openProjectsPopover, setOpenProjectsPopover] = useState<string | null>(null);
+
+  // Click-outside fecha popover
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-projects-popover]')) {
+        setOpenProjectsPopover(null);
+      }
+    }
+    if (openProjectsPopover) {
+      document.addEventListener('click', onClick);
+      return () => document.removeEventListener('click', onClick);
+    }
+  }, [openProjectsPopover]);
 
   async function loadAll() {
     setLoadError(null);
@@ -367,75 +382,120 @@ export default function MembersSettings() {
         </div>
 
         {/* Projetos coluna */}
-        <div className="flex items-center gap-1 min-w-0">
+        <div className="relative" data-projects-popover>
           {(() => {
-            const visibleProjects = showProjectsColumn
-              ? m.projects
-              : m.projects.filter((pj) => pj.project_id !== sectionProjectId);
+            const popoverKey = `${sectionProjectId || 'flat'}-${m.id}`;
+            const isOpen = openProjectsPopover === popoverKey;
             const availableToAdd = projects.filter(
               (p) => !m.projects.find((pj) => pj.project_id === p.id)
             );
 
             return (
               <>
-                {/* Chips dos projetos (com truncate) */}
-                <div className="flex items-center gap-1 flex-1 min-w-0 overflow-hidden">
-                  {visibleProjects.map((pj) => (
-                    <span
-                      key={pj.project_id}
-                      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10.5px] font-medium shrink-0 max-w-[110px]"
-                      style={{
-                        backgroundColor: (pj.project_color || '#3b6cf5') + '20',
-                        color: pj.project_color || '#3b6cf5',
-                      }}
-                      title={pj.project_name}
-                    >
-                      <span className="truncate">{pj.project_name}</span>
-                      <button
-                        onClick={() => handleRemoveProject(m.id, pj.project_id)}
-                        className="shrink-0 opacity-50 hover:opacity-100"
-                        aria-label={`Remover ${pj.project_name}`}
-                      >
-                        <X size={9} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-
-                {/* Botão "+" pra adicionar (icon-only, abre native select) */}
-                {availableToAdd.length > 0 && (
-                  <div className="relative shrink-0">
-                    <button
-                      type="button"
-                      className="flex h-5 w-5 items-center justify-center rounded text-[var(--text-tertiary)] hover:bg-[var(--overlay-hover)] hover:text-[var(--accent)]"
-                      title="Adicionar a outro projeto"
-                    >
+                {/* Botão trigger: mostra contagem + dots coloridos dos projetos */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenProjectsPopover(isOpen ? null : popoverKey);
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium transition ${
+                    isOpen
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-primary'
+                      : m.projects.length === 0
+                        ? 'border-dashed border-[var(--card-border)] text-secondary hover:border-[var(--accent)]/40 hover:text-primary'
+                        : 'border-[var(--card-border)] text-primary hover:border-[var(--accent)]/40'
+                  }`}
+                >
+                  {m.projects.length === 0 ? (
+                    <>
                       <Plus size={11} />
-                    </button>
-                    <select
-                      value=""
-                      onChange={(e) => handleAddProject(m.id, e.target.value)}
-                      className="absolute inset-0 cursor-pointer opacity-0"
-                      aria-label="Adicionar a outro projeto"
-                    >
-                      <option value="">Adicionar projeto…</option>
-                      {availableToAdd.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                      <span>Atribuir</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex -space-x-0.5">
+                        {m.projects.slice(0, 3).map((pj) => (
+                          <span
+                            key={pj.project_id}
+                            className="h-2 w-2 rounded-full ring-1 ring-[var(--card-bg)]"
+                            style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
+                          />
+                        ))}
+                      </div>
+                      <span className="tabular-nums">
+                        {m.projects.length} {m.projects.length === 1 ? 'projeto' : 'projetos'}
+                      </span>
+                      <ChevronDown size={9} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </>
+                  )}
+                </button>
 
-                {/* Remover deste projeto (só em sections com sectionProjectId) */}
-                {sectionProjectId && (
-                  <button
-                    onClick={() => handleRemoveProject(m.id, sectionProjectId)}
-                    className="shrink-0 rounded p-1 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10"
-                    title="Remover deste projeto"
-                    aria-label="Remover deste projeto"
+                {/* Popover */}
+                {isOpen && (
+                  <div
+                    className="absolute z-30 left-0 top-full mt-1 w-[260px] rounded-md border border-[var(--card-border)] bg-[var(--modal-bg)] shadow-xl shadow-black/40"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <UserMinus size={11} />
-                  </button>
+                    {/* Header */}
+                    <div className="border-b border-[var(--card-border)] px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-secondary">Projetos do membro</p>
+                    </div>
+
+                    {/* Lista de projetos */}
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {m.projects.length === 0 ? (
+                        <p className="px-3 py-3 text-[12px] text-secondary italic">Nenhum projeto atribuído</p>
+                      ) : (
+                        m.projects.map((pj) => (
+                          <div
+                            key={pj.project_id}
+                            className={`flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-[var(--overlay-subtle)] ${
+                              pj.project_id === sectionProjectId ? 'bg-[var(--accent)]/5' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className="h-2 w-2 rounded-full shrink-0"
+                                style={{ backgroundColor: pj.project_color || '#3b6cf5' }}
+                              />
+                              <span className="text-[12px] text-primary truncate">{pj.project_name}</span>
+                              {pj.project_id === sectionProjectId && (
+                                <span className="text-[9px] uppercase tracking-wider text-[var(--accent)] shrink-0">atual</span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveProject(m.id, pj.project_id)}
+                              className="shrink-0 rounded p-1 text-[var(--text-tertiary)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                              title="Remover deste projeto"
+                              aria-label={`Remover ${pj.project_name}`}
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Adicionar a outro projeto */}
+                    {availableToAdd.length > 0 && (
+                      <div className="border-t border-[var(--card-border)] p-2">
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            handleAddProject(m.id, e.target.value);
+                            setOpenProjectsPopover(null);
+                          }}
+                          className="input-premium w-full text-[12px]"
+                        >
+                          <option value="">+ Adicionar a outro projeto…</option>
+                          {availableToAdd.map((p) => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 )}
               </>
             );
