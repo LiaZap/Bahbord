@@ -14,6 +14,7 @@ interface TimeEntry {
   duration_minutes: number | null;
   is_running: boolean;
   is_billable: boolean;
+  member_id: string | null;
   member_name: string;
   ticket_key: string;
   ticket_title: string;
@@ -40,6 +41,55 @@ export default function TimesheetView() {
   const [period, setPeriod] = useState<Period>('7');
   const [billableFilter, setBillableFilter] = useState<BillableFilter>('all');
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  // Detecta role do usuário
+  useEffect(() => {
+    fetch('/api/auth/me').then((r) => (r.ok ? r.json() : null)).then((data) => {
+      const role = data?.member?.role;
+      setIsAdmin(role === 'owner' || role === 'admin');
+      setMeId(data?.member?.id ?? null);
+    }).catch(() => {});
+  }, []);
+
+  function parseTimeInput(value: string): number | null {
+    // Aceita: "30", "30min", "1h", "1h30", "1h 30min", "1:30"
+    const v = value.trim().toLowerCase();
+    if (!v) return null;
+    if (/^\d+$/.test(v)) return parseInt(v, 10);
+    if (/^\d+min$/.test(v)) return parseInt(v, 10);
+    let m = v.match(/^(\d+)h\s*(\d+)?(min)?$/);
+    if (m) return parseInt(m[1], 10) * 60 + (m[2] ? parseInt(m[2], 10) : 0);
+    m = v.match(/^(\d+):(\d+)$/);
+    if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    return null;
+  }
+
+  async function saveEdit(entryId: string) {
+    const minutes = parseTimeInput(editValue);
+    if (minutes === null || minutes < 0) {
+      setEditingId(null);
+      return;
+    }
+    const res = await fetch('/api/time-entries', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: entryId, duration_minutes: minutes }),
+    });
+    if (res.ok) {
+      // Optimistic local update
+      setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, duration_minutes: minutes } : e)));
+      // Refetch summary
+      fetchData();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || 'Erro ao salvar');
+    }
+    setEditingId(null);
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -221,14 +271,46 @@ export default function TimesheetView() {
                         <span className="text-[10px] font-semibold text-slate-600 line-through" title="Nao cobrada">R$</span>
                       )}
                     </span>
-                    <span className="w-20 shrink-0 text-right text-xs font-medium text-slate-300">
+                    <span className="w-24 shrink-0 text-right text-xs font-medium text-slate-300">
                       {e.is_running ? (
                         <span className="flex items-center justify-end gap-1 text-accent">
                           <Clock size={11} className="animate-pulse" />
                           Rodando
                         </span>
+                      ) : editingId === e.id ? (
+                        <input
+                          autoFocus
+                          value={editValue}
+                          onChange={(ev) => setEditValue(ev.target.value)}
+                          onBlur={() => saveEdit(e.id)}
+                          onKeyDown={(ev) => {
+                            if (ev.key === 'Enter') saveEdit(e.id);
+                            if (ev.key === 'Escape') setEditingId(null);
+                          }}
+                          placeholder="ex: 1h30"
+                          className="w-20 rounded border border-[var(--accent)]/40 bg-[var(--bg-input)] px-1.5 py-0.5 text-right text-xs text-primary outline-none"
+                        />
                       ) : (
-                        formatMin(e.duration_minutes || 0)
+                        (() => {
+                          const canEdit = isAdmin || (!!meId && e.member_id === meId);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!canEdit) return;
+                                setEditingId(e.id);
+                                setEditValue(String(e.duration_minutes || 0));
+                              }}
+                              disabled={!canEdit}
+                              className={`text-right tabular-nums ${
+                                canEdit ? 'hover:text-primary hover:underline cursor-pointer' : 'cursor-default'
+                              }`}
+                              title={canEdit ? 'Clique para editar (ex: 1h30, 90, 1:30)' : ''}
+                            >
+                              {formatMin(e.duration_minutes || 0)}
+                            </button>
+                          );
+                        })()
                       )}
                     </span>
                   </div>

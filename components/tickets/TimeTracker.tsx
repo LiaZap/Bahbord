@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, Square, Clock, Trash2, Plus } from 'lucide-react';
 import { useTimeTracking, formatDuration, formatMinutes } from '@/lib/hooks/useTimeTracking';
 import { useToast } from '@/components/ui/Toast';
@@ -10,8 +10,20 @@ interface TimeTrackerProps {
   ticketId: string;
 }
 
+function parseTimeInput(value: string): number | null {
+  const v = value.trim().toLowerCase();
+  if (!v) return null;
+  if (/^\d+$/.test(v)) return parseInt(v, 10);
+  if (/^\d+min$/.test(v)) return parseInt(v, 10);
+  let m = v.match(/^(\d+)h\s*(\d+)?(min)?$/);
+  if (m) return parseInt(m[1], 10) * 60 + (m[2] ? parseInt(m[2], 10) : 0);
+  m = v.match(/^(\d+):(\d+)$/);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  return null;
+}
+
 export default function TimeTracker({ ticketId }: TimeTrackerProps) {
-  const { entries, runningEntry, elapsed, totalMinutes, billableMinutes, nonBillableMinutes, startTimer, stopTimer, deleteEntry, logManualEntry } = useTimeTracking(ticketId);
+  const { entries, runningEntry, elapsed, totalMinutes, billableMinutes, nonBillableMinutes, startTimer, stopTimer, deleteEntry, editEntry, logManualEntry } = useTimeTracking(ticketId);
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const [showManualForm, setShowManualForm] = useState(false);
@@ -20,6 +32,33 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
   const [manualDescription, setManualDescription] = useState('');
   const [manualBillable, setManualBillable] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/me').then((r) => (r.ok ? r.json() : null)).then((data) => {
+      const role = data?.member?.role;
+      setIsAdmin(role === 'owner' || role === 'admin');
+      setMeId(data?.member?.id ?? null);
+    }).catch(() => {});
+  }, []);
+
+  async function handleSaveEdit(id: string) {
+    const minutes = parseTimeInput(editValue);
+    if (minutes === null || minutes < 0) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      await editEntry(id, minutes);
+      toast('Tempo atualizado', 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Erro ao salvar', 'error');
+    }
+    setEditingId(null);
+  }
 
   async function handleDeleteEntry(id: string) {
     const ok = await confirm({
@@ -192,9 +231,39 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
                   </span>
                 )}
                 <span className="text-slate-400">{e.member_name}</span>
-                <span className="font-medium text-slate-300">
-                  {formatMinutes(e.duration_minutes || 0)}
-                </span>
+                {editingId === e.id ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(ev) => setEditValue(ev.target.value)}
+                    onBlur={() => handleSaveEdit(e.id)}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter') handleSaveEdit(e.id);
+                      if (ev.key === 'Escape') setEditingId(null);
+                    }}
+                    placeholder="1h30"
+                    className="w-16 rounded border border-[var(--accent)]/40 bg-[var(--bg-input)] px-1 py-0.5 text-right text-[11px] text-primary outline-none"
+                  />
+                ) : (() => {
+                  const canEdit = isAdmin || (!!meId && e.member_id === meId);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!canEdit) return;
+                        setEditingId(e.id);
+                        setEditValue(String(e.duration_minutes || 0));
+                      }}
+                      disabled={!canEdit}
+                      className={`font-medium tabular-nums ${
+                        canEdit ? 'text-slate-300 hover:text-primary hover:underline cursor-pointer' : 'text-slate-300 cursor-default'
+                      }`}
+                      title={canEdit ? 'Clique para editar (ex: 1h30, 90, 1:30)' : ''}
+                    >
+                      {formatMinutes(e.duration_minutes || 0)}
+                    </button>
+                  );
+                })()}
                 <button
                   onClick={() => handleDeleteEntry(e.id)}
                   className="shrink-0 opacity-0 transition group-hover:opacity-100"

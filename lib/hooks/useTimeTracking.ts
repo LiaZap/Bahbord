@@ -10,6 +10,7 @@ export interface TimeEntry {
   duration_minutes: number | null;
   is_running: boolean;
   is_billable: boolean;
+  member_id: string | null;
   member_name: string;
 }
 
@@ -114,7 +115,20 @@ export function useTimeTracking(ticketId: string) {
     await fetchEntries();
   }, [fetchEntries]);
 
-  return { entries, loading, runningEntry, elapsed, totalMinutes, billableMinutes, nonBillableMinutes, startTimer, stopTimer, deleteEntry, logManualEntry, refetch: fetchEntries };
+  const editEntry = useCallback(async (entryId: string, durationMinutes: number) => {
+    const res = await fetch('/api/time-entries', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: entryId, duration_minutes: durationMinutes }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    await fetchEntries();
+  }, [fetchEntries]);
+
+  return { entries, loading, runningEntry, elapsed, totalMinutes, billableMinutes, nonBillableMinutes, startTimer, stopTimer, deleteEntry, editEntry, logManualEntry, refetch: fetchEntries };
 }
 
 export function formatDuration(totalSeconds: number): string {

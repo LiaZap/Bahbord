@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const result = await query(
       `SELECT te.id, te.description, te.started_at, te.ended_at,
         te.duration_minutes, te.is_running, te.is_billable, te.created_at,
+        te.member_id,
         m.display_name AS member_name
       FROM time_entries te
       LEFT JOIN members m ON m.id = te.member_id
@@ -121,13 +122,27 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const body = await request.json();
     const { id, description, duration_minutes, is_billable } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
+    }
+
+    // Permissão: admin/owner edita qualquer entry; member só a própria
+    const userIsAdmin = isAdmin(auth.role);
+    const owner = await query<{ member_id: string | null }>(
+      `SELECT member_id FROM time_entries WHERE id = $1`,
+      [id]
+    );
+    if (owner.rowCount === 0) {
+      return NextResponse.json({ error: 'Entrada não encontrada' }, { status: 404 });
+    }
+    if (!userIsAdmin && owner.rows[0].member_id !== auth.id) {
+      return NextResponse.json({ error: 'Sem permissão para editar esta entrada' }, { status: 403 });
     }
 
     const sets: string[] = [];
@@ -141,8 +156,12 @@ export async function PATCH(request: Request) {
     }
 
     if (duration_minutes !== undefined) {
+      const dur = parseInt(String(duration_minutes), 10);
+      if (isNaN(dur) || dur < 0) {
+        return NextResponse.json({ error: 'duration_minutes inválido' }, { status: 400 });
+      }
       sets.push(`duration_minutes = $${idx}`);
-      values.push(duration_minutes);
+      values.push(dur);
       idx++;
     }
 

@@ -40,6 +40,7 @@ export async function GET(request: Request) {
       `SELECT
         te.id, te.description, te.started_at, te.ended_at,
         te.duration_minutes, te.is_running, te.is_billable, te.created_at,
+        te.member_id,
         m.display_name AS member_name,
         tf.ticket_key, tf.title AS ticket_title, tf.project_name
       FROM time_entries te
