@@ -91,10 +91,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 <div className={`rounded-full p-3 mb-4 ${v.icon}`}>
                   <AlertTriangle size={24} />
                 </div>
-                <h3 className="text-[16px] font-semibold text-white mb-2">
+                <h3 className="text-[16px] font-semibold text-primary mb-2">
                   {state.options.title || 'Confirmar ação'}
                 </h3>
-                <p className="text-[14px] text-slate-400 mb-6 leading-relaxed">
+                <p className="text-[14px] text-secondary-muted mb-6 leading-relaxed">
                   {state.options.message}
                 </p>
                 <div className="flex w-full gap-3">

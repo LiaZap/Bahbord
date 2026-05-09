@@ -203,6 +203,32 @@ html.dark {
 /* Glass effect in light mode */
 :root:not(.dark) .glass { background: rgba(255,255,255,0.8) !important; border-color: rgba(0,0,0,0.08) !important; }
 
+/* Accent colors — bump contrast for AA compliance on white backgrounds */
+:root:not(.dark) .text-blue-400 { color: #2952d4 !important; }
+:root:not(.dark) .text-violet-200,
+:root:not(.dark) .text-violet-300 { color: #6d28d9 !important; }
+:root:not(.dark) .text-fuchsia-200,
+:root:not(.dark) .text-fuchsia-300 { color: #a21caf !important; }
+
+/* ============================================
+   SEMANTIC TOKEN UTILITIES
+   Use these instead of text-white/text-slate-* in components
+   ============================================ */
+
+/* Text */
+.text-primary { color: var(--text-primary); }
+.text-secondary-muted { color: var(--text-secondary); }
+.text-tertiary-muted { color: var(--text-tertiary); }
+
+/* Surfaces (overlays sobre card-bg) */
+.surface-subtle { background-color: var(--overlay-subtle); }
+.surface-hover { background-color: var(--overlay-hover); }
+.surface-subtle-hover:hover { background-color: var(--overlay-hover); }
+
+/* Borders semantics */
+.border-subtle { border-color: var(--card-border); }
+.border-divider { border-color: var(--border-solid); }
+
 html {
   background: var(--bg-primary);
   color: var(--text-primary);

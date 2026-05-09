@@ -73,38 +73,38 @@ export default function GeneralSettings() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-white">Geral</h2>
+      <h2 className="text-lg font-semibold text-primary">Geral</h2>
 
       <div className="rounded-lg border border-border/40 bg-surface2 p-5 space-y-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Nome do workspace</label>
+          <label className="mb-1 block text-xs font-medium text-secondary-muted">Nome do workspace</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded border border-border/40 bg-surface px-3 py-2 text-sm text-slate-200 outline-none focus:border-accent/60"
+            className="w-full rounded border border-border/40 bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent/60"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Prefixo dos tickets</label>
+          <label className="mb-1 block text-xs font-medium text-secondary-muted">Prefixo dos tickets</label>
           <input
             value={prefix}
             onChange={(e) => setPrefix(e.target.value.toUpperCase())}
             maxLength={6}
-            className="w-48 rounded border border-border/40 bg-surface px-3 py-2 text-sm text-slate-200 outline-none focus:border-accent/60"
+            className="w-48 rounded border border-border/40 bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent/60"
           />
-          <p className="mt-1 text-[11px] text-slate-500">
-            Os tickets serão criados como <span className="font-mono text-slate-300">{prefix}-XXX</span>
+          <p className="mt-1 text-[11px] text-secondary-muted">
+            Os tickets serão criados como <span className="font-mono text-primary">{prefix}-XXX</span>
           </p>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Descrição</label>
+          <label className="mb-1 block text-xs font-medium text-secondary-muted">Descrição</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full rounded border border-border/40 bg-surface px-3 py-2 text-sm text-slate-200 outline-none focus:border-accent/60"
+            className="w-full rounded border border-border/40 bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent/60"
           />
         </div>
 
@@ -124,8 +124,8 @@ export default function GeneralSettings() {
       {/* Sync orphan tickets */}
       <div className="rounded-lg border border-border/40 bg-surface2 p-5 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-white mb-1">Sincronizar tickets</h3>
-          <p className="text-xs text-slate-500">Atribui tickets sem projeto aos projetos corretos, baseado no acesso do relator/responsável.</p>
+          <h3 className="text-sm font-semibold text-primary mb-1">Sincronizar tickets</h3>
+          <p className="text-xs text-secondary-muted">Atribui tickets sem projeto aos projetos corretos, baseado no acesso do relator/responsável.</p>
         </div>
         <button
           onClick={handleSyncOrphans}
@@ -139,7 +139,7 @@ export default function GeneralSettings() {
 
       {/* Theme */}
       <div className="rounded-lg border border-border/40 bg-surface2 p-5 space-y-3">
-        <label className="block text-xs font-medium text-slate-400">Tema</label>
+        <label className="block text-xs font-medium text-secondary-muted">Tema</label>
         <div className="flex gap-2">
           {([
             { key: 'light' as const, label: 'Claro', icon: Sun },
@@ -155,7 +155,7 @@ export default function GeneralSettings() {
                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
                   active
                     ? 'bg-accent text-white'
-                    : 'bg-surface text-slate-400 hover:text-slate-200 border border-border/40'
+                    : 'bg-surface text-secondary-muted hover:text-primary border border-border/40'
                 }`}
               >
                 <Icon size={16} />

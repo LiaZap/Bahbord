@@ -217,38 +217,38 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           {ticket.parent_key && (
             <>
               <TicketTypeIcon typeName={ticket.type_name} typeIcon={ticket.type_icon} size="sm" />
-              <Link href={`/ticket/${ticket.parent_id}`} className="text-slate-400 hover:text-blue-400 transition">
+              <Link href={`/ticket/${ticket.parent_id}`} className="text-secondary-muted hover:text-blue-400 transition">
                 {ticket.parent_key}
               </Link>
-              <span className="text-slate-600">/</span>
+              <span className="text-tertiary-muted">/</span>
             </>
           )}
           <TicketTypeIcon typeName={ticket.type_name} typeIcon={ticket.type_icon} size="sm" />
-          <span className="text-slate-400">{ticket.ticket_key}</span>
+          <span className="text-secondary-muted">{ticket.ticket_key}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => navigator.clipboard.writeText(window.location.href).then(() => toast('Link copiado', 'success'))}
-            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary"
             title="Copiar link"
           >
             <Share2 size={14} />
           </button>
           <button
             onClick={() => window.open(window.location.href, '_blank')}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
+            className="rounded-md p-1.5 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary"
             title="Abrir em nova aba"
           >
             <Maximize2 size={14} />
           </button>
           <button
             onClick={handleDeleteTicket}
-            className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-red-400"
+            className="rounded-md p-1.5 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-red-400"
             title="Excluir ticket"
           >
             <Trash2 size={14} />
           </button>
-          <Link href="/board" className="rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300">
+          <Link href="/board" className="rounded-md p-1.5 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary">
             <XIcon size={14} />
           </Link>
         </div>
@@ -263,12 +263,12 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           onChange={(e) => setTitleValue(e.target.value)}
           onBlur={saveTitle}
           onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); }}
-          className="mb-2 w-full rounded bg-transparent px-0 py-1 text-[20px] font-semibold text-white outline-none ring-1 ring-blue-500/40 ring-offset-2 ring-offset-[#1a1c1e]"
+          className="mb-2 w-full rounded bg-transparent px-0 py-1 text-[20px] font-semibold text-[var(--text-primary)] outline-none ring-1 ring-blue-500/40 ring-offset-2 ring-offset-[var(--bg-primary)]"
         />
       ) : (
         <h1
           onClick={() => setEditingTitle(true)}
-          className="mb-2 cursor-text text-[20px] font-semibold text-white hover:text-slate-200"
+          className="mb-2 cursor-text text-[20px] font-semibold text-primary hover:opacity-80"
         >
           {ticket.title}
         </h1>
@@ -281,10 +281,10 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
         {/* Left column — content */}
         <div className="flex-1 min-w-0 space-y-0">
           {/* Descrição */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <button
               onClick={() => setDescOpen(!descOpen)}
-              className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-slate-200"
+              className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-primary"
             >
               {descOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               Descrição
@@ -296,18 +296,18 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
                     <RichTextEditor content={descValue} onChange={setDescValue} placeholder="Adicione uma descrição..." />
                     <div className="flex gap-2">
                       <button onClick={saveDescription} className="rounded bg-blue-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-blue-500">Salvar</button>
-                      <button onClick={() => setEditingDesc(false)} className="rounded px-3 py-1 text-[12px] text-slate-400 hover:text-slate-200">Cancelar</button>
+                      <button onClick={() => setEditingDesc(false)} className="rounded px-3 py-1 text-[12px] text-secondary-muted hover:text-primary">Cancelar</button>
                     </div>
                   </div>
                 ) : (
                   <div
                     onClick={() => setEditingDesc(true)}
-                    className="cursor-text text-[14px] leading-relaxed text-slate-300"
+                    className="cursor-text text-[14px] leading-relaxed text-primary"
                   >
                     {ticket.description ? (
                       <div className="rich-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(ticket.description) }} />
                     ) : (
-                      <p className="text-slate-600 italic">Clique para adicionar uma descrição...</p>
+                      <p className="text-tertiary-muted italic">Clique para adicionar uma descrição...</p>
                     )}
                   </div>
                 )}
@@ -316,27 +316,27 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           </section>
 
           {/* Subtarefas */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <SubtaskList ticketId={ticket.id} />
           </section>
 
           {/* Tickets vinculados */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <LinkedTickets ticketId={ticket.id} />
           </section>
 
           {/* Desenvolvimento */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <DevLinks ticketId={ticket.id} />
           </section>
 
           {/* Acessos */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <AccessLinks ticketId={ticket.id} />
           </section>
 
           {/* Anexos */}
-          <section className="border-b border-white/[0.04] pb-5 mb-5">
+          <section className="border-b border-[var(--card-border)] pb-5 mb-5">
             <AttachmentList ticketId={ticket.id} />
           </section>
 
@@ -344,7 +344,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           <section>
             <button
               onClick={() => setActivityOpen(!activityOpen)}
-              className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-slate-200"
+              className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-primary"
             >
               {activityOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
               Atividade
@@ -363,11 +363,11 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
           )}
 
           {/* Footer timestamps */}
-          <div className="mt-6 space-y-1 text-[11px] text-slate-500">
+          <div className="mt-6 space-y-1 text-[11px] text-secondary-muted">
             <p>Criado {new Date(ticket.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
             <p>Atualizado {new Date(ticket.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
           </div>
-          <Link href="/settings" className="mt-3 flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-300">
+          <Link href="/settings" className="mt-3 flex items-center gap-1.5 text-[11px] text-secondary-muted hover:text-primary">
             <Settings2 size={12} />
             Configurar
           </Link>

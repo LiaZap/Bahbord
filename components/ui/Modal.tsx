@@ -52,18 +52,18 @@ export default function Modal({
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={cn(
-              'flex max-h-[85vh] w-full flex-col rounded-xl border border-white/[0.08] bg-[var(--modal-bg)] shadow-2xl shadow-black/50',
+              'flex max-h-[85vh] w-full flex-col rounded-xl border border-[var(--card-border)] bg-[var(--modal-bg)] shadow-2xl shadow-black/50',
               maxWidth
             )}
             onClick={(e) => e.stopPropagation()}
           >
             {title && (
-              <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
+              <div className="flex shrink-0 items-center justify-between border-b border-[var(--card-border)] px-5 py-3.5">
                 <h2 className="text-[16px] font-semibold text-primary">{title}</h2>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
+                  className="rounded p-1.5 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary"
                 >
                   <X size={14} />
                 </button>

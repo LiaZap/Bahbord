@@ -129,9 +129,9 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         {/* Row 1: Type + Key + Priority */}
         <div className="mb-2 flex items-center gap-1.5">
           <TicketTypeIcon typeIcon={typeIcon} size="sm" showBackground={false} />
-          <span className="font-mono tabular-nums text-[11px] font-bold text-slate-300">{ticketKey}</span>
+          <span className="font-mono tabular-nums text-[11px] font-bold text-primary">{ticketKey}</span>
           <span className="flex-1" />
-          <span className={cn('flex items-center gap-1 text-[10px] font-medium', priority === 'urgent' ? 'text-red-400' : priority === 'high' ? 'text-orange-400' : 'text-slate-500')}>
+          <span className={cn('flex items-center gap-1 text-[10px] font-medium', priority === 'urgent' ? 'text-red-400' : priority === 'high' ? 'text-orange-400' : 'text-secondary-muted')}>
             <Tooltip content={`Prioridade: ${prio.label}`}>
               <span className={cn('h-[7px] w-[7px] rounded-full', prio.dot)} />
             </Tooltip>
@@ -140,7 +140,7 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
         </div>
 
         {/* Title */}
-        <h3 className="mb-2.5 text-[13px] font-medium leading-[1.4] text-primary line-clamp-2 group-hover:text-white transition-colors">
+        <h3 className="mb-2.5 text-[13px] font-medium leading-[1.4] text-primary line-clamp-2 transition-colors">
           {title}
         </h3>
 
@@ -157,7 +157,7 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
             </span>
           )}
           {categoryName && (
-            <span className="rounded px-2 py-[3px] text-[11px] font-medium bg-white/[0.08] text-slate-300">
+            <span className="rounded px-2 py-[3px] text-[11px] font-medium bg-[var(--overlay-hover)] text-primary">
               {categoryName}
             </span>
           )}
@@ -179,7 +179,7 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
               {completedAt}
             </span>
           ) : hasDue ? (
-            <span className="flex items-center gap-1 text-[11px] font-medium text-slate-300">
+            <span className="flex items-center gap-1 text-[11px] font-medium text-primary">
               <Calendar size={12} strokeWidth={1.5} />
               {due}
             </span>

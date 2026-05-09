@@ -22,9 +22,9 @@ interface DashboardChartsProps {
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-white/10 bg-[#1e2126] px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
-      <span className="text-slate-400">{payload[0].payload.name || payload[0].payload.week}: </span>
-      <span className="font-bold text-white tabular-nums">{payload[0].value}</span>
+    <div className="rounded-lg border border-[var(--card-border)] bg-[var(--modal-bg)] px-3 py-2 text-xs shadow-xl backdrop-blur-sm">
+      <span className="text-secondary-muted">{payload[0].payload.name || payload[0].payload.week}: </span>
+      <span className="font-bold text-primary tabular-nums">{payload[0].value}</span>
     </div>
   );
 }
@@ -45,15 +45,15 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
       {/* Row 1: Entregas + Status bar chart */}
       <div className="grid gap-4 lg:grid-cols-5">
         {/* Entregas por tipo - Large card */}
-        <div className="lg:col-span-3 rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
+        <div className="lg:col-span-3 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-[13px] font-bold text-white">
+            <h3 className="flex items-center gap-2 text-[13px] font-bold text-primary">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15">
                 <Package size={16} className="text-violet-400" />
               </div>
               Entregas por tipo
             </h3>
-            <div className="flex gap-0.5 rounded-lg bg-white/[0.04] p-0.5">
+            <div className="flex gap-0.5 rounded-lg bg-[var(--overlay-subtle)] p-0.5">
               {([['7d', '7D'], ['30d', '30D'], ['all', 'Todos']] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -61,7 +61,7 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
                   className={`rounded-md px-2.5 py-1 text-[10px] font-bold transition-all ${
                     typePeriod === key
                       ? 'bg-accent text-white shadow-sm shadow-accent/30'
-                      : 'text-slate-500 hover:text-slate-300'
+                      : 'text-secondary-muted hover:text-primary'
                   }`}
                 >
                   {label}
@@ -73,16 +73,16 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
           {filteredByType.length > 0 ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {filteredByType.slice(0, 8).map((t) => (
-                <div key={t.name} className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-3">
+                <div key={t.name} className="rounded-xl bg-[var(--overlay-subtle)] border border-[var(--card-border)] p-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-bold text-white" style={{ backgroundColor: t.color }}>
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: t.color }}>
                       {t.name.charAt(0).toUpperCase()}
                     </span>
-                    <span className="truncate text-[11px] font-semibold text-slate-400">{t.name}</span>
+                    <span className="truncate text-[11px] font-semibold text-secondary-muted">{t.name}</span>
                   </div>
-                  <p className="text-2xl font-bold text-white tabular-nums">{t.value}</p>
+                  <p className="text-2xl font-bold text-primary tabular-nums">{t.value}</p>
                   {typePeriod === 'all' && (
-                    <div className="mt-1 flex gap-2 text-[9px] text-slate-600 tabular-nums">
+                    <div className="mt-1 flex gap-2 text-[9px] text-tertiary-muted tabular-nums">
                       <span>30d: {t.last_30d}</span>
                       <span>7d: {t.last_7d}</span>
                     </div>
@@ -91,13 +91,13 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
               ))}
             </div>
           ) : (
-            <div className="flex h-32 items-center justify-center text-xs text-slate-600">Sem entregas no período</div>
+            <div className="flex h-32 items-center justify-center text-xs text-tertiary-muted">Sem entregas no período</div>
           )}
         </div>
 
         {/* Top por prioridade - Ranking style */}
-        <div className="lg:col-span-2 rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-white">
+        <div className="lg:col-span-2 rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15">
               <Target size={16} className="text-amber-400" />
             </div>
@@ -114,10 +114,10 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[12px] font-semibold text-slate-300">{p.name}</span>
-                      <span className="text-[13px] font-bold text-white tabular-nums">{p.value}</span>
+                      <span className="text-[12px] font-semibold text-primary">{p.name}</span>
+                      <span className="text-[13px] font-bold text-primary tabular-nums">{p.value}</span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.04]">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--overlay-subtle)]">
                       <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: p.color }} />
                     </div>
                   </div>
@@ -131,8 +131,8 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
       {/* Row 2: Velocity + Service donut + Status bars */}
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Velocity - Area chart */}
-        <div className="rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-white">
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15">
               <Activity size={16} className="text-emerald-400" />
             </div>
@@ -147,7 +147,7 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
                     <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--card-border)" />
                 <XAxis dataKey="week" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
@@ -155,13 +155,13 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[180px] items-center justify-center text-xs text-slate-600">Sem dados ainda</div>
+            <div className="flex h-[180px] items-center justify-center text-xs text-tertiary-muted">Sem dados ainda</div>
           )}
         </div>
 
         {/* Service donut with center value */}
-        <div className="rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-white">
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/15">
               <BarChart3 size={16} className="text-cyan-400" />
             </div>
@@ -178,16 +178,16 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-bold text-white tabular-nums">{totalTickets}</span>
-                <span className="text-[9px] text-slate-500">Total</span>
+                <span className="text-2xl font-bold text-primary tabular-nums">{totalTickets}</span>
+                <span className="text-[9px] text-secondary-muted">Total</span>
               </div>
             </div>
             <div className="flex flex-1 flex-col gap-2 pl-2">
               {byService.map((s) => (
                 <div key={s.name} className="flex items-center gap-2">
                   <span className="h-2.5 w-2.5 shrink-0 rounded" style={{ backgroundColor: s.color }} />
-                  <span className="truncate text-[11px] text-slate-400">{s.name}</span>
-                  <span className="ml-auto text-[11px] font-bold text-white tabular-nums">{s.value}</span>
+                  <span className="truncate text-[11px] text-secondary-muted">{s.name}</span>
+                  <span className="ml-auto text-[11px] font-bold text-primary tabular-nums">{s.value}</span>
                 </div>
               ))}
             </div>
@@ -195,8 +195,8 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
         </div>
 
         {/* Status - Horizontal bars */}
-        <div className="rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-white">
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
               <BarChart3 size={16} className="text-blue-400" />
             </div>
@@ -217,8 +217,8 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
 
       {/* Row 3: Responsáveis */}
       {byAssignee.length > 0 && (
-        <div className="rounded-2xl border border-white/[0.06] bg-[var(--card-bg)] p-5">
-          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-white">
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+          <h3 className="mb-4 flex items-center gap-2 text-[13px] font-bold text-primary">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/15">
               <Target size={16} className="text-rose-400" />
             </div>
@@ -228,16 +228,16 @@ export default function DashboardCharts({ byStatus, byService, byPriority, byTyp
             {byAssignee.map((a) => {
               const donePct = a.total > 0 ? Math.round((a.done / a.total) * 100) : 0;
               return (
-                <div key={a.name} className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-4">
-                  <p className="truncate text-[12px] font-semibold text-slate-300 mb-2">{a.name}</p>
+                <div key={a.name} className="rounded-xl bg-[var(--overlay-subtle)] border border-[var(--card-border)] p-4">
+                  <p className="truncate text-[12px] font-semibold text-primary mb-2">{a.name}</p>
                   <div className="flex items-end gap-2 mb-2">
-                    <span className="text-2xl font-bold text-white tabular-nums">{a.done}</span>
-                    <span className="text-[12px] text-slate-600 mb-0.5 tabular-nums">/ {a.total}</span>
+                    <span className="text-2xl font-bold text-primary tabular-nums">{a.done}</span>
+                    <span className="text-[12px] text-tertiary-muted mb-0.5 tabular-nums">/ {a.total}</span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.04]">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--overlay-subtle)]">
                     <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-700" style={{ width: `${donePct}%` }} />
                   </div>
-                  <p className="mt-1 text-[10px] text-slate-600 tabular-nums">{donePct}% concluído</p>
+                  <p className="mt-1 text-[10px] text-tertiary-muted tabular-nums">{donePct}% concluído</p>
                 </div>
               );
             })}

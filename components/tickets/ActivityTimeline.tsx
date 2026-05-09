@@ -169,8 +169,8 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
         <Avatar name={c.author_name} imageUrl={c.author_avatar} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="text-[13px] font-semibold text-slate-200">{c.author_name}</span>
-            <span className="text-[11px] text-slate-500">{formatDate(c.created_at)}</span>
+            <span className="text-[13px] font-semibold text-primary">{c.author_name}</span>
+            <span className="text-[11px] text-secondary-muted">{formatDate(c.created_at)}</span>
           </div>
           {isEditing ? (
             <div className="mt-1 space-y-2">
@@ -179,30 +179,30 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleEditComment(c.id, editBody); if (e.key === 'Escape') setEditingId(null); }}
-                className="w-full rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-slate-200 outline-none focus:border-blue-500/30"
+                className="w-full rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-3 py-2 text-[13px] text-primary outline-none focus:border-blue-500/30"
               />
               <div className="flex gap-2">
                 <button onClick={() => handleEditComment(c.id, editBody)} className="rounded bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-500">Salvar</button>
-                <button onClick={() => setEditingId(null)} className="text-[11px] text-slate-500 hover:text-slate-300">Cancelar</button>
+                <button onClick={() => setEditingId(null)} className="text-[11px] text-secondary-muted hover:text-primary">Cancelar</button>
               </div>
             </div>
           ) : c.body.includes('<img ') ? (
             <div
-              className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300 [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-1"
+              className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-primary [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-1"
               dangerouslySetInnerHTML={{ __html: c.body }}
             />
           ) : (
-            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-slate-300">{renderMentions(c.body)}</p>
+            <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-primary">{renderMentions(c.body)}</p>
           )}
           <CommentReactions commentId={c.id} />
           {/* Comment actions */}
           {!isEditing && (
             <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
-              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Responder" aria-label="Responder"><Reply size={13} /></button>
-              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Curtir" aria-label="Curtir"><ThumbsUp size={13} /></button>
-              <button className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Reação" aria-label="Reação"><Smile size={13} /></button>
-              <button onClick={() => { setEditingId(c.id); setEditBody(c.body); }} className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-slate-300" title="Editar" aria-label="Editar"><Pencil size={13} /></button>
-              <button onClick={() => handleDeleteComment(c.id)} className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-red-400" title="Remover" aria-label="Remover"><Trash2 size={13} /></button>
+              <button className="rounded p-1 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary" title="Responder" aria-label="Responder"><Reply size={13} /></button>
+              <button className="rounded p-1 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary" title="Curtir" aria-label="Curtir"><ThumbsUp size={13} /></button>
+              <button className="rounded p-1 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary" title="Reação" aria-label="Reação"><Smile size={13} /></button>
+              <button onClick={() => { setEditingId(c.id); setEditBody(c.body); }} className="rounded p-1 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary" title="Editar" aria-label="Editar"><Pencil size={13} /></button>
+              <button onClick={() => handleDeleteComment(c.id)} className="rounded p-1 text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-red-400" title="Remover" aria-label="Remover"><Trash2 size={13} /></button>
             </div>
           )}
         </div>
@@ -214,12 +214,12 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
     return (
       <div key={a.id} className="flex items-start gap-3 py-2.5 text-[13px]">
         <Avatar name={a.actor_name || '?'} size="sm" />
-        <div className="flex-1 text-slate-400">
-          {a.actor_name && <span className="font-medium text-slate-300">{a.actor_name}</span>}
-          {' '}alterou <span className="font-medium text-slate-300">{a.field_name}</span>
-          {a.old_value && <> de <span className="line-through text-slate-500">{a.old_value}</span></>}
-          {' '}para <span className="font-medium text-white">{a.new_value}</span>
-          <span className="ml-2 text-[11px] text-slate-600">{timeAgo(a.created_at)}</span>
+        <div className="flex-1 text-secondary-muted">
+          {a.actor_name && <span className="font-medium text-primary">{a.actor_name}</span>}
+          {' '}alterou <span className="font-medium text-primary">{a.field_name}</span>
+          {a.old_value && <> de <span className="line-through text-secondary-muted">{a.old_value}</span></>}
+          {' '}para <span className="font-medium text-primary">{a.new_value}</span>
+          <span className="ml-2 text-[11px] text-tertiary-muted">{timeAgo(a.created_at)}</span>
         </div>
       </div>
     );
@@ -244,7 +244,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
               'rounded-full px-3 py-1 text-[12px] font-medium transition',
               activeTab === tab.key
                 ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
-                : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
+                : 'text-secondary-muted hover:bg-[var(--overlay-hover)] hover:text-primary'
             )}
           >
             {tab.label}
@@ -263,20 +263,20 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
               onSubmit={() => submitComment(newComment)}
               onImagePaste={(base64) => setPastedImageData(base64)}
               placeholder="Adicionar comentário... (Ctrl+V para colar imagem)"
-              className="w-full rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 text-[13px] text-slate-200 outline-none placeholder:text-slate-600 transition focus:border-blue-500/30 focus:bg-white/[0.05]"
+              className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-4 py-2.5 text-[13px] text-primary outline-none placeholder:text-tertiary-muted transition focus:border-blue-500/30 focus:bg-[var(--overlay-hover)]"
             />
           </div>
         </div>
         <div className="mt-2 ml-11">
           <QuickReactions onReact={(text) => submitComment(text)} />
         </div>
-        <p className="mt-2 ml-11 text-[11px] text-slate-600">
-          Dica de ouro: aperte <kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1 py-0.5 text-[10px]">M</kbd> para fazer comentários
+        <p className="mt-2 ml-11 text-[11px] text-tertiary-muted">
+          Dica de ouro: aperte <kbd className="rounded border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-1 py-0.5 text-[10px]">M</kbd> para fazer comentários
         </p>
       </div>
 
       {/* Content */}
-      <div className="divide-y divide-white/[0.04]">
+      <div className="divide-y divide-[var(--card-border)]">
         {activeTab === 'all' && allItems.map((item) =>
           item.type === 'comment'
             ? renderComment(item.data as Comment)
@@ -298,7 +298,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
                       <Sparkles size={14} className="text-violet-300" />
                       <div>
                         <div className="text-[12.5px] font-semibold text-violet-200">Quer um resumo deste thread?</div>
-                        <div className="text-[11px] text-slate-400">{comments.length} comentários — a IA pode resumir decisões e próximos passos</div>
+                        <div className="text-[11px] text-secondary-muted">{comments.length} comentários — a IA pode resumir decisões e próximos passos</div>
                       </div>
                     </div>
                     <span className="rounded-md bg-violet-500/20 px-2 py-1 text-[11px] font-medium text-violet-200">Resumir</span>
@@ -318,7 +318,7 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
                     <button
                       type="button"
                       onClick={() => setAiSummary(null)}
-                      className="text-[11px] text-slate-500 hover:text-slate-300"
+                      className="text-[11px] text-secondary-muted hover:text-primary"
                     >
                       Fechar resumo
                     </button>
@@ -346,48 +346,48 @@ export default function ActivityTimeline({ ticketId }: ActivityTimelineProps) {
                       <Sparkles size={11} />
                       Resumo por IA
                     </div>
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-slate-200">{aiSummary}</p>
+                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-primary">{aiSummary}</p>
                   </div>
                 )}
               </div>
             )}
             {comments.length > 0
               ? comments.map(renderComment)
-              : <p className="py-6 text-center text-[13px] text-slate-600">Nenhum comentário ainda.</p>}
+              : <p className="py-6 text-center text-[13px] text-tertiary-muted">Nenhum comentário ainda.</p>}
           </>
         )}
 
         {activeTab === 'history' && (
           activities.filter((a) => a.field_name === 'status' || a.field_name === 'assignee').length > 0
             ? activities.filter((a) => a.field_name === 'status' || a.field_name === 'assignee').map(renderActivity)
-            : <p className="py-6 text-center text-[13px] text-slate-600">Nenhuma mudança registrada.</p>
+            : <p className="py-6 text-center text-[13px] text-tertiary-muted">Nenhuma mudança registrada.</p>
         )}
 
         {activeTab === 'activity' && (
           activities.length > 0
             ? activities.map(renderActivity)
-            : <p className="py-6 text-center text-[13px] text-slate-600">Nenhuma atividade registrada.</p>
+            : <p className="py-6 text-center text-[13px] text-tertiary-muted">Nenhuma atividade registrada.</p>
         )}
 
         {activeTab === 'time_status' && (
           Object.keys(statusTimes).length > 0 ? (
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-white/[0.06]">
-                  <th className="py-2 text-left font-medium text-slate-500">Status</th>
-                  <th className="py-2 text-right font-medium text-slate-500">Tempo</th>
+                <tr className="border-b border-[var(--card-border)]">
+                  <th className="py-2 text-left font-medium text-secondary-muted">Status</th>
+                  <th className="py-2 text-right font-medium text-secondary-muted">Tempo</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(statusTimes).map(([status, mins]) => (
-                  <tr key={status} className="border-b border-white/[0.04]">
-                    <td className="py-2 text-slate-300">{status}</td>
-                    <td className="py-2 text-right font-medium text-slate-400">{formatMin(mins)}</td>
+                  <tr key={status} className="border-b border-[var(--card-border)]">
+                    <td className="py-2 text-primary">{status}</td>
+                    <td className="py-2 text-right font-medium text-secondary-muted">{formatMin(mins)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : <p className="py-6 text-center text-[13px] text-slate-600">Nenhum dado de tempo.</p>
+          ) : <p className="py-6 text-center text-[13px] text-tertiary-muted">Nenhum dado de tempo.</p>
         )}
       </div>
     </div>

@@ -66,14 +66,14 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
       <div className="mb-2 flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2">
           <div className={cn('h-2 w-2 rounded-sm', accent)} />
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{title}</span>
-          <span className={cn('text-[11px] font-semibold tabular-nums', wipLimit && cards.length >= wipLimit ? 'text-amber-400' : 'text-slate-600')}>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-secondary-muted">{title}</span>
+          <span className={cn('text-[11px] font-semibold tabular-nums', wipLimit && cards.length >= wipLimit ? 'text-amber-400' : 'text-tertiary-muted')}>
             {cards.length}{wipLimit ? `/${wipLimit}` : ''}
           </span>
         </div>
         <button
           onClick={() => createInColumn(id)}
-          className="rounded p-0.5 text-slate-600 transition hover:bg-white/[0.06] hover:text-slate-300"
+          className="rounded p-0.5 text-tertiary-muted transition hover:bg-[var(--overlay-hover)] hover:text-primary"
           title="Criar ticket"
           aria-label={`Criar ticket em ${title}`}
         >
@@ -115,7 +115,7 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
       {/* Create ticket - opens full modal */}
       <button
         onClick={() => createInColumn(id)}
-        className="mt-1.5 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-slate-600 transition hover:bg-white/[0.04] hover:text-slate-400"
+        className="mt-1.5 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-tertiary-muted transition hover:bg-[var(--overlay-hover)] hover:text-secondary-muted"
       >
         <Plus size={13} />
         Criar ticket

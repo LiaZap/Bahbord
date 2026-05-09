@@ -151,9 +151,9 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
 
     return (
       <div className="flex items-center justify-between py-2.5">
-        <span className="text-[13px] text-slate-500 flex items-center gap-1">
+        <span className="text-[13px] text-secondary-muted flex items-center gap-1">
           {label}
-          {isLocked && <Lock size={10} className="text-slate-600" />}
+          {isLocked && <Lock size={10} className="text-tertiary-muted" />}
         </span>
         {isLocked ? (
           <div className="max-w-[180px] text-right text-[13px]">{children}</div>
@@ -163,7 +163,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             value={currentValue || ''}
             onChange={(e) => handleSelect(fieldName, e.target.value)}
             onBlur={() => setEditingField(null)}
-            className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-slate-200 outline-none"
+            className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-primary outline-none"
           >
             <option value="">Nenhum</option>
             {options.map((opt) => (
@@ -194,7 +194,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             value={ticket.status_id}
             onChange={(e) => handleSelect('status_id', e.target.value)}
             onBlur={() => setEditingField(null)}
-            className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-3 py-1.5 text-[13px] text-slate-200 outline-none"
+            className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-3 py-1.5 text-[13px] text-primary outline-none"
           >
             {statuses.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -213,20 +213,20 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
       </div>
 
       {/* Informações */}
-      <div className="rounded-lg border border-white/[0.06] bg-[var(--modal-bg)]">
+      <div className="rounded-lg border border-[var(--card-border)] bg-[var(--modal-bg)]">
         <button
           onClick={() => setInfoOpen(!infoOpen)}
           className="flex w-full items-center justify-between px-4 py-3"
         >
           <div className="flex items-center gap-1.5">
-            {infoOpen ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
-            <span className="text-[13px] font-semibold text-slate-200">Informações</span>
+            {infoOpen ? <ChevronDown size={14} className="text-secondary-muted" /> : <ChevronRight size={14} className="text-secondary-muted" />}
+            <span className="text-[13px] font-semibold text-primary">Informações</span>
           </div>
-          <SlidersHorizontal size={14} className="text-slate-500" />
+          <SlidersHorizontal size={14} className="text-secondary-muted" />
         </button>
 
         {infoOpen && (
-          <div className="border-t border-white/[0.04] px-4 pb-3">
+          <div className="border-t border-[var(--card-border)] px-4 pb-3">
             {/* Data limite */}
             <InfoRow label="Data limite" fieldName="due_date">
               {editingField === 'due_date' ? (
@@ -236,14 +236,14 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                   defaultValue={ticket.due_date ? ticket.due_date.substring(0, 10) : ''}
                   onChange={(e) => handleSelect('due_date', e.target.value)}
                   onBlur={() => setEditingField(null)}
-                  className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-0.5 text-[13px] text-slate-200 outline-none"
+                  className="rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-0.5 text-[13px] text-primary outline-none"
                 />
               ) : (
-                <span className="flex items-center gap-1.5 text-slate-200" onClick={() => setEditingField('due_date')}>
-                  <Calendar size={13} className="text-slate-500" />
+                <span className="flex items-center gap-1.5 text-primary" onClick={() => setEditingField('due_date')}>
+                  <Calendar size={13} className="text-secondary-muted" />
                   {ticket.due_date
                     ? new Date(ticket.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    : <span className="text-slate-600">Nenhum</span>}
+                    : <span className="text-tertiary-muted">Nenhum</span>}
                 </span>
               )}
             </InfoRow>
@@ -256,7 +256,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                   value={ticket.priority}
                   onChange={(e) => { handleSelect('priority', e.target.value); }}
                   onBlur={() => setEditingField(null)}
-                  className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-slate-200 outline-none"
+                  className="max-w-[180px] rounded border border-blue-500/30 bg-[var(--modal-bg)] px-2 py-1 text-[13px] text-primary outline-none"
                 >
                   {priorityOptions.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
@@ -264,7 +264,7 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                 </select>
               ) : (
                 <span
-                  className="flex cursor-pointer items-center gap-1.5 text-slate-200"
+                  className="flex cursor-pointer items-center gap-1.5 text-primary"
                   onClick={() => setEditingField('priority')}
                 >
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: prio.color }} />
@@ -276,12 +276,12 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             {/* Responsável */}
             <InfoRow label="Responsável" fieldName="assignee_id" options={members} currentValue={ticket.assignee_id} displayKey="display_name">
               {ticket.assignee_name ? (
-                <span className="flex items-center gap-2 text-slate-200">
+                <span className="flex items-center gap-2 text-primary">
                   <Avatar name={ticket.assignee_name} size="xs" />
                   {ticket.assignee_name}
                 </span>
               ) : (
-                <span className="text-slate-600">Não atribuído</span>
+                <span className="text-tertiary-muted">Não atribuído</span>
               )}
             </InfoRow>
 
@@ -289,11 +289,11 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
             {isBahCompany && (
               <InfoRow label="BAH! Serviço/Produto" fieldName="service_id" options={services} currentValue={ticket.service_id}>
                 {ticket.service_name ? (
-                  <span className="rounded border border-white/[0.1] px-2 py-0.5 text-[12px] font-medium text-slate-200">
+                  <span className="rounded border border-[var(--card-border)] px-2 py-0.5 text-[12px] font-medium text-primary">
                     {ticket.service_name}
                   </span>
                 ) : (
-                  <span className="text-slate-600">Nenhum</span>
+                  <span className="text-tertiary-muted">Nenhum</span>
                 )}
               </InfoRow>
             )}
@@ -313,18 +313,18 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                   {ticket.client_name}
                 </span>
               ) : (
-                <span className="text-slate-600">Nenhum</span>
+                <span className="text-tertiary-muted">Nenhum</span>
               )}
             </InfoRow>
 
             {/* Categorias */}
             <InfoRow label="Categorias" fieldName="category_id" options={categories} currentValue={ticket.category_id}>
               {ticket.category_name ? (
-                <span className="rounded border border-white/[0.1] px-2 py-0.5 text-[12px] font-medium text-slate-200">
+                <span className="rounded border border-[var(--card-border)] px-2 py-0.5 text-[12px] font-medium text-primary">
                   {ticket.category_name}
                 </span>
               ) : (
-                <span className="text-slate-600">Nenhum</span>
+                <span className="text-tertiary-muted">Nenhum</span>
               )}
             </InfoRow>
 
@@ -333,19 +333,19 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
               {ticket.sprint_name ? (
                 <span className="text-blue-400">{ticket.sprint_name}</span>
               ) : (
-                <span className="text-slate-600">Nenhum</span>
+                <span className="text-tertiary-muted">Nenhum</span>
               )}
             </InfoRow>
 
             {/* Relator */}
             <InfoRow label="Relator" fieldName="reporter_id" options={members} currentValue={ticket.reporter_id} displayKey="display_name">
               {ticket.reporter_name ? (
-                <span className="flex items-center gap-2 text-slate-200">
+                <span className="flex items-center gap-2 text-primary">
                   <Avatar name={ticket.reporter_name} size="xs" />
                   {ticket.reporter_name}
                 </span>
               ) : (
-                <span className="text-slate-600">Não atribuído</span>
+                <span className="text-tertiary-muted">Não atribuído</span>
               )}
             </InfoRow>
           </div>
