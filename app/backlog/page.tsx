@@ -11,6 +11,7 @@ import { Inbox } from 'lucide-react';
 import { isAdmin } from '@/lib/api-auth';
 import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 import { requireApproved } from '@/lib/page-guards';
+import type { TicketRow } from '@/lib/types/db-rows';
 
 const priorityLabels: Record<string, { label: string; color: string }> = {
   urgent: { label: 'Urgente', color: '#ef4444' },
@@ -49,7 +50,7 @@ export default async function BacklogPage({ searchParams }: { searchParams: { bo
     whereClause = `WHERE is_archived = false AND sprint_id IS NULL AND board_id IN (SELECT board_id FROM board_roles WHERE member_id = $${params.length})`;
   }
 
-  const result = await query(`
+  const result = await query<TicketRow>(`
     SELECT
       ticket_key, id, title, priority, status_name, status_color,
       service_name, service_color, assignee_name, type_icon, type_name,
@@ -68,7 +69,7 @@ export default async function BacklogPage({ searchParams }: { searchParams: { bo
       created_at DESC
   `, params.length > 0 ? params : undefined);
 
-  const tickets = result.rows as any[];
+  const tickets = result.rows;
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-primary">
@@ -125,7 +126,7 @@ export default async function BacklogPage({ searchParams }: { searchParams: { bo
                         <span className="w-32 shrink-0">
                           <span
                             className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium"
-                            style={{ backgroundColor: t.status_color + '20', color: t.status_color }}
+                            style={{ backgroundColor: (t.status_color ?? '#64748b') + '20', color: t.status_color ?? '#64748b' }}
                           >
                             {t.status_name}
                           </span>

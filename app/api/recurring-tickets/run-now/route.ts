@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { renderTitleTemplate } from '@/lib/recurring';
+import { extractRequestMeta } from '@/lib/audit';
+import { createTicket, type TicketPriority } from '@/lib/tickets';
 
 /**
  * POST /api/recurring-tickets/run-now
@@ -53,48 +55,52 @@ export async function POST(request: Request) {
     );
     const statusId = statusRes.rows[0]?.id || null;
 
-    const inserted = await query<{ id: string }>(
-      `INSERT INTO tickets (
-         workspace_id, ticket_type_id, status_id, service_id,
-         assignee_id, reporter_id, title, description, priority,
-         project_id, board_id, created_at, updated_at
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()
-       ) RETURNING id`,
-      [
-        row.workspace_id,
-        row.ticket_type_id,
-        statusId,
-        row.service_id,
-        row.assignee_id,
-        row.assignee_id || auth.id,
+    const meta = extractRequestMeta(request);
+
+    // Cria ticket via helper consolidado (lib/tickets, Fase 6).
+    // Run-now é manual/admin → ATIVA tudo (igual ao POST normal). actor_id
+    // é o admin que clicou, não o assignee — reporter cai no assignee
+    // (system-generated, mesma convenção do cron).
+    const inserted = await createTicket(
+      {
+        workspace_id: row.workspace_id,
+        project_id: row.project_id,
+        board_id: row.board_id,
+        status_id: statusId,
+        ticket_type_id: row.ticket_type_id,
+        service_id: row.service_id,
         title,
-        row.description_html || '',
-        row.priority || 'medium',
-        row.project_id,
-        row.board_id,
-      ]
+        description: row.description_html || '',
+        priority: (row.priority || 'medium') as TicketPriority,
+        assignee_id: row.assignee_id,
+        reporter_id: row.assignee_id || auth.id,
+        source: 'recurring',
+      },
+      {
+        actor_id: auth.id,
+        ip_address: meta.ipAddress,
+        user_agent: meta.userAgent,
+      }
     );
 
-    // Info adicional pra mostrar onde criou
-    const ctx = await query<{ project_name: string | null; board_name: string | null; ticket_key: string | null }>(
-      `SELECT p.name AS project_name, b.name AS board_name, tf.ticket_key
+    // Info adicional pra mostrar onde criou (UI mostra projeto + board)
+    const info_ = await query<{ project_name: string | null; board_name: string | null }>(
+      `SELECT p.name AS project_name, b.name AS board_name
        FROM tickets t
        LEFT JOIN projects p ON p.id = t.project_id
        LEFT JOIN boards b ON b.id = t.board_id
-       LEFT JOIN tickets_full tf ON tf.id = t.id
        WHERE t.id = $1`,
-      [inserted.rows[0].id]
+      [inserted.id]
     );
-    const info = ctx.rows[0] || {};
+    const info = info_.rows[0] || {};
 
     return NextResponse.json({
       ok: true,
-      ticket_id: inserted.rows[0].id,
+      ticket_id: inserted.id,
       title,
       project_name: info.project_name,
       board_name: info.board_name,
-      ticket_key: info.ticket_key,
+      ticket_key: inserted.ticket_key,
     });
   } catch (err) {
     console.error('POST /api/recurring-tickets/run-now error:', err);

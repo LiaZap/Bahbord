@@ -33,6 +33,37 @@ vi.mock('@/lib/recurring', () => ({
   renderTitleTemplate: vi.fn().mockReturnValue('mocked-title'),
 }));
 
+// lib/tickets — Fase 6 consolidou criação. cron/recurring-tickets agora
+// usa createTicket() que importa lib/embeddings → instancia OpenAI no
+// top-level, o que quebra em jsdom. Mock no-op preserva o foco do teste
+// (auth, não a lógica de criação que tem testes próprios).
+vi.mock('@/lib/tickets', () => ({
+  createTicket: vi.fn().mockResolvedValue({
+    id: 'fake-ticket-id',
+    workspace_id: 'fake-ws',
+    title: 'mocked',
+    description: null,
+    priority: 'medium',
+    assignee_id: null,
+    reporter_id: null,
+    status_id: null,
+    ticket_type_id: null,
+    service_id: null,
+    category_id: null,
+    project_id: null,
+    board_id: null,
+    sprint_id: null,
+    parent_id: null,
+    client_id: null,
+    due_date: null,
+    sequence_number: 1,
+    is_archived: false,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ticket_key: null,
+  }),
+}));
+
 vi.mock('@/lib/project-updates', () => ({
   generateAndSaveUpdateForProject: vi.fn().mockResolvedValue({ status: 'created', id: 'fake' }),
 }));

@@ -23,6 +23,15 @@ import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { requireAdmin } from '@/lib/page-guards';
+import type {
+  ProjectRow,
+  TicketRow,
+  ChartCountRow,
+  ChartTypeRow,
+  WeeklyCompletedRow,
+  AssigneeBreakdownRow,
+  SprintRow,
+} from '@/lib/types/db-rows';
 
 export default async function HomePage({ searchParams }: { searchParams: { project_id?: string; board_id?: string } }) {
   // Dashboard global é admin-only (membros são redirecionados pra /my-tasks)
@@ -200,9 +209,11 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
     query(`SELECT id, name, color FROM projects WHERE is_archived = false ORDER BY name ASC`)
   ]);
 
-  const stats = ticketStats.rows[0] || { total_active: 0, completed_week: 0, waiting: 0, urgent: 0 };
-  const delta = statsDelta.rows[0] || { new_week: 0, new_prev_week: 0, done_week: 0, done_prev_week: 0 };
-  const sprint = sprintRow.rows[0] as any;
+  const stats = (ticketStats.rows[0] as { total_active: number; completed_week: number; waiting: number; urgent: number } | undefined)
+    || { total_active: 0, completed_week: 0, waiting: 0, urgent: 0 };
+  const delta = (statsDelta.rows[0] as { new_week: number; new_prev_week: number; done_week: number; done_prev_week: number } | undefined)
+    || { new_week: 0, new_prev_week: 0, done_week: 0, done_prev_week: 0 };
+  const sprint = sprintRow.rows[0] as Pick<SprintRow, 'id' | 'name' | 'start_date' | 'end_date'> | undefined;
   const sprintName = sprint?.name || 'Sem sprint';
   const weeklySeries = (weeklyCompleted.rows as Array<{ value: number }>).map((r) => r.value);
 
@@ -248,8 +259,9 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
     }
   ];
 
+  const projectsRows = projectsList.rows as ProjectRow[];
   const currentProject = safeProjectId
-    ? (projectsList.rows as Array<{ id: string; name: string }>).find((p) => p.id === safeProjectId)
+    ? projectsRows.find((p) => p.id === safeProjectId)
     : undefined;
 
   // Date breadcrumb (in pt-BR)
@@ -277,7 +289,13 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
                   )}
                 </h1>
               </div>
-              <ProjectFilter projects={projectsList.rows as any[]} />
+              <ProjectFilter
+                projects={projectsRows.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  color: p.color ?? '#64748b',
+                }))}
+              />
             </div>
 
             {/* Stat Cards - editorial with sparklines */}
@@ -310,12 +328,12 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
 
             {/* All Charts */}
             <DashboardCharts
-              byStatus={byStatus.rows as any[]}
-              byService={byService.rows as any[]}
-              byPriority={byPriority.rows as any[]}
-              byType={byType.rows as any[]}
-              weeklyCompleted={weeklyCompleted.rows as any[]}
-              byAssignee={byAssignee.rows as any[]}
+              byStatus={byStatus.rows as ChartCountRow[]}
+              byService={byService.rows as ChartCountRow[]}
+              byPriority={byPriority.rows as ChartCountRow[]}
+              byType={byType.rows as ChartTypeRow[]}
+              weeklyCompleted={weeklyCompleted.rows as WeeklyCompletedRow[]}
+              byAssignee={byAssignee.rows as AssigneeBreakdownRow[]}
             />
 
             {/* Recent tickets + Activity feed - grid 2/3 + 1/3 */}
@@ -332,7 +350,7 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
                   </Link>
                 </div>
                 <div>
-                  {(recentTickets.rows as any[]).map((t) => (
+                  {(recentTickets.rows as TicketRow[]).map((t) => (
                     <Link
                       key={t.ticket_key}
                       href={`/ticket/${t.id}` as any}
@@ -342,9 +360,9 @@ export default async function HomePage({ searchParams }: { searchParams: { proje
                       <span className="truncate text-[13px] text-primary">{t.title}</span>
                       <span
                         className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
-                        style={{ backgroundColor: t.status_color + '20', color: t.status_color }}
+                        style={{ backgroundColor: (t.status_color ?? '#64748b') + '20', color: t.status_color ?? '#64748b' }}
                       >
-                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.status_color }} />
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.status_color ?? '#64748b' }} />
                         {t.status_name}
                       </span>
                       <span className="hidden w-24 shrink-0 truncate text-right text-[11px] text-[var(--text-tertiary)] sm:inline">

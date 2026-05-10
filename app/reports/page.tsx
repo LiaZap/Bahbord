@@ -5,11 +5,12 @@ import ReportsView from '@/components/reports/ReportsView';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { requireAdmin } from '@/lib/page-guards';
+import type { ProjectRow } from '@/lib/types/db-rows';
 
 export default async function ReportsPage() {
   await requireAdmin();
   const wsId = await getDefaultWorkspaceId();
-  const projects = await query(
+  const projects = await query<ProjectRow>(
     `SELECT id, name, color FROM projects WHERE workspace_id = $1 AND is_archived = false ORDER BY name`,
     [wsId]
   );
@@ -21,7 +22,7 @@ export default async function ReportsPage() {
         <Header />
         <main className="flex-1 overflow-auto p-6">
           <ApprovalGate>
-            <ReportsView projects={projects.rows as any[]} />
+            <ReportsView projects={projects.rows} />
           </ApprovalGate>
         </main>
       </div>

@@ -9,6 +9,7 @@ import { query } from '@/lib/db';
 import { isAdmin } from '@/lib/api-auth';
 import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 import { requireApproved } from '@/lib/page-guards';
+import type { TicketRow, StatusRow, MemberRow } from '@/lib/types/db-rows';
 
 export default async function ListPage({ searchParams }: { searchParams: { board_id?: string; project_id?: string } }) {
   const { board_id, project_id } = await searchParams;
@@ -41,7 +42,7 @@ export default async function ListPage({ searchParams }: { searchParams: { board
   }
 
   const [ticketsResult, statusesResult, membersResult] = await Promise.all([
-    query(`
+    query<TicketRow>(`
       SELECT
         ticket_key, id, title, priority, status_name, status_color, status_id,
         service_name, service_color, assignee_name, assignee_id, type_icon, type_name,
@@ -51,8 +52,8 @@ export default async function ListPage({ searchParams }: { searchParams: { board
       ${ticketWhere}
       ORDER BY created_at DESC
     `, ticketParams.length > 0 ? ticketParams : undefined),
-    query(`SELECT id, name FROM statuses ORDER BY position ASC`),
-    query(`SELECT id, display_name FROM members ORDER BY display_name ASC`),
+    query<StatusRow>(`SELECT id, name FROM statuses ORDER BY position ASC`),
+    query<MemberRow>(`SELECT id, display_name FROM members ORDER BY display_name ASC`),
   ]);
 
   return (
@@ -64,9 +65,9 @@ export default async function ListPage({ searchParams }: { searchParams: { board
         <main className="flex-1 overflow-auto">
           <ApprovalGate>
             <ListView
-              tickets={ticketsResult.rows as any[]}
-              statuses={statusesResult.rows as any[]}
-              members={membersResult.rows as any[]}
+              tickets={ticketsResult.rows as unknown as React.ComponentProps<typeof ListView>['tickets']}
+              statuses={statusesResult.rows as React.ComponentProps<typeof ListView>['statuses']}
+              members={membersResult.rows as unknown as React.ComponentProps<typeof ListView>['members']}
             />
           </ApprovalGate>
         </main>

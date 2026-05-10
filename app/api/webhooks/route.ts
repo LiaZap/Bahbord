@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId, getDefaultMemberId } from '@/lib/db';
+import { createTicket, type TicketPriority } from '@/lib/tickets';
+import { extractRequestMeta } from '@/lib/audit';
 
 // Webhook endpoint para integrações externas (n8n, Zapier, etc.)
 // Recebe eventos e pode disparar ações no BahBoard
@@ -26,20 +28,58 @@ export async function POST(request: Request) {
   try {
     switch (event) {
       case 'ticket.create': {
-        const { title, service_id, priority, status_id, ticket_type_id } = data;
+        const { title, service_id, priority, status_id, ticket_type_id, assignee_id, description } = data;
         if (!title) return NextResponse.json({ error: 'title é obrigatório' }, { status: 400 });
 
         const wsId = await getDefaultWorkspaceId();
-        const result = await query(
-          `INSERT INTO tickets (workspace_id, title, service_id, priority, status_id, ticket_type_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4,
-             COALESCE($5, (SELECT id FROM statuses ORDER BY position ASC LIMIT 1)),
-             COALESCE($6, (SELECT id FROM ticket_types ORDER BY position ASC LIMIT 1)),
-             NOW(), NOW())
-           RETURNING id, title`,
-          [wsId, title, service_id || null, priority || 'medium', status_id || null, ticket_type_id || null]
+
+        // Resolve defaults antes de chamar createTicket (helper espera ids
+        // já resolvidos — manter a inteligência de "primeiro status/ticket_type"
+        // aqui pra preservar contrato externo do webhook).
+        let resolvedStatusId = status_id || null;
+        if (!resolvedStatusId) {
+          const r = await query<{ id: string }>(
+            `SELECT id FROM statuses ORDER BY position ASC LIMIT 1`
+          );
+          resolvedStatusId = r.rows[0]?.id || null;
+        }
+        let resolvedTypeId = ticket_type_id || null;
+        if (!resolvedTypeId) {
+          const r = await query<{ id: string }>(
+            `SELECT id FROM ticket_types ORDER BY position ASC LIMIT 1`
+          );
+          resolvedTypeId = r.rows[0]?.id || null;
+        }
+
+        const meta = extractRequestMeta(request);
+        // Cria via helper (Fase 6): ganha embedding, automations e
+        // notificação automaticamente. actor_id null porque é caller
+        // externo sem identidade de membro.
+        const ticket = await createTicket(
+          {
+            workspace_id: wsId,
+            title,
+            description: description || null,
+            service_id: service_id || null,
+            status_id: resolvedStatusId,
+            ticket_type_id: resolvedTypeId,
+            assignee_id: assignee_id || null,
+            priority: (priority || 'medium') as TicketPriority,
+            source: 'webhook',
+          },
+          {
+            actor_id: null,
+            ip_address: meta.ipAddress,
+            user_agent: meta.userAgent,
+          }
         );
-        return NextResponse.json({ ok: true, ticket: result.rows[0] }, { status: 201 });
+
+        // Mantém shape de resposta retroativo (id + title) — clientes
+        // externos podem depender dele. Não retornamos o ticket inteiro.
+        return NextResponse.json(
+          { ok: true, ticket: { id: ticket.id, title: ticket.title } },
+          { status: 201 }
+        );
       }
 
       case 'ticket.update': {

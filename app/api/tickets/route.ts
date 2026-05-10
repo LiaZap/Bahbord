@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
-import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
-import { createNotification } from '@/lib/notifications';
-import { runAutomations } from '@/lib/automations';
 import { createTicketSchema } from '@/lib/validators';
-import { upsertTicketEmbedding } from '@/lib/embeddings';
 import { hasTicketAccess } from '@/lib/access-check';
+import { extractRequestMeta } from '@/lib/audit';
+import { createTicket, type TicketPriority } from '@/lib/tickets';
 
 export async function GET(request: Request) {
   try {
@@ -266,131 +264,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
     }
 
-    const result = await query(
-      `INSERT INTO tickets (
-        workspace_id,
-        ticket_type_id,
-        status_id,
-        service_id,
-        category_id,
-        assignee_id,
-        reporter_id,
-        title,
-        description,
-        priority,
-        due_date,
-        parent_id,
-        sprint_id,
-        client_id,
-        project_id,
-        board_id,
-        created_at,
-        updated_at
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-        NOW(), NOW()
-      ) RETURNING *`,
-      [
-        workspaceId,
-        body.ticket_type_id,
-        body.status_id,
-        body.service_id,
-        body.category_id ?? null,
-        body.assignee_id,
-        body.reporter_id,
-        body.title,
-        body.description,
-        body.priority ?? 'medium',
-        body.due_date ?? null,
-        body.parent_id ?? null,
-        body.sprint_id ?? null,
-        body.client_id ?? null,
-        body.project_id ?? null,
-        body.board_id ?? null,
-      ]
-    );
-
-    const ticket = result.rows[0];
-
     // Sincroniza ticket_assignees a partir de assignee_ids (opcional).
-    // Convenção: o primeiro id da lista vira o primary (mesmo da coluna
-    // tickets.assignee_id, que mantemos pra compat com queries existentes).
-    // Se assignee_ids não veio mas assignee_id veio, populamos como primary
-    // unitário pra manter a tabela consistente desde o create.
+    // Convenção: o primeiro id da lista vira o primary. Se assignee_ids
+    // não veio mas assignee_id veio, populamos como primary unitário.
     const rawAssigneeIds = Array.isArray(rawBody.assignee_ids)
       ? (rawBody.assignee_ids as unknown[]).filter((v): v is string => typeof v === 'string')
-      : null;
-    try {
-      if (rawAssigneeIds && rawAssigneeIds.length > 0) {
-        const primaryId = rawAssigneeIds[0];
-        // Se primary diferente de tickets.assignee_id, ajusta a coluna principal
-        if (ticket.assignee_id !== primaryId) {
-          await query(
-            `UPDATE tickets SET assignee_id = $1 WHERE id = $2`,
-            [primaryId, ticket.id]
-          );
-          ticket.assignee_id = primaryId;
-        }
-        for (let i = 0; i < rawAssigneeIds.length; i++) {
-          await query(
-            `INSERT INTO ticket_assignees (ticket_id, member_id, is_primary, added_by)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (ticket_id, member_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`,
-            [ticket.id, rawAssigneeIds[i], i === 0, auth?.id ?? null]
-          );
-        }
-      } else if (ticket.assignee_id) {
-        await query(
-          `INSERT INTO ticket_assignees (ticket_id, member_id, is_primary, added_by)
-           VALUES ($1, $2, true, $3)
-           ON CONFLICT (ticket_id, member_id) DO NOTHING`,
-          [ticket.id, ticket.assignee_id, auth?.id ?? null]
-        );
+      : undefined;
+
+    const meta = extractRequestMeta(request);
+
+    // Toda a lógica de INSERT + ticket_assignees + embedding + webhook +
+    // automations + notificação foi consolidada em lib/tickets.createTicket
+    // (Fase 6 — antes era duplicada em 5 callers com gaps divergentes).
+    const ticket = await createTicket(
+      {
+        workspace_id: workspaceId,
+        project_id: (body.project_id as string | null | undefined) ?? null,
+        board_id: (body.board_id as string | null | undefined) ?? null,
+        status_id: (body.status_id as string | null | undefined) ?? null,
+        ticket_type_id: (body.ticket_type_id as string | null | undefined) ?? null,
+        service_id: (body.service_id as string | null | undefined) ?? null,
+        category_id: (body.category_id as string | null | undefined) ?? null,
+        client_id: (body.client_id as string | null | undefined) ?? null,
+        sprint_id: (body.sprint_id as string | null | undefined) ?? null,
+        title: body.title as string,
+        description: (body.description as string | null | undefined) ?? null,
+        priority: (body.priority as TicketPriority | undefined) ?? 'medium',
+        due_date: (body.due_date as string | null | undefined) ?? null,
+        assignee_id: (body.assignee_id as string | null | undefined) ?? null,
+        assignee_ids: rawAssigneeIds,
+        reporter_id: (body.reporter_id as string | null | undefined) ?? null,
+        parent_id: (body.parent_id as string | null | undefined) ?? null,
+        source: 'manual',
+      },
+      {
+        actor_id: auth?.id ?? null,
+        ip_address: meta.ipAddress,
+        user_agent: meta.userAgent,
       }
-    } catch (assigneeErr) {
-      console.error('Erro ao sincronizar ticket_assignees no create:', assigneeErr);
-    }
-
-    dispatchWebhook('ticket.created', ticket);
-
-    // Fire-and-forget: gera embedding semântico para detecção de duplicatas (feature 2.5).
-    // Não bloqueia a resposta; falhas (ex: OPENAI_API_KEY ausente, rate limit) são apenas logadas.
-    upsertTicketEmbedding(ticket.id, ticket.title, ticket.description).catch((err) => {
-      console.error('[embeddings] Falha ao gerar embedding para ticket', ticket.id, err);
-    });
-
-    // Disparar automações (fire-and-forget safe: captura erros internamente)
-    await runAutomations({
-      ticket,
-      event: 'ticket.created',
-      workspace_id: workspaceId,
-      actor_id: auth?.id,
-    });
-
-    // Notificar assignee caso o ticket tenha sido atribuído na criação a outra pessoa
-    if (ticket.assignee_id && ticket.assignee_id !== auth?.id) {
-      try {
-        // Buscar ticket_key a partir da view
-        const keyRes = await query(
-          `SELECT ticket_key FROM tickets_full WHERE id = $1`,
-          [ticket.id]
-        );
-        const ticketKey = keyRes.rows[0]?.ticket_key || '';
-        await createNotification({
-          workspace_id: workspaceId,
-          recipient_id: ticket.assignee_id,
-          actor_id: auth?.id,
-          type: 'assigned',
-          entity_type: 'ticket',
-          entity_id: ticket.id,
-          title: `Você foi atribuído ao ticket${ticketKey ? ` ${ticketKey}` : ''}`,
-          message: ticket.title,
-          link: `/ticket/${ticket.id}`,
-        });
-      } catch (notifyErr) {
-        console.error('Erro ao notificar atribuição na criação do ticket:', notifyErr);
-      }
-    }
+    );
 
     return NextResponse.json(ticket, { status: 201 });
   } catch (err) {

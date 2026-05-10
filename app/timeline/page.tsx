@@ -5,6 +5,7 @@ import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
 import TimelineView from '@/components/timeline/TimelineView';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { requireAdmin } from '@/lib/page-guards';
+import type { TicketRow, SprintRow } from '@/lib/types/db-rows';
 
 export default async function TimelinePage({ searchParams }: { searchParams: { board_id?: string; project_id?: string } }) {
   await requireAdmin();
@@ -38,7 +39,7 @@ export default async function TimelinePage({ searchParams }: { searchParams: { b
   }
 
   const [ticketsResult, sprintsResult] = await Promise.all([
-    query(`
+    query<TicketRow>(`
       SELECT
         id, ticket_key, title, priority, type_icon,
         status_name, status_color, is_done,
@@ -52,7 +53,7 @@ export default async function TimelinePage({ searchParams }: { searchParams: { b
       ${ticketWhere}
       ORDER BY due_date ASC NULLS LAST, created_at ASC
     `, ticketParams.length > 0 ? ticketParams : undefined),
-    query(
+    query<SprintRow>(
       `SELECT id, name, start_date::text, end_date::text, is_active, is_completed
        FROM sprints
        WHERE ${sprintWhere}
@@ -69,8 +70,8 @@ export default async function TimelinePage({ searchParams }: { searchParams: { b
         <ViewTabsWrapper />
         <main className="flex-1 overflow-hidden">
           <TimelineView
-            tickets={ticketsResult.rows as any[]}
-            sprints={sprintsResult.rows as any[]}
+            tickets={ticketsResult.rows as unknown as React.ComponentProps<typeof TimelineView>['tickets']}
+            sprints={sprintsResult.rows as unknown as React.ComponentProps<typeof TimelineView>['sprints']}
           />
         </main>
       </div>

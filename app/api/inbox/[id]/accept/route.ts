@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { hasProjectAccess } from '@/lib/access-check';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
-import { dispatchWebhook } from '@/lib/webhooks';
+import { createTicket, type TicketPriority } from '@/lib/tickets';
 
 interface AcceptBody {
   project_id?: string;
@@ -131,31 +131,36 @@ export async function POST(
     const finalTitle = (body.title?.trim()) || item.title;
     const finalDescription = body.description ?? item.description;
 
-    // Cria ticket
-    const ticketRes = await query<{ id: string; sequence_number: number }>(
-      `INSERT INTO tickets (
-         workspace_id, ticket_type_id, status_id, assignee_id, reporter_id,
-         title, description, priority, project_id, board_id,
-         created_at, updated_at
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
-       ) RETURNING id, sequence_number`,
-      [
-        auth.workspace_id,
-        ticketTypeId,
-        statusId,
-        assigneeId,
-        auth.id, // reporter = quem aceitou (não temos member do externo)
-        finalTitle,
-        finalDescription,
-        priority,
-        projectId,
-        boardId,
-      ]
-    );
-    const newTicket = ticketRes.rows[0];
+    const meta = extractRequestMeta(request);
 
-    // Marca inbox como accepted
+    // Cria ticket via helper consolidado (lib/tickets, Fase 6).
+    // Antes: INSERT inline + dispatchWebhook só, sem embedding/automation/notificação.
+    // Agora: ganha embedding semântico, automations e notificação do assignee
+    // automaticamente — comportamento alinhado com POST /api/tickets.
+    const newTicket = await createTicket(
+      {
+        workspace_id: auth.workspace_id,
+        project_id: projectId,
+        board_id: boardId,
+        status_id: statusId,
+        ticket_type_id: ticketTypeId,
+        title: finalTitle,
+        description: finalDescription,
+        priority: priority as TicketPriority,
+        assignee_id: assigneeId,
+        reporter_id: auth.id, // reporter = quem aceitou (não temos member do externo)
+        source: 'inbox',
+      },
+      {
+        actor_id: auth.id,
+        ip_address: meta.ipAddress,
+        user_agent: meta.userAgent,
+      }
+    );
+
+    // Post-processing específico do inbox: marca item como accepted.
+    // FICA APÓS createTicket pra garantir que só atualizamos o inbox se o
+    // ticket realmente foi criado (createTicket lança em caso de falha).
     await query(
       `UPDATE triage_inbox
        SET status = 'accepted',
@@ -166,15 +171,9 @@ export async function POST(
       [newTicket.id, auth.id, inboxId]
     );
 
-    // Webhook + audit
-    dispatchWebhook('ticket.created', {
-      id: newTicket.id,
-      title: finalTitle,
-      priority,
-      from_inbox: true,
-    });
-
-    const meta = extractRequestMeta(request);
+    // Audit específico do FLUXO de triagem (separado do audit ticket.created
+    // que createTicket já registrou). Mantém rastreabilidade do "promovido
+    // de inbox X" no audit_log.
     logAudit({
       workspaceId: auth.workspace_id,
       actorId: auth.id,

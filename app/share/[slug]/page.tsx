@@ -4,6 +4,7 @@ import { query } from '@/lib/db';
 import { hashSharePassword } from '@/lib/share-links';
 import PasswordPrompt from '@/components/public/PasswordPrompt';
 import PublicClientDashboard from '@/components/public/PublicClientDashboard';
+import type { TicketRow, ShareDashboardStats } from '@/lib/types/db-rows';
 
 interface ShareLinkRow {
   id: string;
@@ -107,7 +108,7 @@ export default async function SharePage({
   const whereClause = filters.join(' AND ');
 
   const [ticketsRes, statsRes] = await Promise.all([
-    query(
+    query<TicketRow>(
       `SELECT ticket_key, id, title, priority, status_name, status_color, type_name, type_icon, is_done
        FROM tickets_full
        WHERE ${whereClause}
@@ -115,7 +116,7 @@ export default async function SharePage({
        LIMIT 50`,
       params_
     ),
-    query(
+    query<ShareDashboardStats>(
       `SELECT
          COUNT(*) FILTER (WHERE is_done = false)::int AS total_active,
          COUNT(*) FILTER (
@@ -132,7 +133,7 @@ export default async function SharePage({
     ),
   ]);
 
-  const stats = statsRes.rows[0] || { total_active: 0, in_progress: 0, completed_month: 0 };
+  const stats: ShareDashboardStats = statsRes.rows[0] ?? { total_active: 0, in_progress: 0, completed_month: 0 };
 
   return (
     <PublicClientDashboard
@@ -146,8 +147,8 @@ export default async function SharePage({
         expires_at: link.expires_at,
         views_count: link.views_count,
       }}
-      tickets={ticketsRes.rows as any[]}
-      stats={stats as any}
+      tickets={ticketsRes.rows as unknown as React.ComponentProps<typeof PublicClientDashboard>['tickets']}
+      stats={stats}
     />
   );
 }

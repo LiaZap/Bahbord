@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { computeNextRunAt, renderTitleTemplate } from '@/lib/recurring';
 import { safeEqual } from '@/lib/crypto-utils';
+import { createTicket, type TicketPriority } from '@/lib/tickets';
 
 /**
  * Cron worker — chamado externamente (Vercel Cron, cron-job.org, etc.)
@@ -92,27 +93,31 @@ export async function POST(request: Request) {
         const title = renderTitleTemplate(r.title_template, startedAt);
         const statusId = await resolveDefaultStatusId(r.workspace_id);
 
-        const inserted = await query<{ id: string }>(
-          `INSERT INTO tickets (
-            workspace_id, ticket_type_id, status_id, service_id,
-            assignee_id, reporter_id, title, description, priority,
-            project_id, board_id, created_at, updated_at
-          ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()
-          ) RETURNING id`,
-          [
-            r.workspace_id,
-            r.ticket_type_id,
-            statusId,
-            r.service_id,
-            r.assignee_id,
-            r.assignee_id, // reporter = assignee (recurring é "system-generated")
+        // Cria ticket via helper consolidado (lib/tickets, Fase 6).
+        // ATIVA notificações + automations + embedding por padrão: usuário
+        // que configurou recurring espera o ciclo completo (assignee notificado,
+        // automations rodadas, ticket indexado pra similaridade). Antes essa
+        // versão pulava tudo silenciosamente — gap corrigido.
+        // skip_automations poderia ser ativado se observarmos loop entre cron
+        // e regras de automation no futuro.
+        const inserted = await createTicket(
+          {
+            workspace_id: r.workspace_id,
+            project_id: r.project_id,
+            board_id: r.board_id,
+            status_id: statusId,
+            ticket_type_id: r.ticket_type_id,
+            service_id: r.service_id,
             title,
-            r.description_html || '',
-            r.priority || 'medium',
-            r.project_id,
-            r.board_id,
-          ]
+            description: r.description_html || '',
+            priority: (r.priority || 'medium') as TicketPriority,
+            assignee_id: r.assignee_id,
+            reporter_id: r.assignee_id, // reporter = assignee (recurring é "system-generated")
+            source: 'recurring',
+          },
+          {
+            actor_id: null, // cron não tem actor humano
+          }
         );
 
         const newNextRun = computeNextRunAt(r.cron_expression, new Date());
@@ -123,7 +128,7 @@ export async function POST(request: Request) {
           [newNextRun, r.id]
         );
 
-        created.push({ recurring_id: r.id, ticket_id: inserted.rows[0].id });
+        created.push({ recurring_id: r.id, ticket_id: inserted.id });
       } catch (err) {
         const msg = (err as Error).message || 'erro desconhecido';
         console.error(`[cron/recurring] falha ao processar ${r.id}:`, msg);

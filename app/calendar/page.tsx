@@ -5,6 +5,7 @@ import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
 import CalendarView from '@/components/calendar/CalendarView';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { requireApproved } from '@/lib/page-guards';
+import type { TicketRow, SprintRow } from '@/lib/types/db-rows';
 
 interface CalendarSearchParams {
   board_id?: string;
@@ -42,7 +43,7 @@ export default async function CalendarPage({
   const firstNextMonth = `${nextMonthYear}-${pad(nextMonthIdx + 1)}-01`;
 
   // Build dynamic WHERE for tickets
-  const ticketParams: any[] = [firstDay, firstNextMonth];
+  const ticketParams: string[] = [firstDay, firstNextMonth];
   let ticketWhere = `WHERE is_archived = false
     AND due_date IS NOT NULL
     AND due_date >= $1::date
@@ -57,7 +58,7 @@ export default async function CalendarPage({
   }
 
   // Sprints overlapping the month
-  const sprintParams: any[] = [wsId, firstDay, firstNextMonth];
+  const sprintParams: string[] = [wsId, firstDay, firstNextMonth];
   let sprintQuery = `
     SELECT id, name, start_date::text, end_date::text, is_active, is_completed, project_id
     FROM sprints
@@ -69,12 +70,12 @@ export default async function CalendarPage({
     ORDER BY start_date ASC, name ASC
   `;
 
-  let tickets: any[] = [];
-  let sprints: any[] = [];
+  let tickets: TicketRow[] = [];
+  let sprints: SprintRow[] = [];
   let queryError: string | null = null;
   try {
     const [tRes, sRes] = await Promise.all([
-      query(
+      query<TicketRow>(
         `SELECT
           id, ticket_key, title, priority, type_icon,
           status_name, status_color, is_done,
@@ -88,7 +89,7 @@ export default async function CalendarPage({
          ORDER BY due_date ASC, priority ASC NULLS LAST`,
         ticketParams
       ),
-      query(sprintQuery, sprintParams),
+      query<SprintRow>(sprintQuery, sprintParams),
     ]);
     tickets = tRes.rows;
     sprints = sRes.rows;
@@ -113,8 +114,8 @@ export default async function CalendarPage({
             <CalendarView
               year={year}
               monthIdx={monthIdx}
-              tickets={tickets as any[]}
-              sprints={sprints as any[]}
+              tickets={tickets as unknown as React.ComponentProps<typeof CalendarView>['tickets']}
+              sprints={sprints as unknown as React.ComponentProps<typeof CalendarView>['sprints']}
               boardId={board_id ?? null}
               assigneeId={assignee_id ?? null}
             />
