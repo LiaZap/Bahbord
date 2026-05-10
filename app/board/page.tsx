@@ -25,6 +25,7 @@ type BoardTicket = {
   project_id: string | null;
   assignee_avatar: string | null;
   snoozed_until: string | null;
+  sla_due_at: string | null;
 };
 
 type ProjectItem = { id: string; name: string };
@@ -61,6 +62,7 @@ function mapTicket(ticket: BoardTicket) {
     projectId: ticket.project_id ?? null,
     assigneeAvatar: ticket.assignee_avatar ?? null,
     snoozedUntil: ticket.snoozed_until ?? null,
+    slaDueAt: ticket.sla_due_at ?? null,
   };
 }
 
@@ -113,7 +115,8 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
       to_char(completed_at AT TIME ZONE 'America/Sao_Paulo', 'DD/MM') AS completed_at,
       (SELECT cl.name FROM clients cl WHERE cl.id = client_id) AS client_name,
       project_id,
-      snoozed_until
+      snoozed_until,
+      sla_due_at
     FROM tickets_full
     ${whereClause}
     ORDER BY updated_at DESC`,

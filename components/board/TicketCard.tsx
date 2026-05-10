@@ -3,12 +3,13 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils/cn';
-import { Calendar, Check, Edit, Copy, Link as LinkIcon, Trash2, User, Flag } from 'lucide-react';
+import { Calendar, Check, Clock, Edit, Copy, Link as LinkIcon, Trash2, User, Flag } from 'lucide-react';
 import { useBoardShell } from './BoardShell';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import Tooltip from '@/components/ui/Tooltip';
 import { ContextMenu } from '@/components/ui/ContextMenu';
 import SnoozeMenu, { SnoozedBadge } from '@/components/tickets/SnoozeMenu';
+import { getSlaStatus, formatSlaRemaining, slaColorClasses } from '@/lib/sla';
 
 const priorityConfig: Record<string, { dot: string; border: string; label: string }> = {
   urgent: { dot: 'bg-red-500 shadow-red-500/40 shadow-sm', border: 'border-l-red-500', label: 'Urgente' },
@@ -50,18 +51,26 @@ interface TicketCardProps {
   clientName?: string | null;
   assigneeAvatar?: string | null;
   snoozedUntil?: string | null;
+  /** ISO timestamp do SLA (vem da view tickets_full.sla_due_at). */
+  slaDueAt?: string | null;
   active: boolean;
   onClick: () => void;
   selected?: boolean;
   onToggleSelect?: () => void;
 }
 
-export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, snoozedUntil, active, onClick, selected, onToggleSelect }: TicketCardProps) {
+export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, snoozedUntil, slaDueAt, active, onClick, selected, onToggleSelect }: TicketCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const { openTicket } = useBoardShell();
 
   const prio = priorityConfig[priority] || priorityConfig.medium;
+  // SLA badge: só renderiza pra warning/overdue (ok/none = silencioso pra não poluir).
+  // `completedAt` no card já indica is_done — usamos como proxy.
+  const slaStatus = getSlaStatus(slaDueAt, !!completedAt);
+  const showSlaBadge = slaStatus === 'warning' || slaStatus === 'overdue';
+  const slaColors = slaColorClasses(slaStatus);
+  const slaText = showSlaBadge ? formatSlaRemaining(slaDueAt) : '';
   const hasAssignee = assignee && assignee !== 'Sem responsável';
   const initials = hasAssignee
     ? assignee.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
@@ -157,8 +166,23 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
           {title}
         </h3>
 
-        {/* Tags row: snooze badge, client, type, category, service */}
+        {/* Tags row: SLA badge, snooze badge, client, type, category, service */}
         <div className="mb-3 flex items-center gap-1.5 flex-wrap">
+          {showSlaBadge && (
+            <Tooltip content={`SLA: ${slaText}`}>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-1.5 py-[1px] text-[10px] font-medium border',
+                  slaColors.bg,
+                  slaColors.text,
+                  slaColors.border
+                )}
+              >
+                <Clock size={9} strokeWidth={2} />
+                {slaText}
+              </span>
+            </Tooltip>
+          )}
           {snoozedUntil && new Date(snoozedUntil).getTime() > Date.now() && (
             <SnoozedBadge snoozedUntil={snoozedUntil} />
           )}

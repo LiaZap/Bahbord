@@ -20,6 +20,28 @@ export async function GET(request: Request) {
     // janela de snooze ainda está ativa (snoozed_until > NOW()).
     const includeSnoozed = searchParams.get('include_snoozed') === 'true';
 
+    // sla_status: 'overdue' | 'warning' | 'ok'
+    //   - overdue: sla_due_at < NOW() e ticket não concluído (status.is_done = false)
+    //   - warning: sla_due_at entre NOW() e NOW()+24h e não concluído
+    //   - ok: resto (inclui tickets sem SLA setado ou já concluídos)
+    const slaStatus = searchParams.get('sla_status');
+    let slaFilter = '';
+    if (slaStatus === 'overdue') {
+      slaFilter = `AND t.sla_due_at IS NOT NULL AND t.sla_due_at < NOW()
+                   AND COALESCE(s.is_done, false) = false`;
+    } else if (slaStatus === 'warning') {
+      slaFilter = `AND t.sla_due_at IS NOT NULL
+                   AND t.sla_due_at >= NOW()
+                   AND t.sla_due_at < (NOW() + INTERVAL '24 hours')
+                   AND COALESCE(s.is_done, false) = false`;
+    } else if (slaStatus === 'ok') {
+      slaFilter = `AND (
+        t.sla_due_at IS NULL
+        OR t.sla_due_at >= (NOW() + INTERVAL '24 hours')
+        OR COALESCE(s.is_done, false) = true
+      )`;
+    }
+
     // Não-admin: filtra por tickets de projetos/boards onde tem acesso
     const accessFilter = userIsAdmin
       ? ''
@@ -37,7 +59,7 @@ export async function GET(request: Request) {
       LEFT JOIN statuses s ON s.id = t.status_id
       LEFT JOIN services sv ON sv.id = t.service_id
       LEFT JOIN members m ON m.id = t.assignee_id
-      WHERE t.is_archived = false ${accessFilter} ${snoozeFilter}`;
+      WHERE t.is_archived = false ${accessFilter} ${snoozeFilter} ${slaFilter}`;
     const accessParams: unknown[] = userIsAdmin ? [] : [auth.id];
 
     // If no page param, return all results (backward compat for board view)
@@ -48,6 +70,8 @@ export async function GET(request: Request) {
           t.title,
           to_char(t.due_date AT TIME ZONE 'UTC', 'DD Mon YYYY') AS due_date,
           t.snoozed_until,
+          t.sla_due_at,
+          t.sla_alert_sent_at,
           s.name AS status,
           sv.name AS service,
           m.display_name AS assignee
@@ -73,6 +97,8 @@ export async function GET(request: Request) {
           t.title,
           to_char(t.due_date AT TIME ZONE 'UTC', 'DD Mon YYYY') AS due_date,
           t.snoozed_until,
+          t.sla_due_at,
+          t.sla_alert_sent_at,
           s.name AS status,
           sv.name AS service,
           m.display_name AS assignee

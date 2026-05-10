@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronDown, ChevronRight, Calendar, SlidersHorizontal, Lock, Plus, Star, X, MoreVertical, Search, Moon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Calendar, Clock, SlidersHorizontal, Lock, Plus, Star, X, MoreVertical, Search, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import SnoozeMenu from '@/components/tickets/SnoozeMenu';
 import TicketDependencies from '@/components/tickets/TicketDependencies';
+import {
+  getSlaStatus,
+  formatSlaRemaining,
+  formatSlaAbsolute,
+  slaColorClasses,
+} from '@/lib/sla';
 
 interface FieldOption {
   id: string;
@@ -55,6 +61,10 @@ interface TicketSidebarProps {
     ticket_type_id: string;
     due_date: string | null;
     snoozed_until?: string | null;
+    /** SLA — vem da view tickets_full.sla_due_at (ISO timestamp) */
+    sla_due_at?: string | null;
+    /** Indica se o status atual marca o ticket como concluído. Pode vir undefined; nesse caso caímos no fallback de string. */
+    is_done?: boolean;
     created_at: string;
     updated_at: string;
     status_name: string;
@@ -428,6 +438,51 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
                 </span>
               )}
             </InfoRow>
+
+            {/* SLA — mostra status (ok / warning / overdue) */}
+            {(() => {
+              // Detecta se o status atual marca como concluído. Se a flag explícita
+              // não veio (`is_done`), usamos heurística pelo nome (espelha normalizeStatus
+              // do board: "concluído" / "done" / "finalizado").
+              const statusLooksDone =
+                ticket.is_done === true ||
+                /CONCLU|DONE|FINALIZADO|FEITO/i.test(ticket.status_name || '');
+              const slaStatus = getSlaStatus(ticket.sla_due_at, statusLooksDone);
+              if (slaStatus === 'none') {
+                return (
+                  <div className="flex items-center justify-between py-2.5">
+                    <span className="text-[13px] text-secondary-muted">SLA</span>
+                    <span className="text-[13px] text-tertiary-muted">Sem policy</span>
+                  </div>
+                );
+              }
+              const colors = slaColorClasses(slaStatus);
+              const remaining = formatSlaRemaining(ticket.sla_due_at);
+              const absolute = formatSlaAbsolute(ticket.sla_due_at);
+              return (
+                <div className="flex items-center justify-between py-2.5">
+                  <span className="text-[13px] text-secondary-muted">SLA</span>
+                  <div className="flex max-w-[220px] flex-col items-end gap-1 text-right">
+                    <span className={cn('flex items-center gap-1.5 text-[13px]', colors.text || 'text-primary')}>
+                      <Clock size={12} strokeWidth={1.75} />
+                      {absolute}
+                    </span>
+                    {(slaStatus === 'overdue' || slaStatus === 'warning') && (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded px-1.5 py-[1px] text-[10px] font-medium border',
+                          colors.bg,
+                          colors.text,
+                          colors.border
+                        )}
+                      >
+                        {remaining}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Snooze */}
             <div className="flex items-center justify-between py-2.5">

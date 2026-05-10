@@ -21,6 +21,7 @@ interface ColumnCard {
   completedAt?: string | null;
   clientName?: string | null;
   snoozedUntil?: string | null;
+  slaDueAt?: string | null;
 }
 
 interface ColumnProps {

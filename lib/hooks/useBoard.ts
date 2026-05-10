@@ -6,6 +6,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { supabase } from '@/lib/supabase/client';
 import { type BoardFilterState } from '@/components/board/BoardFilters';
 import { useToast } from '@/components/ui/Toast';
+import { getSlaStatus } from '@/lib/sla';
 
 export type TicketItem = {
   id: string;
@@ -24,6 +25,8 @@ export type TicketItem = {
   projectId?: string | null;
   assigneeAvatar?: string | null;
   snoozedUntil?: string | null;
+  /** ISO timestamp do SLA (sla_due_at vinda da view tickets_full). */
+  slaDueAt?: string | null;
 };
 
 export type BoardItems = {
@@ -48,6 +51,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
     types: [],
     priorities: [],
     projects: [],
+    onlyOverdue: false,
   });
 
   // Sync items when server re-fetches and props change
@@ -99,6 +103,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
               projectId: t.projectId ?? t.project_id ?? null,
               assigneeAvatar: t.assigneeAvatar ?? t.assignee_avatar ?? null,
               snoozedUntil: t.snoozedUntil ?? t.snoozed_until ?? null,
+              slaDueAt: t.slaDueAt ?? t.sla_due_at ?? null,
             });
 
             setItems({
@@ -137,9 +142,24 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
       if (filters.types.length > 0 && !filters.types.includes(t.typeIcon)) return false;
       if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
       if (filters.projects.length > 0 && (!t.projectId || !filters.projects.includes(t.projectId))) return false;
+      if (filters.onlyOverdue) {
+        const status = getSlaStatus(t.slaDueAt, !!t.completedAt);
+        if (status !== 'overdue') return false;
+      }
       return true;
     });
   }
+
+  // Contador de overdue (pra exibir no chip do BoardFilters).
+  // Calculado sobre TODOS os tickets, ignorando os outros filtros — assim
+  // o usuário vê "tem 5 atrasados no board" mesmo com filtros aplicados.
+  const overdueCount = useMemo(
+    () =>
+      allTickets.filter(
+        (t) => getSlaStatus(t.slaDueAt, !!t.completedAt) === 'overdue'
+      ).length,
+    [allTickets]
+  );
 
   const handleDragStart = useCallback(({ active }: DragStartEvent) => {
     setSelectedCard(active.id as string);
@@ -229,5 +249,6 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
     handleDragOver,
     handleDragEnd,
     allTickets,
+    overdueCount,
   };
 }

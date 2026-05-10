@@ -35,6 +35,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
     handleDragOver,
     handleDragEnd,
     allTickets,
+    overdueCount,
   } = useBoard(initialItems, wipLimits);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -105,6 +106,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
         availableAssignees={availableAssignees}
         availableTypes={availableTypes}
         availableProjects={availableProjects}
+        overdueCount={overdueCount}
       />
 
       <DndContext

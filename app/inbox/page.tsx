@@ -1,7 +1,7 @@
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import InboxView from '@/components/personal/InboxView';
+import InboxList from '@/components/inbox/InboxList';
 import ApprovalGate from '@/components/ui/ApprovalGate';
 import { requireApproved } from '@/lib/page-guards';
 
@@ -15,14 +15,23 @@ export default async function InboxPage() {
         <Header />
         <main className="flex-1 overflow-auto p-6">
           <ApprovalGate>
-            <div className="mx-auto max-w-[900px] space-y-8">
+            <div className="mx-auto max-w-[960px] space-y-6">
               <div className="space-y-2">
-                <p className="page-eyebrow">Workspace · {auth?.display_name || 'Você'}</p>
+                <p className="page-eyebrow">
+                  Workspace · {auth?.display_name || 'Você'}
+                </p>
                 <h1 className="page-title">
-                  Caixa de entrada <span className="em">— menções e novidades.</span>
+                  Triagem{' '}
+                  <span className="em">
+                    — aceite, duplique ou recuse com a IA.
+                  </span>
                 </h1>
+                <p className="text-[13px] text-secondary-muted">
+                  Itens vindos de Slack, e-mail, links públicos e integrações
+                  esperam sua decisão antes de virar tickets.
+                </p>
               </div>
-              <InboxView />
+              <InboxList />
             </div>
           </ApprovalGate>
         </main>

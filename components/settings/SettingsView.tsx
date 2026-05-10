@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Users, Building2, Columns3, Tag, Layers, Type, Smile, Shield, ClipboardCheck, Webhook, Link2, MessageCircle, Zap, Share2, FileSearch, FileText, Repeat } from 'lucide-react';
+import Link from 'next/link';
+import type { Route } from 'next';
+import { Settings, Users, Building2, Columns3, Tag, Layers, Type, Smile, Shield, ClipboardCheck, Webhook, Link2, MessageCircle, Zap, Share2, FileSearch, FileText, Repeat, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import GeneralSettings from './GeneralSettings';
 import MembersSettings from './MembersSettings';
@@ -83,6 +85,19 @@ export default function SettingsView() {
                   <Icon size={15} className={active ? 'text-accent' : 'text-slate-500'} />
                   {tab.label}
                 </button>
+                {/* SLA aparece como link dedicado (página própria) logo após "Tickets recorrentes"
+                    pra ficar agrupado em "Automações". */}
+                {tab.key === 'recurring' && (
+                  <Link
+                    // typedRoutes só registra rotas existentes na hora do build —
+                    // até a próxima geração de tipos, casteamos pra string literal.
+                    href={'/settings/sla' as Route}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-400 transition hover:bg-input/30 hover:text-slate-200"
+                  >
+                    <Clock size={15} className="text-slate-500" />
+                    SLA
+                  </Link>
+                )}
               </div>
             );
           })}

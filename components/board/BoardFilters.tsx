@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import SavedFilters from './SavedFilters';
 
@@ -11,6 +11,8 @@ export interface BoardFilterState {
   types: string[];
   priorities: string[];
   projects: string[];
+  /** Quando true, mostra apenas tickets com SLA overdue (filtragem client-side). */
+  onlyOverdue?: boolean;
 }
 
 interface BoardFiltersProps {
@@ -20,6 +22,8 @@ interface BoardFiltersProps {
   availableAssignees: string[];
   availableTypes: { icon: string; name: string }[];
   availableProjects?: { id: string; name: string }[];
+  /** Total de tickets atualmente em estado overdue (pra mostrar contador no chip). */
+  overdueCount?: number;
 }
 
 const priorities = [
@@ -29,9 +33,9 @@ const priorities = [
   { id: 'low', label: 'Baixa', dot: 'bg-slate-400' },
 ];
 
-export default function BoardFilters({ filters, onFiltersChange, availableServices, availableAssignees, availableTypes, availableProjects = [] }: BoardFiltersProps) {
-  const hasActiveFilters = filters.search || filters.services.length > 0 || filters.assignees.length > 0 || filters.types.length > 0 || filters.priorities.length > 0 || filters.projects.length > 0;
-  const activeCount = filters.services.length + filters.assignees.length + filters.types.length + filters.priorities.length + filters.projects.length;
+export default function BoardFilters({ filters, onFiltersChange, availableServices, availableAssignees, availableTypes, availableProjects = [], overdueCount = 0 }: BoardFiltersProps) {
+  const hasActiveFilters = filters.search || filters.services.length > 0 || filters.assignees.length > 0 || filters.types.length > 0 || filters.priorities.length > 0 || filters.projects.length > 0 || filters.onlyOverdue;
+  const activeCount = filters.services.length + filters.assignees.length + filters.types.length + filters.priorities.length + filters.projects.length + (filters.onlyOverdue ? 1 : 0);
 
   function toggleFilter(key: keyof Pick<BoardFilterState, 'services' | 'assignees' | 'types' | 'priorities' | 'projects'>, value: string) {
     const current = filters[key];
@@ -41,8 +45,12 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
     onFiltersChange({ ...filters, [key]: updated });
   }
 
+  function toggleOverdue() {
+    onFiltersChange({ ...filters, onlyOverdue: !filters.onlyOverdue });
+  }
+
   function clearFilters() {
-    onFiltersChange({ search: '', services: [], assignees: [], types: [], priorities: [], projects: [] });
+    onFiltersChange({ search: '', services: [], assignees: [], types: [], priorities: [], projects: [], onlyOverdue: false });
   }
 
   return (
@@ -96,6 +104,29 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
           {p.label}
         </button>
       ))}
+
+      {/* SLA overdue chip — filtragem 100% client-side via useBoard */}
+      <button
+        onClick={toggleOverdue}
+        title={overdueCount > 0 ? `${overdueCount} ticket(s) atrasados` : 'Nenhum ticket atrasado'}
+        className={cn(
+          'flex items-center gap-1.5 rounded-md px-2.5 py-[5px] text-[11px] font-medium transition-all duration-100',
+          filters.onlyOverdue
+            ? 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30'
+            : 'bg-white/[0.03] text-slate-500 ring-1 ring-white/[0.04] hover:bg-white/[0.06] hover:text-slate-300'
+        )}
+      >
+        <Clock size={11} strokeWidth={2} />
+        Atrasados
+        {overdueCount > 0 && (
+          <span className={cn(
+            'rounded-full px-1.5 py-[0px] text-[10px] tabular-nums',
+            filters.onlyOverdue ? 'bg-red-500/30 text-red-300' : 'bg-white/[0.06] text-secondary-muted'
+          )}>
+            {overdueCount}
+          </span>
+        )}
+      </button>
 
       {/* Clear */}
       {hasActiveFilters && (
