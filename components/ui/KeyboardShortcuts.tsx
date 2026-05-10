@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const shortcuts = [
+  { key: 'Ctrl+Shift+M', label: 'Minhas tarefas (rápido)', route: '/my-tasks' },
   { key: 'g d', label: 'Dashboard', route: '/' },
   { key: 'g i', label: 'Caixa de entrada', route: '/inbox' },
   { key: 'g m', label: 'Minhas tarefas', route: '/my-tasks' },
@@ -31,6 +32,13 @@ export default function KeyboardShortcuts() {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+
+      // Cmd+Shift+M / Ctrl+Shift+M: abrir Minhas tarefas (funciona dentro de inputs também)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        router.push('/my-tasks' as any);
+        return;
+      }
 
       if (isInput) return;
 
@@ -124,6 +132,14 @@ export default function KeyboardShortcuts() {
           ))}
 
           <div className="mb-2 mt-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Ações</div>
+          <div className="flex items-center justify-between py-1">
+            <span className="text-xs text-slate-300">Minhas tarefas (rápido)</span>
+            <div className="flex gap-1">
+              <kbd className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-mono text-slate-400">Ctrl</kbd>
+              <kbd className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-mono text-slate-400">Shift</kbd>
+              <kbd className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-mono text-slate-400">M</kbd>
+            </div>
+          </div>
           <div className="flex items-center justify-between py-1">
             <span className="text-xs text-slate-300">Busca global</span>
             <div className="flex gap-1">

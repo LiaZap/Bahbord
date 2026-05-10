@@ -2,7 +2,7 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { X, Minus, Maximize2, MoreHorizontal, AlertTriangle, ChevronDown, Sparkles } from 'lucide-react';
+import { X, Minus, Maximize2, MoreHorizontal, AlertTriangle, ChevronDown, Sparkles, ArrowUpRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -63,6 +63,12 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
     const [aiLoading, setAiLoading] = useState(false);
     const [aiPriorityLoading, setAiPriorityLoading] = useState(false);
     const [aiPriorityReasoning, setAiPriorityReasoning] = useState('');
+
+    // Banner de duplicatas (IA por embedding)
+    interface SimilarMatch { ticket_id: string; ticket_key: string; title: string; score: number }
+    const [similar, setSimilar] = useState<SimilarMatch[]>([]);
+    const [similarLoading, setSimilarLoading] = useState(false);
+    const [similarDismissed, setSimilarDismissed] = useState(false);
 
     // Options from API
     const [members, setMembers] = useState<SelectItem[]>([]);
@@ -250,6 +256,62 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
       }
     }, [isOpen]);
 
+    // Banner duplicatas — debounce 500ms no título
+    useEffect(() => {
+      if (!isOpen) return;
+      const trimmed = title.trim();
+      // Reset quando user limpa o título
+      if (trimmed.length === 0) {
+        setSimilar([]);
+        setSimilarDismissed(false);
+        setSimilarLoading(false);
+        return;
+      }
+      if (trimmed.length < 4 || !currentProjectId || similarDismissed) return;
+
+      let cancelled = false;
+      const timer = setTimeout(async () => {
+        setSimilarLoading(true);
+        try {
+          const res = await fetch('/api/tickets/similar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: trimmed,
+              description,
+              project_id: currentProjectId,
+            }),
+          });
+          if (cancelled) return;
+          if (!res.ok) {
+            // 429/5xx — silencioso, debounce já protege
+            setSimilar([]);
+            return;
+          }
+          const data = await res.json();
+          // reason: 'embedding_unavailable' | 'rate_limited' | 'embedding_error' → silencioso
+          if (data?.reason) {
+            setSimilar([]);
+            return;
+          }
+          if (Array.isArray(data?.matches)) {
+            setSimilar(data.matches as SimilarMatch[]);
+          } else {
+            setSimilar([]);
+          }
+        } catch {
+          if (!cancelled) setSimilar([]);
+        } finally {
+          if (!cancelled) setSimilarLoading(false);
+        }
+      }, 500);
+
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }, [title, description, currentProjectId, isOpen, similarDismissed]);
+
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
       event.preventDefault();
       setError('');
@@ -333,6 +395,8 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
       setError('');
       setPendingSubtasks([]);
       setSelectedTemplateId('');
+      setSimilar([]);
+      setSimilarDismissed(false);
     }
 
     const activeSprint = sprints.find((s: any) => s.is_active);
@@ -454,6 +518,47 @@ const CreateTicketModal = forwardRef<CreateTicketModalRef, CreateTicketModalProp
                       placeholder="Resumo do ticket"
                       autoFocus
                     />
+
+                    {/* Banner duplicatas IA */}
+                    {!similarDismissed && similar.length > 0 && (
+                      <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+                        <div className="mb-1.5 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300">
+                            <AlertTriangle size={13} className="text-amber-500" />
+                            Talvez seja duplicata
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSimilarDismissed(true)}
+                            className="text-[11px] text-secondary-muted hover:text-primary"
+                          >
+                            Ignorar
+                          </button>
+                        </div>
+                        <ul className="space-y-1">
+                          {similar.map((m) => (
+                            <li key={m.ticket_key}>
+                              <a
+                                href={`/ticket/${m.ticket_id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-2 rounded px-1.5 py-1 hover:bg-[var(--overlay-hover)]"
+                              >
+                                <span className="font-mono text-[11px] font-semibold text-primary">{m.ticket_key}</span>
+                                <span className="flex-1 truncate text-[12px] text-secondary">{m.title}</span>
+                                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                                  {Math.round(m.score * 100)}%
+                                </span>
+                                <ArrowUpRight size={12} className="text-tertiary-muted group-hover:text-primary" />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {similarLoading && !similarDismissed && similar.length === 0 && title.trim().length >= 4 && (
+                      <p className="mt-1 text-[11px] text-tertiary-muted">Buscando duplicatas...</p>
+                    )}
                   </div>
 
                   {/* Descrição */}

@@ -23,6 +23,7 @@ export type TicketItem = {
   clientName?: string | null;
   projectId?: string | null;
   assigneeAvatar?: string | null;
+  snoozedUntil?: string | null;
 };
 
 export type BoardItems = {
@@ -67,7 +68,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
         async () => {
           // Recarregar tickets quando houver mudança
           try {
-            const res = await fetch('/api/tickets');
+            const res = await fetch('/api/tickets?include_snoozed=true');
             if (!res.ok) return;
             const allTickets = await res.json();
 
@@ -97,6 +98,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
               clientName: t.clientName ?? t.client_name ?? null,
               projectId: t.projectId ?? t.project_id ?? null,
               assigneeAvatar: t.assigneeAvatar ?? t.assignee_avatar ?? null,
+              snoozedUntil: t.snoozedUntil ?? t.snoozed_until ?? null,
             });
 
             setItems({

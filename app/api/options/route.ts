@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const membersBasicSql = `SELECT m.id, m.display_name, m.avatar_url, COALESCE(orr.role, m.role, 'member') AS role FROM members m LEFT JOIN org_roles orr ON orr.member_id = m.id WHERE COALESCE(m.is_approved, true) = true ORDER BY m.display_name ASC`;
 
     const queries: Record<string, { sql: string; params?: unknown[] }> = {
-      statuses: { sql: `SELECT id, name, color FROM statuses ORDER BY position ASC` },
+      statuses: { sql: `SELECT id, name, color, is_done FROM statuses ORDER BY position ASC` },
       services: { sql: `SELECT id, name, color FROM services WHERE is_active = true ORDER BY name ASC` },
       members: { sql: isAdminUser ? membersAdminSql : membersBasicSql },
       categories: { sql: `SELECT id, name, color FROM categories ORDER BY name ASC` },

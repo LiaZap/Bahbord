@@ -22,7 +22,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     const result = await query(
       `SELECT
         tf.id, tf.workspace_id, tf.title, tf.description, tf.priority,
-        tf.due_date, tf.sequence_number, tf.created_at, tf.updated_at,
+        tf.due_date, tf.snoozed_until, tf.sequence_number, tf.created_at, tf.updated_at,
         tf.completed_at, tf.is_archived, tf.parent_id, tf.ticket_key,
         tf.ticket_type_id AS type_id, tf.type_name, tf.type_icon, tf.type_color,
         tf.status_id, tf.status_name, tf.status_color, tf.status_position, tf.is_done,
@@ -116,23 +116,80 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
-  if (sets.length === 0) {
+  // assignee_ids (multi-assignees): pode vir sozinho — nesse caso não é erro
+  // ter sets vazio. A sincronização acontece logo após o UPDATE.
+  const rawAssigneeIds = Array.isArray((body as Record<string, unknown>).assignee_ids)
+    ? ((body as Record<string, unknown>).assignee_ids as unknown[]).filter(
+        (v): v is string => typeof v === 'string'
+      )
+    : null;
+
+  if (sets.length === 0 && !rawAssigneeIds) {
     return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
   }
 
-  sets.push(`updated_at = NOW()`);
-  values.push(ticketId);
+  let ticket: Record<string, any>;
+  if (sets.length > 0) {
+    sets.push(`updated_at = NOW()`);
+    values.push(ticketId);
 
-  const result = await query(
-    `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-    values
-  );
+    const result = await query(
+      `UPDATE tickets SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
 
-  if (result.rowCount === 0) {
-    return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    }
+    ticket = result.rows[0];
+  } else {
+    // Caminho assignee_ids puro: precisamos do ticket atualizado pra retornar
+    const t = await query(`SELECT * FROM tickets WHERE id = $1`, [ticketId]);
+    if (t.rowCount === 0) {
+      return NextResponse.json({ error: 'Ticket não encontrado' }, { status: 404 });
+    }
+    ticket = t.rows[0];
   }
 
-  const ticket = result.rows[0];
+  // Sincroniza ticket_assignees se assignee_ids veio. Estratégia: substitui
+  // a lista (delete + reinsert dos que ficaram fora). Primeiro item vira
+  // primary e atualiza tickets.assignee_id para casar com a coluna principal.
+  if (rawAssigneeIds && ticket) {
+    try {
+      const newPrimary = rawAssigneeIds[0] ?? null;
+      // Remove assignees que saíram
+      if (rawAssigneeIds.length > 0) {
+        await query(
+          `DELETE FROM ticket_assignees
+           WHERE ticket_id = $1 AND member_id <> ALL($2::uuid[])`,
+          [ticketId, rawAssigneeIds]
+        );
+      } else {
+        await query(`DELETE FROM ticket_assignees WHERE ticket_id = $1`, [ticketId]);
+      }
+      // Upsert dos novos com is_primary correto
+      for (let i = 0; i < rawAssigneeIds.length; i++) {
+        await query(
+          `INSERT INTO ticket_assignees (ticket_id, member_id, is_primary, added_by)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (ticket_id, member_id)
+           DO UPDATE SET is_primary = EXCLUDED.is_primary`,
+          [ticketId, rawAssigneeIds[i], i === 0, auth?.id ?? null]
+        );
+      }
+      // Sincroniza coluna principal pra refletir o primary
+      if (ticket.assignee_id !== newPrimary) {
+        await query(
+          `UPDATE tickets SET assignee_id = $1, updated_at = NOW() WHERE id = $2`,
+          [newPrimary, ticketId]
+        );
+        ticket.assignee_id = newPrimary;
+      }
+    } catch (assigneeErr) {
+      console.error('Erro ao sincronizar ticket_assignees no patch:', assigneeErr);
+    }
+  }
+
   dispatchWebhook('ticket.updated', ticket);
 
   // Notificar nova atribuição se assignee_id mudou para alguém diferente do ator

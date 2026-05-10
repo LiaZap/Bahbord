@@ -6,20 +6,31 @@ import ApprovalGate from '@/components/ui/ApprovalGate';
 import { query } from '@/lib/db';
 import { requireApproved } from '@/lib/page-guards';
 
-export default async function MyTasksPage() {
+export default async function MyTasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ show_snoozed?: string }> | { show_snoozed?: string };
+}) {
   const auth = await requireApproved();
   const memberId = auth?.id;
+  // Next 15 entrega searchParams como Promise — ambos os formatos suportados.
+  const sp = await Promise.resolve(searchParams);
+  const showSnoozed = sp?.show_snoozed === 'true';
 
   let tickets: any[] = [];
   let queryError: string | null = null;
   if (memberId) {
     try {
+      const snoozeFilter = showSnoozed
+        ? `AND (t.snoozed_until IS NOT NULL AND t.snoozed_until > NOW())`
+        : `AND (t.snoozed_until IS NULL OR t.snoozed_until <= NOW())`;
       const result = await query(
         `SELECT
           t.id, t.ticket_key, t.title, t.priority,
           t.status_name, t.status_color,
           t.type_name, t.type_icon, t.type_color,
           t.assignee_name, t.due_date, t.completed_at,
+          t.snoozed_until,
           t.project_id, t.project_name, t.project_prefix,
           p.color AS project_color,
           t.updated_at
@@ -28,6 +39,7 @@ export default async function MyTasksPage() {
          WHERE t.assignee_id = $1
            AND t.is_archived = false
            AND t.is_done = false
+           ${snoozeFilter}
          ORDER BY
            CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END,
            t.due_date ASC NULLS LAST,
@@ -71,7 +83,15 @@ export default async function MyTasksPage() {
                   </p>
                 </div>
               ) : (
-                <PersonalTicketList tickets={tickets} emptyMessage="Você está em dia. Nenhum ticket atribuído." />
+                <PersonalTicketList
+                  tickets={tickets}
+                  emptyMessage={
+                    showSnoozed
+                      ? 'Nenhum ticket snoozed no momento.'
+                      : 'Você está em dia. Nenhum ticket atribuído.'
+                  }
+                  showSnoozed={showSnoozed}
+                />
               )}
             </div>
           </ApprovalGate>

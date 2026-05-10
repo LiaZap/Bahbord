@@ -20,6 +20,7 @@ interface ColumnCard {
   categoryName?: string;
   completedAt?: string | null;
   clientName?: string | null;
+  snoozedUntil?: string | null;
 }
 
 interface ColumnProps {

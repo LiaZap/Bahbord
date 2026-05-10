@@ -8,6 +8,7 @@ import { useBoardShell } from './BoardShell';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import Tooltip from '@/components/ui/Tooltip';
 import { ContextMenu } from '@/components/ui/ContextMenu';
+import SnoozeMenu, { SnoozedBadge } from '@/components/tickets/SnoozeMenu';
 
 const priorityConfig: Record<string, { dot: string; border: string; label: string }> = {
   urgent: { dot: 'bg-red-500 shadow-red-500/40 shadow-sm', border: 'border-l-red-500', label: 'Urgente' },
@@ -48,13 +49,14 @@ interface TicketCardProps {
   completedAt?: string | null;
   clientName?: string | null;
   assigneeAvatar?: string | null;
+  snoozedUntil?: string | null;
   active: boolean;
   onClick: () => void;
   selected?: boolean;
   onToggleSelect?: () => void;
 }
 
-export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, active, onClick, selected, onToggleSelect }: TicketCardProps) {
+export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, snoozedUntil, active, onClick, selected, onToggleSelect }: TicketCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const { openTicket } = useBoardShell();
@@ -137,6 +139,17 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
             </Tooltip>
             {(priority === 'urgent' || priority === 'high') && <span>{prio.label}</span>}
           </span>
+          <span
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+          >
+            <SnoozeMenu
+              ticketId={id}
+              currentSnoozedUntil={snoozedUntil}
+              compact
+            />
+          </span>
         </div>
 
         {/* Title */}
@@ -144,8 +157,11 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
           {title}
         </h3>
 
-        {/* Tags row: client, type, category, service */}
+        {/* Tags row: snooze badge, client, type, category, service */}
         <div className="mb-3 flex items-center gap-1.5 flex-wrap">
+          {snoozedUntil && new Date(snoozedUntil).getTime() > Date.now() && (
+            <SnoozedBadge snoozedUntil={snoozedUntil} />
+          )}
           {clientName && (
             <span className="rounded px-2 py-[3px] text-[11px] font-semibold bg-amber-500/15 text-amber-400 uppercase tracking-wide truncate max-w-[120px]" title={clientName}>
               {clientName}

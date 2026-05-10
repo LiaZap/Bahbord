@@ -5,6 +5,7 @@ import { getAuthMember } from '@/lib/api-auth';
 import { createNotification } from '@/lib/notifications';
 import { runAutomations } from '@/lib/automations';
 import { createTicketSchema } from '@/lib/validators';
+import { upsertTicketEmbedding } from '@/lib/embeddings';
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
+    // include_snoozed=true desliga o filtro padrão que esconde tickets cuja
+    // janela de snooze ainda está ativa (snoozed_until > NOW()).
+    const includeSnoozed = searchParams.get('include_snoozed') === 'true';
 
     // Não-admin: filtra por tickets de projetos/boards onde tem acesso
     const accessFilter = userIsAdmin
@@ -24,12 +28,16 @@ export async function GET(request: Request) {
           OR EXISTS (SELECT 1 FROM board_roles br WHERE br.board_id = t.board_id AND br.member_id = $1)
         )`;
 
+    const snoozeFilter = includeSnoozed
+      ? ''
+      : `AND (t.snoozed_until IS NULL OR t.snoozed_until <= NOW())`;
+
     const baseQuery = `
       FROM tickets t
       LEFT JOIN statuses s ON s.id = t.status_id
       LEFT JOIN services sv ON sv.id = t.service_id
       LEFT JOIN members m ON m.id = t.assignee_id
-      WHERE t.is_archived = false ${accessFilter}`;
+      WHERE t.is_archived = false ${accessFilter} ${snoozeFilter}`;
     const accessParams: unknown[] = userIsAdmin ? [] : [auth.id];
 
     // If no page param, return all results (backward compat for board view)
@@ -39,6 +47,7 @@ export async function GET(request: Request) {
           t.id,
           t.title,
           to_char(t.due_date AT TIME ZONE 'UTC', 'DD Mon YYYY') AS due_date,
+          t.snoozed_until,
           s.name AS status,
           sv.name AS service,
           m.display_name AS assignee
@@ -63,6 +72,7 @@ export async function GET(request: Request) {
           t.id,
           t.title,
           to_char(t.due_date AT TIME ZONE 'UTC', 'DD Mon YYYY') AS due_date,
+          t.snoozed_until,
           s.name AS status,
           sv.name AS service,
           m.display_name AS assignee
@@ -260,7 +270,53 @@ export async function POST(request: Request) {
     );
 
     const ticket = result.rows[0];
+
+    // Sincroniza ticket_assignees a partir de assignee_ids (opcional).
+    // Convenção: o primeiro id da lista vira o primary (mesmo da coluna
+    // tickets.assignee_id, que mantemos pra compat com queries existentes).
+    // Se assignee_ids não veio mas assignee_id veio, populamos como primary
+    // unitário pra manter a tabela consistente desde o create.
+    const rawAssigneeIds = Array.isArray(rawBody.assignee_ids)
+      ? (rawBody.assignee_ids as unknown[]).filter((v): v is string => typeof v === 'string')
+      : null;
+    try {
+      if (rawAssigneeIds && rawAssigneeIds.length > 0) {
+        const primaryId = rawAssigneeIds[0];
+        // Se primary diferente de tickets.assignee_id, ajusta a coluna principal
+        if (ticket.assignee_id !== primaryId) {
+          await query(
+            `UPDATE tickets SET assignee_id = $1 WHERE id = $2`,
+            [primaryId, ticket.id]
+          );
+          ticket.assignee_id = primaryId;
+        }
+        for (let i = 0; i < rawAssigneeIds.length; i++) {
+          await query(
+            `INSERT INTO ticket_assignees (ticket_id, member_id, is_primary, added_by)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (ticket_id, member_id) DO UPDATE SET is_primary = EXCLUDED.is_primary`,
+            [ticket.id, rawAssigneeIds[i], i === 0, auth?.id ?? null]
+          );
+        }
+      } else if (ticket.assignee_id) {
+        await query(
+          `INSERT INTO ticket_assignees (ticket_id, member_id, is_primary, added_by)
+           VALUES ($1, $2, true, $3)
+           ON CONFLICT (ticket_id, member_id) DO NOTHING`,
+          [ticket.id, ticket.assignee_id, auth?.id ?? null]
+        );
+      }
+    } catch (assigneeErr) {
+      console.error('Erro ao sincronizar ticket_assignees no create:', assigneeErr);
+    }
+
     dispatchWebhook('ticket.created', ticket);
+
+    // Fire-and-forget: gera embedding semântico para detecção de duplicatas (feature 2.5).
+    // Não bloqueia a resposta; falhas (ex: OPENAI_API_KEY ausente, rate limit) são apenas logadas.
+    upsertTicketEmbedding(ticket.id, ticket.title, ticket.description).catch((err) => {
+      console.error('[embeddings] Falha ao gerar embedding para ticket', ticket.id, err);
+    });
 
     // Disparar automações (fire-and-forget safe: captura erros internamente)
     await runAutomations({
