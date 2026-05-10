@@ -62,7 +62,14 @@ const ILLUSTRATIONS: Record<EmptyIllustration, React.ComponentType<{ className?:
 };
 
 function isIconComponent(value: unknown): value is IconComponent {
-  return typeof value === 'function';
+  // function = component clássico; object com $$typeof = forwardRef (Lucide)
+  if (typeof value === 'function') return true;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    '$$typeof' in value &&
+    'render' in value
+  );
 }
 
 function cn(...parts: Array<string | false | null | undefined>): string {
