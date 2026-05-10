@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Inter, Newsreader } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/lib/theme-context';
 import { ProjectProvider } from '@/lib/project-context';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -45,7 +47,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // i18n: locale + messages vêm do cookie `NEXT_LOCALE` (resolvido em
+  // `i18n/request.ts`). Sem prefixo de URL — fallback pra `pt`.
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const htmlLang = locale === 'pt' ? 'pt-BR' : locale;
+
   return (
     <ClerkProvider
       appearance={{
@@ -57,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         },
       }}
     >
-      <html lang="pt-BR" className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
+      <html lang={htmlLang} className={`${inter.variable} ${newsreader.variable}`} suppressHydrationWarning>
         <head>
           <link rel="manifest" href="/manifest.json" />
           <link rel="apple-touch-icon" href="/bahflow-favicon-dark.svg" />
@@ -83,19 +91,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}} />
         </head>
         <body>
-          <ThemeProvider>
-            <ProjectProvider>
-              <ToastProvider>
-                <ConfirmProvider>
-                  {children}
-                  {/* <SearchModal /> */}
-                  <CommandPalette />
-                  <KeyboardShortcuts />
-                  <AIChat />
-                </ConfirmProvider>
-              </ToastProvider>
-            </ProjectProvider>
-          </ThemeProvider>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <ThemeProvider>
+              <ProjectProvider>
+                <ToastProvider>
+                  <ConfirmProvider>
+                    {children}
+                    {/* <SearchModal /> */}
+                    <CommandPalette />
+                    <KeyboardShortcuts />
+                    <AIChat />
+                  </ConfirmProvider>
+                </ToastProvider>
+              </ProjectProvider>
+            </ThemeProvider>
+          </NextIntlClientProvider>
         </body>
       </html>
     </ClerkProvider>

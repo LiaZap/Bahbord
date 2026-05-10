@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Command } from 'cmdk';
 import {
   Search, Columns3, List, Inbox, Zap, CalendarDays, Clock,
@@ -19,6 +20,8 @@ interface SearchResult {
 
 export default function CommandPalette() {
   const router = useRouter();
+  const tCmd = useTranslations('commandPalette');
+  const tNav = useTranslations('nav');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -107,7 +110,7 @@ export default function CommandPalette() {
             <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder="Buscar ou executar comando..."
+              placeholder={tCmd('placeholder')}
               className="flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-500"
             />
             <kbd className="rounded bg-surface px-1.5 py-0.5 text-[10px] text-slate-500">ESC</kbd>
@@ -115,62 +118,62 @@ export default function CommandPalette() {
 
           <Command.List className="flex-1 overflow-auto p-2">
             <Command.Empty className="py-6 text-center text-sm text-slate-500">
-              Nenhum resultado encontrado.
+              {tCmd('noResults')}
             </Command.Empty>
 
             {/* Quick actions */}
             {query.length < 2 && authChecked && (
               <>
                 {/* Pessoal — todos os usuários */}
-                <Command.Group heading="Pessoal" className={groupHeadingClass}>
+                <Command.Group heading={tCmd('personal')} className={groupHeadingClass}>
                   <Command.Item onSelect={() => run(() => router.push('/inbox'))} className={itemClass}>
-                    <Inbox size={14} /> Caixa de entrada
+                    <Inbox size={14} /> {tNav('inbox')}
                   </Command.Item>
                   <Command.Item onSelect={() => run(() => router.push('/my-tasks'))} className={itemClass}>
-                    <Star size={14} /> Minhas tarefas
+                    <Star size={14} /> {tNav('myTasks')}
                   </Command.Item>
                   <Command.Item onSelect={() => run(() => router.push('/this-week'))} className={itemClass}>
-                    <Calendar size={14} /> Esta semana
+                    <Calendar size={14} /> {tNav('thisWeek')}
                   </Command.Item>
                 </Command.Group>
 
                 {/* Workspace — só admin */}
                 {isAdmin && (
-                  <Command.Group heading="Workspace" className={groupHeadingClass}>
+                  <Command.Group heading={tCmd('workspace')} className={groupHeadingClass}>
                     <Command.Item onSelect={() => run(() => router.push('/'))} className={itemClass}>
-                      <Home size={14} /> Dashboard
+                      <Home size={14} /> {tNav('dashboard')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/boards'))} className={itemClass}>
-                      <Columns3 size={14} /> Boards
+                      <Columns3 size={14} /> {tNav('boards')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/sprints'))} className={itemClass}>
-                      <Zap size={14} /> Sprints
+                      <Zap size={14} /> {tNav('sprints')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/timeline'))} className={itemClass}>
-                      <CalendarDays size={14} /> Cronograma
+                      <CalendarDays size={14} /> {tNav('timeline')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/timesheet'))} className={itemClass}>
-                      <Clock size={14} /> Timesheet
+                      <Clock size={14} /> {tNav('timesheet')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/docs'))} className={itemClass}>
-                      <BookOpen size={14} /> Documentação
+                      <BookOpen size={14} /> {tNav('docs')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/projects'))} className={itemClass}>
-                      <FolderKanban size={14} /> Projetos
+                      <FolderKanban size={14} /> {tNav('projects')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/clients'))} className={itemClass}>
-                      <Users size={14} /> Clientes
+                      <Users size={14} /> {tNav('clients')}
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => router.push('/settings'))} className={itemClass}>
-                      <Settings size={14} /> Configurações
+                      <Settings size={14} /> {tNav('settings')}
                     </Command.Item>
                   </Command.Group>
                 )}
 
-                <Command.Group heading="Tema" className={groupHeadingClass}>
+                <Command.Group heading={tCmd('theme')} className={groupHeadingClass}>
                   <Command.Item onSelect={() => run(() => toggleTheme())} className={itemClass}>
                     {resolvedTheme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-                    Alternar tema ({resolvedTheme === 'dark' ? 'claro' : 'escuro'})
+                    {tCmd('toggleTheme', { mode: resolvedTheme === 'dark' ? tCmd('themeLight') : tCmd('themeDark') })}
                   </Command.Item>
                 </Command.Group>
               </>
@@ -178,7 +181,7 @@ export default function CommandPalette() {
 
             {/* Search results */}
             {query.length >= 2 && searchResults.length > 0 && (
-              <Command.Group heading="Resultados" className={groupHeadingClass}>
+              <Command.Group heading={tCmd('results')} className={groupHeadingClass}>
                 {searchResults.map((r) => (
                   <Command.Item
                     key={`${r._type}-${r.id}`}
@@ -204,13 +207,13 @@ export default function CommandPalette() {
 
           <div className="flex items-center gap-4 border-t border-white/[0.06] px-4 py-2 text-[10px] text-slate-600">
             <span>
-              <kbd className="rounded bg-surface px-1 py-0.5">↑↓</kbd> navegar
+              <kbd className="rounded bg-surface px-1 py-0.5">↑↓</kbd> {tCmd('navigate')}
             </span>
             <span>
-              <kbd className="rounded bg-surface px-1 py-0.5">Enter</kbd> selecionar
+              <kbd className="rounded bg-surface px-1 py-0.5">Enter</kbd> {tCmd('selectAction')}
             </span>
             <span>
-              <kbd className="rounded bg-surface px-1 py-0.5">Esc</kbd> fechar
+              <kbd className="rounded bg-surface px-1 py-0.5">Esc</kbd> {tCmd('close')}
             </span>
           </div>
         </Command>

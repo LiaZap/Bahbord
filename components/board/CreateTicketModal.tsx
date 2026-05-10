@@ -1,13 +1,22 @@
 'use client';
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { X, Minus, Maximize2, MoreHorizontal, AlertTriangle, ChevronDown, Sparkles, ArrowUpRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import RichTextEditor from '@/components/editor/RichTextEditor';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { useProject } from '@/lib/project-context';
+
+// TipTap só carrega quando o modal de criação de ticket abre — antes disso
+// nem importa o pacote. Reduz o JS inicial do board / list / personal pages.
+const RichTextEditor = dynamic(() => import('@/components/editor/RichTextEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-32 w-full animate-pulse rounded-lg bg-[var(--overlay-hover)]" />
+  ),
+});
 
 interface SelectItem { id: string; name: string; icon?: string; color?: string; display_name?: string; is_active?: boolean }
 

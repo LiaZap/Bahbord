@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { cachedQuery } from '@/lib/cache';
+
+// Tipos de options seguros pra cache (resultado idêntico entre membros não-admin
+// e admin OU completamente independente de role). Excluí 'members' porque a
+// projeção de email/phone depende de role do requester.
+const CACHEABLE_TYPES = new Set([
+  'statuses',
+  'services',
+  'categories',
+  'ticket_types',
+  'clients',
+  'projects',
+  'boards',
+  'templates',
+]);
 
 export async function GET(request: Request) {
   try {
@@ -39,6 +54,19 @@ export async function GET(request: Request) {
     }
 
     const q = queries[type];
+
+    // Cache leve (30s) pra tipos que não dependem do role do requester.
+    // Inclui projectId no key quando relevante (sprints).
+    if (CACHEABLE_TYPES.has(type)) {
+      const cacheKey = `options:${type}:${projectId ?? '_'}`;
+      const rows = await cachedQuery(
+        cacheKey,
+        async () => (await query(q.sql, q.params as Array<unknown> | undefined)).rows,
+        30_000
+      );
+      return NextResponse.json(rows);
+    }
+
     const result = await query(q.sql, q.params as Array<unknown> | undefined);
     return NextResponse.json(result.rows);
   } catch (err) {

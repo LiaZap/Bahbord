@@ -3,6 +3,7 @@ import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createProjectSchema } from '@/lib/validators';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
 export async function GET(request: Request) {
   try {
@@ -26,27 +27,33 @@ export async function GET(request: Request) {
         ), 0) AS initiative_count
       FROM projects p`;
 
-    let result;
+    // Chave inclui memberId pra não vazar projetos entre usuários (cada um tem
+    // acesso diferente). Cache de 30s — projetos mudam raramente; mutações
+    // chamam invalidateCachePrefix('projects:') logo abaixo.
+    const cacheKey = `projects:list:${workspaceId}:${memberId ?? '_admin'}`;
 
-    if (memberId) {
-      // Verificar nível de acesso do membro
-      const orgRole = await query(
-        `SELECT role FROM org_roles WHERE member_id = $1 AND workspace_id = $2`,
-        [memberId, workspaceId]
-      );
-      const role = orgRole.rows[0]?.role;
-
-      if (role === 'owner' || role === 'admin') {
-        // Org owner/admin → vê todos os projetos
-        result = await query(
-          `${baseSelect}
-           WHERE p.workspace_id = $1 AND p.is_archived = false
-           ORDER BY p.name ASC`,
-          [workspaceId]
+    const rows = await cachedQuery(cacheKey, async () => {
+      if (memberId) {
+        // Verificar nível de acesso do membro
+        const orgRole = await query(
+          `SELECT role FROM org_roles WHERE member_id = $1 AND workspace_id = $2`,
+          [memberId, workspaceId]
         );
-      } else {
+        const role = orgRole.rows[0]?.role;
+
+        if (role === 'owner' || role === 'admin') {
+          // Org owner/admin → vê todos os projetos
+          const r = await query(
+            `${baseSelect}
+             WHERE p.workspace_id = $1 AND p.is_archived = false
+             ORDER BY p.name ASC`,
+            [workspaceId]
+          );
+          return r.rows;
+        }
+
         // Cliente/member → só projetos onde tem acesso (project_role ou board_role)
-        result = await query(
+        const r = await query(
           `${baseSelect}
            WHERE p.workspace_id = $1 AND p.is_archived = false
              AND (
@@ -60,18 +67,20 @@ export async function GET(request: Request) {
            ORDER BY p.name ASC`,
           [workspaceId, memberId]
         );
+        return r.rows;
       }
-    } else {
+
       // Sem filtro → todos (backward compat)
-      result = await query(
+      const r = await query(
         `${baseSelect}
          WHERE p.workspace_id = $1 AND p.is_archived = false
          ORDER BY p.name ASC`,
         [workspaceId]
       );
-    }
+      return r.rows;
+    }, 30_000);
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('GET /api/projects error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -170,6 +179,10 @@ export async function POST(request: Request) {
       userAgent: meta.userAgent,
     });
 
+    // Invalida o cache de listas (todas as variações por memberId)
+    invalidateCachePrefix('projects:');
+    invalidateCachePrefix('options:projects:');
+
     return NextResponse.json(project, { status: 201 });
   } catch (err) {
     console.error('POST /api/projects error:', err);
@@ -233,6 +246,9 @@ export async function PATCH(request: Request) {
       userAgent: meta.userAgent,
     });
 
+    invalidateCachePrefix('projects:');
+    invalidateCachePrefix('options:projects:');
+
     return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/projects error:', err);
@@ -275,6 +291,9 @@ export async function DELETE(request: Request) {
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
+
+    invalidateCachePrefix('projects:');
+    invalidateCachePrefix('options:projects:');
 
     return NextResponse.json({ success: true, project: archived });
   } catch (err) {

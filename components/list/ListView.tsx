@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { CheckSquare, Square, ArrowUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
+import VirtualList from '@/components/ui/VirtualList';
 
 interface Ticket {
   id: string;
@@ -74,19 +75,23 @@ export default function ListView({ tickets, statuses, members }: ListViewProps) 
     }
   }
 
-  const sorted = [...tickets].sort((a, b) => {
-    let cmp = 0;
-    const av = (a[sortField] || '') as string;
-    const bv = (b[sortField] || '') as string;
+  // Memoiza ordenação — evita re-sort em cada render quando outros estados
+  // mudam (selected, bulkAction). Custo proporcional a tickets.length.
+  const sorted = useMemo(() => {
+    return [...tickets].sort((a, b) => {
+      let cmp = 0;
+      const av = (a[sortField] || '') as string;
+      const bv = (b[sortField] || '') as string;
 
-    if (sortField === 'priority') {
-      cmp = (priorityLabels[av]?.order ?? 9) - (priorityLabels[bv]?.order ?? 9);
-    } else {
-      cmp = av.localeCompare(bv);
-    }
+      if (sortField === 'priority') {
+        cmp = (priorityLabels[av]?.order ?? 9) - (priorityLabels[bv]?.order ?? 9);
+      } else {
+        cmp = av.localeCompare(bv);
+      }
 
-    return sortAsc ? cmp : -cmp;
-  });
+      return sortAsc ? cmp : -cmp;
+    });
+  }, [tickets, sortField, sortAsc]);
 
   async function executeBulkAction() {
     if (selected.size === 0 || !bulkAction) return;
@@ -197,14 +202,20 @@ export default function ListView({ tickets, statuses, members }: ListViewProps) 
         <SortHeader field="due" className="hidden lg:flex w-24 shrink-0 text-right">Data limite</SortHeader>
       </div>
 
-      {/* Rows */}
-      <div className="divide-y divide-border/20">
-        {sorted.map((t) => {
+      {/* Rows — virtualizadas quando >= 50 tickets pra cortar custo de render */}
+      <VirtualList
+        items={sorted}
+        itemSize={44}
+        height={Math.min(sorted.length * 44, 720)}
+        threshold={50}
+        itemKey={(t) => t.id}
+        className="divide-y divide-border/20"
+      >
+        {(t) => {
           const prio = priorityLabels[t.priority] || priorityLabels.medium;
           const isSelected = selected.has(t.id);
           return (
             <div
-              key={t.id}
               className={cn(
                 'flex items-center px-4 py-2.5 transition',
                 isSelected ? 'bg-accent/5' : 'hover:bg-input/20'
@@ -246,8 +257,8 @@ export default function ListView({ tickets, statuses, members }: ListViewProps) 
               </Link>
             </div>
           );
-        })}
-      </div>
+        }}
+      </VirtualList>
     </div>
   );
 }

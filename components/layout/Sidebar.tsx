@@ -2,6 +2,7 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard, Search, Settings, Bell,
@@ -27,6 +28,9 @@ interface MeData {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const tNav = useTranslations('nav');
+  const tAuth = useTranslations('auth');
+  const tSearch = useTranslations('search');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
@@ -128,17 +132,17 @@ export default function Sidebar() {
           <>
             <img src="/bahflow-logo-dark.svg" alt="Bah!Flow" className="h-6 object-contain object-left flex-1 min-w-0" />
             {isAdminUser && (
-              <Tooltip content="Novo projeto" side="right">
+              <Tooltip content={tNav('newProject')} side="right">
                 <button
                   onClick={() => { window.location.href = '/projects'; }}
                   className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-white transition-colors shrink-0"
-                  aria-label="Novo projeto"
+                  aria-label={tNav('newProject')}
                 >
                   <Plus size={14} />
                 </button>
               </Tooltip>
             )}
-            <button onClick={() => setMobileOpen(false)} aria-label="Fechar menu" className="text-slate-500 hover:text-slate-300 md:hidden shrink-0">
+            <button onClick={() => setMobileOpen(false)} aria-label={tNav('closeMenu')} className="text-slate-500 hover:text-slate-300 md:hidden shrink-0">
               <X size={16} />
             </button>
           </>
@@ -153,16 +157,16 @@ export default function Sidebar() {
             className="flex w-full items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-[7px] text-[12px] text-slate-500 transition hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-slate-300"
           >
             <Search size={13} />
-            <span className="flex-1 text-left">Buscar ou pular pra…</span>
+            <span className="flex-1 text-left">{tSearch('placeholder')}</span>
             <kbd className="hidden rounded border border-white/[0.08] bg-white/[0.04] px-1 py-px text-[9px] font-medium text-slate-500 sm:inline">⌘K</kbd>
           </button>
         </div>
       ) : (
         <div className="px-2 pb-2">
-          <Tooltip content="Buscar (⌘K)" side="right">
+          <Tooltip content={`${tSearch('ariaLabel')} (⌘K)`} side="right">
             <button
               onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
-              aria-label="Buscar"
+              aria-label={tSearch('ariaLabel')}
               className="flex w-full items-center justify-center rounded-md p-1.5 text-slate-500 hover:bg-white/[0.04] hover:text-slate-300"
             >
               <Search size={15} />
@@ -174,26 +178,26 @@ export default function Sidebar() {
       <div className="flex-1 overflow-y-auto">
         {/* Main nav */}
         <nav className="px-3 space-y-0.5">
-          {isAdminUser && <NavItem href="/" label="Dashboard" icon={LayoutDashboard} />}
-          <NavItem href="/inbox" label="Caixa de entrada" icon={Inbox} badge={counts.inbox} />
-          <NavItem href="/my-tasks" label="Minhas tarefas" icon={Star} badge={counts.my_tasks} />
-          <NavItem href="/this-week" label="Esta semana" icon={Calendar} badge={counts.this_week} />
-          <NavItem href="/roadmap" label="Roadmap" icon={Target} />
-          {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
-          {isAdminUser && <NavItem href="/reports" label="Relatórios" icon={FileBarChart} />}
-          <NavItem href="/reports/workload" label="Carga" icon={BarChart3} />
+          {isAdminUser && <NavItem href="/" label={tNav('dashboard')} icon={LayoutDashboard} />}
+          <NavItem href="/inbox" label={tNav('inbox')} icon={Inbox} badge={counts.inbox} />
+          <NavItem href="/my-tasks" label={tNav('myTasks')} icon={Star} badge={counts.my_tasks} />
+          <NavItem href="/this-week" label={tNav('thisWeek')} icon={Calendar} badge={counts.this_week} />
+          <NavItem href="/roadmap" label={tNav('roadmap')} icon={Target} />
+          {isAdminUser && <NavItem href="/docs" label={tNav('docs')} icon={BookOpen} />}
+          {isAdminUser && <NavItem href="/reports" label={tNav('reports')} icon={FileBarChart} />}
+          <NavItem href="/reports/workload" label={tNav('workload')} icon={BarChart3} />
         </nav>
 
         {/* PROJETOS section */}
         {!collapsed && projects.length > 0 && (
           <div className="px-3 pt-4 pb-1">
             <div className="flex items-center justify-between px-2 mb-1">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">Projetos</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">{tNav('projects')}</span>
               {isAdminUser && (
                 <button
                   onClick={() => { window.location.href = '/projects'; }}
                   className="rounded p-0.5 text-slate-600 hover:bg-white/[0.06] hover:text-white transition-colors"
-                  aria-label="Novo projeto"
+                  aria-label={tNav('newProject')}
                 >
                   <Plus size={11} />
                 </button>
@@ -235,7 +239,7 @@ export default function Sidebar() {
                   className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] text-slate-600 hover:bg-white/[0.03] hover:text-slate-400 transition-colors"
                 >
                   <FolderKanban size={11} className="text-slate-700" />
-                  Todos os projetos
+                  {tNav('allProjects')}
                 </button>
               )}
             </div>
@@ -246,27 +250,27 @@ export default function Sidebar() {
         {isAdminUser && !collapsed && (
           <div className="px-3 pt-4 pb-2">
             <div className="px-2 mb-1">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">Workspace</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">{tNav('workspace')}</span>
             </div>
             <div className="space-y-0.5">
-              <NavItem href="/boards" label="Boards" icon={Columns3} />
-              <NavItem href="/sprints" label="Sprints" icon={Zap} />
-              <NavItem href="/calendar" label="Calendário" icon={Calendar} />
-              <NavItem href="/timesheet" label="Time" icon={Clock} />
-              <NavItem href="/clients" label="Clientes" icon={Users} />
-              <NavItem href="/customer-requests" label="Pedidos clientes" icon={MessageSquare} />
-              <NavItem href="/teams" label="Equipes" icon={Users} />
-              <NavItem href="/filters" label="Filtros" icon={Filter} />
+              <NavItem href="/boards" label={tNav('boards')} icon={Columns3} />
+              <NavItem href="/sprints" label={tNav('sprints')} icon={Zap} />
+              <NavItem href="/calendar" label={tNav('calendar')} icon={Calendar} />
+              <NavItem href="/timesheet" label={tNav('timesheet')} icon={Clock} />
+              <NavItem href="/clients" label={tNav('clients')} icon={Users} />
+              <NavItem href="/customer-requests" label={tNav('customerRequests')} icon={MessageSquare} />
+              <NavItem href="/teams" label={tNav('teams')} icon={Users} />
+              <NavItem href="/filters" label={tNav('filters')} icon={Filter} />
               <button
                 onClick={() => setChangelogOpen(true)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-[6px] text-[13px] text-slate-400 transition hover:bg-white/[0.03] hover:text-slate-200"
               >
                 <History size={15} strokeWidth={1.5} className="text-slate-500" />
-                Changelog
+                {tNav('changelog')}
               </button>
               <NavItem
                 href="/settings?tab=approvals"
-                label={pendingApprovals > 0 ? `Configurações (${pendingApprovals})` : 'Configurações'}
+                label={pendingApprovals > 0 ? tNav('settingsWithCount', { count: pendingApprovals }) : tNav('settings')}
                 icon={Settings}
               />
             </div>
@@ -276,8 +280,8 @@ export default function Sidebar() {
         {/* Approval pending notice */}
         {!isApproved && !collapsed && (
           <div className="mx-3 my-3 rounded-md border border-amber-500/20 bg-amber-500/5 p-3">
-            <p className="text-[12px] font-medium text-amber-400">Aguardando aprovação</p>
-            <p className="mt-1 text-[11px] text-slate-500 leading-snug">Seu acesso está sendo analisado pelo administrador.</p>
+            <p className="text-[12px] font-medium text-amber-400">{tAuth('approving')}</p>
+            <p className="mt-1 text-[11px] text-slate-500 leading-snug">{tAuth('approvalDescription')}</p>
           </div>
         )}
       </div>
@@ -316,12 +320,12 @@ export default function Sidebar() {
                 <div className="text-[12.5px] font-medium text-white truncate">{me.display_name}</div>
                 <div className="text-[10.5px] text-slate-500 capitalize flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {me.role === 'owner' ? 'Owner' : me.role === 'admin' ? 'Admin' : 'Membro'}
+                  {me.role === 'owner' ? tAuth('owner') : me.role === 'admin' ? tAuth('admin') : tAuth('member')}
                 </div>
               </div>
               <button
                 onClick={() => setChangelogOpen(true)}
-                aria-label="Notificações"
+                aria-label={tNav('notifications')}
                 className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-white transition-colors"
               >
                 <Bell size={13} />
@@ -335,13 +339,13 @@ export default function Sidebar() {
       <div className="hidden px-2 pb-2 md:block">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          aria-label={collapsed ? tNav('expandSidebar') : tNav('collapseSidebar')}
           className={cn(
             'flex w-full items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 transition hover:bg-white/[0.04] hover:text-slate-400',
             collapsed && 'justify-center px-0'
           )}
         >
-          {collapsed ? <PanelLeft size={14} /> : <><PanelLeftClose size={13} /><span>Recolher</span></>}
+          {collapsed ? <PanelLeft size={14} /> : <><PanelLeftClose size={13} /><span>{tNav('collapse')}</span></>}
         </button>
       </div>
     </>
@@ -355,7 +359,7 @@ export default function Sidebar() {
     <SidebarContext.Provider value={{ collapsed }}>
       <button
         onClick={() => setMobileOpen(true)}
-        aria-label="Abrir menu"
+        aria-label={tNav('openMenu')}
         className="fixed left-3 top-3 z-50 rounded-md bg-[var(--card-bg)] p-2 text-slate-400 shadow-lg hover:text-white md:hidden"
       >
         <Menu size={20} />
@@ -365,14 +369,14 @@ export default function Sidebar() {
         <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden animate-fade-in" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside role="navigation" aria-label="Menu principal" className={cn(
+      <aside role="navigation" aria-label={tNav('mainMenu')} className={cn(
         'fixed inset-y-0 left-0 z-50 w-[224px] flex-col bg-sidebar border-r border-white/[0.04] transition-transform duration-200 md:hidden',
         mobileOpen ? 'translate-x-0 flex' : '-translate-x-full'
       )}>
         {sidebarContent}
       </aside>
 
-      <aside role="navigation" aria-label="Menu principal" className={cn(
+      <aside role="navigation" aria-label={tNav('mainMenu')} className={cn(
         'hidden shrink-0 flex-col bg-sidebar border-r border-white/[0.04] transition-all duration-200 md:flex',
         collapsed ? 'w-[52px]' : 'w-[224px]'
       )}>

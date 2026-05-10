@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Plus, Sun, Moon, Sparkles, Filter as FilterIcon } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 import NotificationCenter from '@/components/ui/NotificationCenter';
@@ -11,29 +12,36 @@ interface HeaderProps {
   onCreateTicket?: () => void;
 }
 
-const pageTitles: Record<string, string> = {
-  '/': 'Dashboard',
-  '/board': 'Quadro',
-  '/list': 'Lista',
-  '/backlog': 'Backlog',
-  '/sprints': 'Sprints',
-  '/timeline': 'Cronograma',
-  '/calendar': 'Calendário',
-  '/timesheet': 'Time',
-  '/settings': 'Configurações',
-  '/docs': 'Documentação',
-  '/reports': 'Relatórios',
-  '/projects': 'Projetos',
-  '/clients': 'Clientes',
-  '/teams': 'Equipes',
-  '/filters': 'Filtros',
-  '/boards': 'Boards',
-  '/roadmap': 'Roadmap',
+/**
+ * Mapping de pathname → chave de namespace `nav` usada pelo i18n.
+ * Adicione aqui qualquer rota nova que deva exibir título no breadcrumb.
+ */
+const pageTitleKeys: Record<string, string> = {
+  '/': 'dashboard',
+  '/board': 'board',
+  '/list': 'list',
+  '/backlog': 'backlog',
+  '/sprints': 'sprints',
+  '/timeline': 'timeline',
+  '/calendar': 'calendar',
+  '/timesheet': 'timesheet',
+  '/settings': 'settings',
+  '/docs': 'docs',
+  '/reports': 'reports',
+  '/projects': 'projects',
+  '/clients': 'clients',
+  '/teams': 'teams',
+  '/filters': 'filters',
+  '/boards': 'boards',
+  '/roadmap': 'roadmap',
 };
 
 export default function Header({ onCreateTicket }: HeaderProps) {
   const pathname = usePathname();
-  const pageTitle = pageTitles[pathname] || 'Bah!Flow';
+  const tNav = useTranslations('nav');
+  const tHeader = useTranslations('header');
+  const titleKey = pageTitleKeys[pathname];
+  const pageTitle = titleKey ? tNav(titleKey as Parameters<typeof tNav>[0]) : 'Bah!Flow';
   const searchParams = useSearchParams();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [boardName, setBoardName] = useState<string | null>(null);
@@ -97,10 +105,10 @@ export default function Header({ onCreateTicket }: HeaderProps) {
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('ai-chat:toggle'))}
           className="hidden md:flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"
-          title="Pergunta pra IA"
+          title={tHeader('askAi')}
         >
           <Sparkles size={13} strokeWidth={1.75} />
-          <span>Pergunta pra IA</span>
+          <span>{tHeader('askAi')}</span>
         </button>
 
         {/* Filtros */}
@@ -108,7 +116,7 @@ export default function Header({ onCreateTicket }: HeaderProps) {
           className="hidden md:flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"
         >
           <FilterIcon size={13} strokeWidth={1.75} />
-          <span>Filtros</span>
+          <span>{tHeader('filters')}</span>
         </button>
 
         {/* Member avatars */}
@@ -149,7 +157,7 @@ export default function Header({ onCreateTicket }: HeaderProps) {
             className="btn-premium btn-primary"
           >
             <Plus size={13} strokeWidth={2.5} />
-            <span className="hidden sm:inline">Novo ticket</span>
+            <span className="hidden sm:inline">{tHeader('newTicket')}</span>
           </button>
         )}
 
@@ -157,8 +165,8 @@ export default function Header({ onCreateTicket }: HeaderProps) {
         <button
           onClick={toggleTheme}
           className="flex items-center justify-center rounded-md p-1.5 text-secondary transition hover:bg-[var(--overlay-hover)] hover:text-primary"
-          title={resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro'}
-          aria-label={resolvedTheme === 'dark' ? 'Modo claro' : 'Modo escuro'}
+          title={resolvedTheme === 'dark' ? tHeader('lightMode') : tHeader('darkMode')}
+          aria-label={resolvedTheme === 'dark' ? tHeader('lightMode') : tHeader('darkMode')}
         >
           {resolvedTheme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
         </button>

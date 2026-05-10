@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, Sun, Moon, Monitor, RefreshCw } from 'lucide-react';
+import { useLocale } from 'next-intl';
+import { Save, Sun, Moon, Monitor, RefreshCw, Languages } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
+import { locales, localeLabels, type Locale } from '@/i18n/routing';
 
 interface Workspace {
   id: string;
@@ -20,7 +22,32 @@ export default function GeneralSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [savingLocale, setSavingLocale] = useState(false);
   const { theme, setTheme } = useTheme();
+  const currentLocale = useLocale() as Locale;
+
+  /**
+   * Persiste o locale via POST /api/locale (cookie `NEXT_LOCALE`) e força
+   * reload pra que o server component layout pegue o novo catalog.
+   */
+  async function handleLocaleChange(nextLocale: Locale) {
+    if (nextLocale === currentLocale || savingLocale) return;
+    setSavingLocale(true);
+    try {
+      const res = await fetch('/api/locale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale: nextLocale }),
+      });
+      if (res.ok) {
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // silencioso — botão volta a ficar habilitado
+    }
+    setSavingLocale(false);
+  }
 
   async function handleSyncOrphans() {
     if (!confirm('Sincronizar tickets sem projeto? Os tickets serão atribuídos aos projetos baseado no acesso do relator/responsável.')) return;
@@ -164,6 +191,35 @@ export default function GeneralSettings() {
             );
           })}
         </div>
+      </div>
+
+      {/* Idioma — Sprint 5B i18n */}
+      <div className="rounded-lg border border-border/40 bg-surface2 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <Languages size={14} className="text-secondary-muted" />
+          <label htmlFor="locale-select" className="block text-xs font-medium text-secondary-muted">
+            Idioma
+          </label>
+        </div>
+        <p className="text-[11px] text-secondary-muted">
+          Define o idioma da interface. A página recarrega após salvar.
+        </p>
+        <select
+          id="locale-select"
+          value={currentLocale}
+          disabled={savingLocale}
+          onChange={(e) => handleLocaleChange(e.target.value as Locale)}
+          className="w-64 rounded border border-border/40 bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent/60 disabled:opacity-50"
+        >
+          {locales.map((loc) => (
+            <option key={loc} value={loc}>
+              {localeLabels[loc]}
+            </option>
+          ))}
+        </select>
+        {savingLocale && (
+          <p className="text-[11px] text-secondary-muted">Recarregando…</p>
+        )}
       </div>
     </div>
   );

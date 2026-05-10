@@ -4,7 +4,19 @@ import { redirect } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import ViewTabsWrapper from '@/components/layout/ViewTabsWrapper';
-import DashboardCharts from '@/components/dashboard/DashboardCharts';
+// Renomeio import pra evitar colisão com `export const dynamic = "force-dynamic"`.
+import nextDynamic from 'next/dynamic';
+// Recharts é pesado (~80KB gzip). Lazy-load mantém o initial bundle do dashboard
+// menor; carrega assim que a página renderiza, mas em chunk separado.
+const DashboardCharts = nextDynamic(() => import('@/components/dashboard/DashboardCharts'), {
+  loading: () => (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="h-64 animate-pulse rounded-lg bg-[var(--overlay-hover)]" />
+      <div className="h-64 animate-pulse rounded-lg bg-[var(--overlay-hover)]" />
+      <div className="h-64 animate-pulse rounded-lg bg-[var(--overlay-hover)]" />
+    </div>
+  ),
+});
 import ProjectFilter from '@/components/dashboard/ProjectFilter';
 import Sparkline from '@/components/dashboard/Sparkline';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';

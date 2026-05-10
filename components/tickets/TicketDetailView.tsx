@@ -1,25 +1,36 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Share2, Maximize2, X as XIcon, Trash2,
   ChevronDown, ChevronRight, Settings2
 } from 'lucide-react';
 import SubtaskList from './SubtaskList';
-import LinkedTickets from './LinkedTickets';
-import ActivityTimeline from './ActivityTimeline';
 import TicketSidebar from './TicketSidebar';
-import TimeTracker from './TimeTracker';
-import DevLinks from './DevLinks';
-import AttachmentList from './AttachmentList';
-import AccessLinks from './AccessLinks';
-import RichTextEditor from '@/components/editor/RichTextEditor';
-import { DetailSkeleton } from '@/components/ui/Skeleton';
+import { DetailSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { cn } from '@/lib/utils/cn';
 import DOMPurify from 'dompurify';
+
+// Lazy-load das seções pesadas que não fazem parte do above-the-fold do detalhe.
+// Reduz o bundle inicial do detalhe em ~40KB (TipTap, Recharts internos do
+// Activity, etc) e só baixa quando o usuário scrolla / interage.
+const SectionFallback = () => <Skeleton className="h-12 w-full" />;
+const LinkedTickets = dynamic(() => import('./LinkedTickets'), { ssr: false, loading: SectionFallback });
+const ActivityTimeline = dynamic(() => import('./ActivityTimeline'), { ssr: false, loading: SectionFallback });
+const DevLinks = dynamic(() => import('./DevLinks'), { ssr: false, loading: SectionFallback });
+const AttachmentList = dynamic(() => import('./AttachmentList'), { ssr: false, loading: SectionFallback });
+const AccessLinks = dynamic(() => import('./AccessLinks'), { ssr: false, loading: SectionFallback });
+const TimeTracker = dynamic(() => import('./TimeTracker'), { ssr: false, loading: SectionFallback });
+// RichTextEditor é o mais pesado (TipTap + extensions ~120KB). Só baixa quando
+// o usuário clica pra editar a descrição.
+const RichTextEditor = dynamic(() => import('@/components/editor/RichTextEditor'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-32 w-full" />,
+});
 
 interface TicketData {
   id: string;

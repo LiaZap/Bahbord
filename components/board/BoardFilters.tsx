@@ -1,6 +1,7 @@
 'use client';
 
 import { Search, X, SlidersHorizontal, Clock } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
 import SavedFilters from './SavedFilters';
 
@@ -34,6 +35,7 @@ const priorities = [
 ];
 
 export default function BoardFilters({ filters, onFiltersChange, availableServices, availableAssignees, availableTypes, availableProjects = [], overdueCount = 0 }: BoardFiltersProps) {
+  const tFilters = useTranslations('filters');
   const hasActiveFilters = filters.search || filters.services.length > 0 || filters.assignees.length > 0 || filters.types.length > 0 || filters.priorities.length > 0 || filters.projects.length > 0 || filters.onlyOverdue;
   const activeCount = filters.services.length + filters.assignees.length + filters.types.length + filters.priorities.length + filters.projects.length + (filters.onlyOverdue ? 1 : 0);
 
@@ -61,7 +63,7 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
         <input
           value={filters.search}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
-          placeholder="Filtrar..."
+          placeholder={tFilters('search')}
           className="w-full sm:w-44 rounded-md border border-white/[0.06] bg-white/[0.03] pl-8 pr-3 py-[6px] text-[12px] text-slate-200 outline-none placeholder:text-slate-600 transition sm:focus:w-64 focus:border-blue-500/40 focus:bg-white/[0.05]"
         />
       </div>
@@ -108,7 +110,7 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
       {/* SLA overdue chip — filtragem 100% client-side via useBoard */}
       <button
         onClick={toggleOverdue}
-        title={overdueCount > 0 ? `${overdueCount} ticket(s) atrasados` : 'Nenhum ticket atrasado'}
+        title={tFilters('ticketsOverdueCount', { count: overdueCount })}
         className={cn(
           'flex items-center gap-1.5 rounded-md px-2.5 py-[5px] text-[11px] font-medium transition-all duration-100',
           filters.onlyOverdue
@@ -117,7 +119,7 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
         )}
       >
         <Clock size={11} strokeWidth={2} />
-        Atrasados
+        {tFilters('overdue')}
         {overdueCount > 0 && (
           <span className={cn(
             'rounded-full px-1.5 py-[0px] text-[10px] tabular-nums',
@@ -137,7 +139,7 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
             className="flex items-center gap-1 rounded-md px-2 py-[5px] text-[11px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
           >
             <X size={12} />
-            Limpar {activeCount > 0 && `(${activeCount})`}
+            {tFilters('clear')} {activeCount > 0 && `(${activeCount})`}
           </button>
         </>
       )}

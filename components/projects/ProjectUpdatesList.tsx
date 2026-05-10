@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft, Sparkles, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import EmptyState from '@/components/ui/EmptyState';
@@ -60,6 +61,7 @@ export default function ProjectUpdatesList({
   currentUserIsAdmin,
 }: Props) {
   const router = useRouter();
+  const tPU = useTranslations('projectUpdates');
   const { toast } = useToast();
   const [updates, setUpdates] = useState<ProjectUpdate[]>(initialUpdates);
   const [generating, setGenerating] = useState(false);
@@ -88,7 +90,7 @@ export default function ProjectUpdatesList({
         const fresh = (await listRes.json()) as ProjectUpdate[];
         setUpdates(fresh);
       }
-      toast('Status update gerado', 'success');
+      toast(tPU('toastGenerated'), 'success');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro desconhecido';
       toast(msg, 'error');
@@ -151,12 +153,12 @@ export default function ProjectUpdatesList({
           className="inline-flex items-center gap-1 transition hover:text-primary"
         >
           <ArrowLeft size={12} />
-          Projetos
+          {tPU('breadcrumbProjects')}
         </button>
         <ChevronRight size={12} />
         <span className="text-secondary-muted">{projectName}</span>
         <ChevronRight size={12} />
-        <span className="text-primary font-medium">Status Updates</span>
+        <span className="text-primary font-medium">{tPU('breadcrumbCurrent')}</span>
       </nav>
 
       {/* Header */}
@@ -164,15 +166,14 @@ export default function ProjectUpdatesList({
         <div className="space-y-2">
           <p className="page-eyebrow">
             {projectPrefix ? `${projectPrefix} · ` : ''}
-            {updates.length} update{updates.length !== 1 ? 's' : ''}
+            {tPU('headerCount', { count: updates.length })}
           </p>
           <h1 className="page-title">
             {projectName}{' '}
-            <span className="em">— status updates semanais.</span>
+            <span className="em">{tPU('headerTitleSuffix')}</span>
           </h1>
           <p className="text-[13px] text-secondary-muted max-w-[520px]">
-            Resumos automáticos gerados pela IA toda sexta-feira às 17h, com
-            espaço para anotações do PM.
+            {tPU('headerDescription')}
           </p>
         </div>
         <button
@@ -184,12 +185,12 @@ export default function ProjectUpdatesList({
           {generating ? (
             <>
               <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Gerando…
+              {tPU('generating')}
             </>
           ) : (
             <>
               <Sparkles size={13} strokeWidth={2.5} />
-              Gerar update agora
+              {tPU('generateNow')}
             </>
           )}
         </button>
@@ -199,11 +200,11 @@ export default function ProjectUpdatesList({
       {updates.length === 0 ? (
         <EmptyState
           illustration="no-activity"
-          title="Nenhum status update ainda"
-          description="O cron roda toda sexta-feira às 17h e gera o resumo da semana. Você também pode clicar em ‘Gerar update agora’ para criar um manualmente."
+          title={tPU('emptyTitle')}
+          description={tPU('emptyDescription')}
           actions={[
             {
-              label: generating ? 'Gerando…' : 'Gerar update agora',
+              label: generating ? tPU('generating') : tPU('generateNow'),
               onClick: handleGenerate,
               variant: 'primary',
             },

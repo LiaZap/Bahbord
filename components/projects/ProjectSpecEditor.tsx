@@ -16,8 +16,17 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import dynamic from 'next/dynamic';
 import { useToast } from '@/components/ui/Toast';
-import RichTextEditor from '@/components/editor/RichTextEditor';
+
+// TipTap (~120KB) só é necessário em modo edição. Lazy-load reduz o initial
+// bundle da página de spec — leitura roda só com sanitize do HTML estático.
+const RichTextEditor = dynamic(() => import('@/components/editor/RichTextEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 w-full animate-pulse rounded-lg bg-[var(--overlay-hover)]" />
+  ),
+});
 
 export interface SpecBacklink {
   ticket_id: string;

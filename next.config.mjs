@@ -1,4 +1,10 @@
 import { withSentryConfig } from '@sentry/nextjs';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+// Aponta pro arquivo de config do request (server-side message loading).
+// Detecção do locale é via cookie `NEXT_LOCALE` — sem prefixo de URL.
+// Ver `i18n/routing.ts` pra detalhes da estratégia.
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig = {
   reactStrictMode: true,
@@ -29,4 +35,4 @@ const sentryBuildOptions = {
   hideSourceMaps: true,
 };
 
-export default withSentryConfig(nextConfig, sentryBuildOptions);
+export default withSentryConfig(withNextIntl(nextConfig), sentryBuildOptions);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
@@ -16,6 +17,7 @@ type ModalKind = null | 'accept' | 'duplicate' | 'reject';
 const RECENT_STATUSES = ['accepted', 'rejected', 'duplicate'] as const;
 
 export default function InboxList() {
+  const tInbox = useTranslations('inbox');
   const [tab, setTab] = useState<Tab>('pending');
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,7 +220,7 @@ export default function InboxList() {
       <div className="flex flex-wrap items-center gap-2">
         <div
           role="tablist"
-          aria-label="Filtros da triagem"
+          aria-label={tInbox('tabsLabel')}
           className="inline-flex rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)] p-0.5"
         >
           <button
@@ -232,7 +234,7 @@ export default function InboxList() {
                 : 'rounded px-3 py-1.5 text-[12.5px] font-medium text-secondary-muted hover:text-primary'
             }
           >
-            Pendentes
+            {tInbox('tabPending')}
             {pendingCount > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-[var(--accent)]/20 px-1.5 py-px text-[10px] tabular-nums text-[var(--accent)]">
                 {pendingCount}
@@ -250,7 +252,7 @@ export default function InboxList() {
                 : 'rounded px-3 py-1.5 text-[12.5px] font-medium text-secondary-muted hover:text-primary'
             }
           >
-            Triados (recentes)
+            {tInbox('tabRecent')}
           </button>
         </div>
 
@@ -260,13 +262,13 @@ export default function InboxList() {
             onClick={() => loadItems(tab, true)}
             disabled={refreshing}
             className="btn-premium btn-ghost text-[12px]"
-            aria-label="Recarregar lista"
+            aria-label={tInbox('refreshAria')}
           >
             <RefreshCw
               size={12}
               className={refreshing ? 'animate-spin' : ''}
             />
-            Atualizar
+            {tInbox('refresh')}
           </button>
           {tab === 'pending' && items.length > 0 && (
             <span className="hidden text-[11px] text-tertiary-muted sm:inline">
@@ -277,7 +279,7 @@ export default function InboxList() {
               <kbd className="rounded border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-1 font-mono">
                 k
               </kbd>{' '}
-              navegar ·{' '}
+              {tInbox('navigate')} ·{' '}
               <kbd className="rounded border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-1 font-mono">
                 1
               </kbd>{' '}
@@ -287,7 +289,7 @@ export default function InboxList() {
               <kbd className="rounded border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-1 font-mono">
                 3
               </kbd>{' '}
-              agir
+              {tInbox('act')}
             </span>
           )}
         </div>
@@ -305,19 +307,19 @@ export default function InboxList() {
           illustration={tab === 'pending' ? 'inbox' : 'no-activity'}
           title={
             tab === 'pending'
-              ? 'Caixa de entrada vazia'
-              : 'Nenhum item triado recentemente'
+              ? tInbox('emptyPendingTitle')
+              : tInbox('emptyRecentTitle')
           }
           description={
             tab === 'pending'
-              ? 'Tudo triado! Novas mensagens do Slack, e-mails e links públicos vão aparecer aqui para triagem.'
-              : 'Quando você aceitar, recusar ou marcar duplicatas, o histórico aparece aqui.'
+              ? tInbox('emptyPendingDescription')
+              : tInbox('emptyRecentDescription')
           }
           actions={
             tab === 'pending'
               ? [
-                  { label: 'Ver triados (recentes)', onClick: () => setTab('recent'), variant: 'secondary' },
-                  { label: 'Configurar webhooks', href: '/settings', variant: 'secondary' },
+                  { label: tInbox('viewRecent'), onClick: () => setTab('recent'), variant: 'secondary' },
+                  { label: tInbox('configureWebhooks'), href: '/settings', variant: 'secondary' },
                 ]
               : undefined
           }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Moon } from 'lucide-react';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import EmptyState from '@/components/ui/EmptyState';
@@ -105,11 +106,14 @@ function formatDate(d: string | null): string | null {
 
 export default function PersonalTicketList({
   tickets,
-  emptyMessage = 'Nada por aqui.',
+  emptyMessage,
   groupBy = 'project',
   showFilters = true,
   showSnoozed = false,
 }: PersonalTicketListProps) {
+  const tFilters = useTranslations('filters');
+  const tTickets = useTranslations('tickets');
+  const resolvedEmptyMessage = emptyMessage ?? tTickets('nothingHere');
   const [filter, setFilter] = useState<DateFilter>('all');
   const router = useRouter();
   const pathname = usePathname();
@@ -202,10 +206,10 @@ export default function PersonalTicketList({
   }, [filteredTickets, groupBy]);
 
   const filterChips: { key: DateFilter; label: string }[] = [
-    { key: 'today', label: 'Hoje' },
-    { key: 'week', label: 'Esta semana' },
-    { key: 'overdue', label: 'Atrasados' },
-    { key: 'all', label: 'Tudo' },
+    { key: 'today', label: tFilters('today') },
+    { key: 'week', label: tFilters('week') },
+    { key: 'overdue', label: tFilters('overdue') },
+    { key: 'all', label: tFilters('all') },
   ];
 
   const filterBar = showFilters ? (
@@ -251,10 +255,10 @@ export default function PersonalTicketList({
             ? 'bg-indigo-500 text-white'
             : 'surface-subtle text-secondary-muted hover:surface-hover hover:text-primary'
         }`}
-        title={showSnoozed ? 'Voltar pra lista normal' : 'Ver tickets snoozed'}
+        title={showSnoozed ? tFilters('snoozedToggleOn') : tFilters('snoozedToggleOff')}
       >
         <Moon size={12} strokeWidth={2} />
-        <span>Snoozed</span>
+        <span>{tFilters('snoozed')}</span>
       </button>
     </div>
   ) : null;
@@ -267,8 +271,8 @@ export default function PersonalTicketList({
         <div className="card-premium">
           <EmptyState
             illustration="all-done"
-            title={showSnoozed ? 'Nenhum ticket snoozed' : 'Tudo em dia'}
-            description={emptyMessage}
+            title={showSnoozed ? tFilters('noSnoozedTickets') : tTickets('allDone')}
+            description={resolvedEmptyMessage}
           />
         </div>
       </div>
@@ -283,9 +287,9 @@ export default function PersonalTicketList({
         <div className="card-premium">
           <EmptyState
             illustration="no-results"
-            title="Nenhum ticket nesta categoria"
-            description="Ajuste os filtros acima ou veja todos os tickets atribuídos a você."
-            actions={[{ label: 'Ver todos', onClick: () => setFilter('all'), variant: 'primary' }]}
+            title={tFilters('noResults')}
+            description={tFilters('adjustFilters')}
+            actions={[{ label: tFilters('viewAll'), onClick: () => setFilter('all'), variant: 'primary' }]}
           />
         </div>
       </div>
