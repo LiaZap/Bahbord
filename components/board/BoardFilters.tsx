@@ -55,22 +55,22 @@ export default function BoardFilters({ filters, onFiltersChange, availableServic
 
   return (
     <div className="mb-4 flex items-center gap-2 flex-wrap">
-      {/* Search */}
-      <div className="relative">
+      {/* Search — full-width em mobile, larguras fixas em ≥sm */}
+      <div className="relative w-full sm:w-auto">
         <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
         <input
           value={filters.search}
           onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
           placeholder="Filtrar..."
-          className="w-44 rounded-md border border-white/[0.06] bg-white/[0.03] pl-8 pr-3 py-[6px] text-[12px] text-slate-200 outline-none placeholder:text-slate-600 transition focus:w-64 focus:border-blue-500/40 focus:bg-white/[0.05]"
+          className="w-full sm:w-44 rounded-md border border-white/[0.06] bg-white/[0.03] pl-8 pr-3 py-[6px] text-[12px] text-slate-200 outline-none placeholder:text-slate-600 transition sm:focus:w-64 focus:border-blue-500/40 focus:bg-white/[0.05]"
         />
       </div>
 
       {/* Saved Filters */}
       <SavedFilters currentFilters={filters} onApplyFilter={onFiltersChange} />
 
-      {/* Divider */}
-      <div className="h-5 w-px bg-white/[0.06]" />
+      {/* Divider — esconde em mobile pra economizar espaço */}
+      <div className="hidden sm:block h-5 w-px bg-white/[0.06]" />
 
       {/* Project pills */}
       {availableProjects.map((p) => (

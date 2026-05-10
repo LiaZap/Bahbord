@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Search, Settings, Bell,
   Menu, X, PanelLeftClose, PanelLeft, Plus,
   FolderKanban, History, Filter, Users, BookOpen, FileBarChart, Columns3, Zap, Clock,
-  Inbox, Star, Calendar
+  Inbox, Star, Calendar, BarChart3, MessageSquare
 } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import ChangelogPanel from '@/components/changelog/ChangelogPanel';
@@ -180,6 +180,7 @@ export default function Sidebar() {
           <NavItem href="/this-week" label="Esta semana" icon={Calendar} badge={counts.this_week} />
           {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
           {isAdminUser && <NavItem href="/reports" label="Relatórios" icon={FileBarChart} />}
+          <NavItem href="/reports/workload" label="Carga" icon={BarChart3} />
         </nav>
 
         {/* PROJETOS section */}
@@ -252,6 +253,7 @@ export default function Sidebar() {
               <NavItem href="/calendar" label="Calendário" icon={Calendar} />
               <NavItem href="/timesheet" label="Time" icon={Clock} />
               <NavItem href="/clients" label="Clientes" icon={Users} />
+              <NavItem href="/customer-requests" label="Pedidos clientes" icon={MessageSquare} />
               <NavItem href="/teams" label="Equipes" icon={Users} />
               <NavItem href="/filters" label="Filtros" icon={Filter} />
               <button

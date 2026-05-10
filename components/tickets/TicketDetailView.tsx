@@ -211,9 +211,9 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
 
   return (
     <div className="mx-auto max-w-[1200px]">
-      {/* Top bar — breadcrumb + actions */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-[13px]">
+      {/* Top bar — breadcrumb + actions (quebra linha em mobile) */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
           {ticket.parent_key && (
             <>
               <TicketTypeIcon typeName={ticket.type_name} typeIcon={ticket.type_icon} size="sm" />
@@ -268,7 +268,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
       ) : (
         <h1
           onClick={() => setEditingTitle(true)}
-          className="mb-2 cursor-text text-[20px] font-semibold text-primary hover:opacity-80"
+          className="mb-2 cursor-text text-[18px] sm:text-[20px] font-semibold text-primary hover:opacity-80 break-words"
         >
           {ticket.title}
         </h1>
@@ -276,7 +276,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
 
       <div className="mb-5" />
 
-      {/* Two column layout */}
+      {/* Two column layout — sidebar empilha abaixo em <lg */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left column — content */}
         <div className="flex-1 min-w-0 space-y-0">

@@ -59,24 +59,31 @@ export default function SettingsView() {
         </h1>
       </div>
 
-      <div className="flex gap-8">
-        {/* Sidebar navigation */}
-        <nav className="w-48 shrink-0 space-y-0.5">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        {/* Sidebar navigation — scroll horizontal em mobile (<lg), vertical em desktop */}
+        <nav
+          className="
+            -mx-2 px-2 flex flex-row gap-1 overflow-x-auto
+            lg:mx-0 lg:px-0 lg:flex-col lg:gap-0 lg:overflow-visible
+            lg:w-48 lg:shrink-0 lg:space-y-0.5
+            scrollbar-thin
+          "
+        >
           {tabs.map((tab, index) => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
             const showSection = tab.section && (index === 0 || tabs[index - 1]?.section !== tab.section);
             return (
-              <div key={tab.key}>
+              <div key={tab.key} className="shrink-0 lg:shrink lg:w-full">
                 {showSection && (
-                  <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <div className="hidden lg:block mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     {tab.section}
                   </div>
                 )}
                 <button
                   onClick={() => setActiveTab(tab.key)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium transition',
+                    'flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium transition whitespace-nowrap',
                     active
                       ? 'bg-accent/15 text-white'
                       : 'text-slate-400 hover:bg-input/30 hover:text-slate-200'
@@ -92,7 +99,7 @@ export default function SettingsView() {
                     // typedRoutes só registra rotas existentes na hora do build —
                     // até a próxima geração de tipos, casteamos pra string literal.
                     href={'/settings/sla' as Route}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-400 transition hover:bg-input/30 hover:text-slate-200"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-400 transition hover:bg-input/30 hover:text-slate-200 whitespace-nowrap"
                   >
                     <Clock size={15} className="text-slate-500" />
                     SLA
@@ -104,7 +111,7 @@ export default function SettingsView() {
         </nav>
 
         {/* Content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {activeTab === 'general' && <GeneralSettings />}
           {activeTab === 'clients' && <ClientsSettings />}
           {activeTab === 'members' && <MembersSettings />}

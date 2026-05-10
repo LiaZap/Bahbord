@@ -27,6 +27,8 @@ export type TicketItem = {
   snoozedUntil?: string | null;
   /** ISO timestamp do SLA (sla_due_at vinda da view tickets_full). */
   slaDueAt?: string | null;
+  /** Quantidade de pedidos de clientes vinculados ao ticket (Sprint 4 — feature 4.3). */
+  customerRequestCount?: number;
 };
 
 export type BoardItems = {
@@ -104,6 +106,12 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
               assigneeAvatar: t.assigneeAvatar ?? t.assignee_avatar ?? null,
               snoozedUntil: t.snoozedUntil ?? t.snoozed_until ?? null,
               slaDueAt: t.slaDueAt ?? t.sla_due_at ?? null,
+              customerRequestCount:
+                typeof t.customerRequestCount === 'number'
+                  ? t.customerRequestCount
+                  : typeof t.customer_request_count === 'number'
+                    ? t.customer_request_count
+                    : 0,
             });
 
             setItems({

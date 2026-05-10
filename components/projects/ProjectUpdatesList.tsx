@@ -198,9 +198,16 @@ export default function ProjectUpdatesList({
       {/* Lista */}
       {updates.length === 0 ? (
         <EmptyState
-          icon={Sparkles}
+          illustration="no-activity"
           title="Nenhum status update ainda"
           description="O cron roda toda sexta-feira às 17h e gera o resumo da semana. Você também pode clicar em ‘Gerar update agora’ para criar um manualmente."
+          actions={[
+            {
+              label: generating ? 'Gerando…' : 'Gerar update agora',
+              onClick: handleGenerate,
+              variant: 'primary',
+            },
+          ]}
         />
       ) : (
         <div className="space-y-4">

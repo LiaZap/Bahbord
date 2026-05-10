@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Inbox as InboxIcon, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import InboxCard from './InboxCard';
@@ -302,16 +302,24 @@ export default function InboxList() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          icon={InboxIcon}
+          illustration={tab === 'pending' ? 'inbox' : 'no-activity'}
           title={
             tab === 'pending'
-              ? 'Nenhum item pendente — tudo limpo!'
+              ? 'Caixa de entrada vazia'
               : 'Nenhum item triado recentemente'
           }
           description={
             tab === 'pending'
-              ? 'Novas mensagens do Slack, e-mails e links públicos vão aparecer aqui para triagem.'
+              ? 'Tudo triado! Novas mensagens do Slack, e-mails e links públicos vão aparecer aqui para triagem.'
               : 'Quando você aceitar, recusar ou marcar duplicatas, o histórico aparece aqui.'
+          }
+          actions={
+            tab === 'pending'
+              ? [
+                  { label: 'Ver triados (recentes)', onClick: () => setTab('recent'), variant: 'secondary' },
+                  { label: 'Configurar webhooks', href: '/settings', variant: 'secondary' },
+                ]
+              : undefined
           }
         />
       ) : (

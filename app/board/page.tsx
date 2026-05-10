@@ -26,6 +26,7 @@ type BoardTicket = {
   assignee_avatar: string | null;
   snoozed_until: string | null;
   sla_due_at: string | null;
+  customer_request_count: number | null;
 };
 
 type ProjectItem = { id: string; name: string };
@@ -63,6 +64,7 @@ function mapTicket(ticket: BoardTicket) {
     assigneeAvatar: ticket.assignee_avatar ?? null,
     snoozedUntil: ticket.snoozed_until ?? null,
     slaDueAt: ticket.sla_due_at ?? null,
+    customerRequestCount: Number(ticket.customer_request_count ?? 0),
   };
 }
 
@@ -116,7 +118,8 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
       (SELECT cl.name FROM clients cl WHERE cl.id = client_id) AS client_name,
       project_id,
       snoozed_until,
-      sla_due_at
+      sla_due_at,
+      (SELECT COUNT(*)::int FROM customer_requests cr WHERE cr.ticket_id = tickets_full.id) AS customer_request_count
     FROM tickets_full
     ${whereClause}
     ORDER BY updated_at DESC`,

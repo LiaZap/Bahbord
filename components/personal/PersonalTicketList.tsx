@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Moon } from 'lucide-react';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface PersonalTicket {
   id: string;
@@ -263,8 +264,12 @@ export default function PersonalTicketList({
     return (
       <div className="space-y-4">
         {filterBar}
-        <div className="card-premium p-8 text-center">
-          <p className="text-[14px] text-secondary">{emptyMessage}</p>
+        <div className="card-premium">
+          <EmptyState
+            illustration="all-done"
+            title={showSnoozed ? 'Nenhum ticket snoozed' : 'Tudo em dia'}
+            description={emptyMessage}
+          />
         </div>
       </div>
     );
@@ -275,15 +280,13 @@ export default function PersonalTicketList({
     return (
       <div className="space-y-4">
         {filterBar}
-        <div className="card-premium p-8 text-center">
-          <p className="text-[14px] text-secondary">Nenhum ticket nesta categoria.</p>
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            className="mt-2 text-[12px] text-accent hover:underline"
-          >
-            Ver todos
-          </button>
+        <div className="card-premium">
+          <EmptyState
+            illustration="no-results"
+            title="Nenhum ticket nesta categoria"
+            description="Ajuste os filtros acima ou veja todos os tickets atribuídos a você."
+            actions={[{ label: 'Ver todos', onClick: () => setFilter('all'), variant: 'primary' }]}
+          />
         </div>
       </div>
     );
@@ -312,11 +315,11 @@ export default function PersonalTicketList({
                 <Link
                   key={t.id}
                   href={`/ticket/${t.id}` as any}
-                  className="grid grid-cols-[24px_80px_1fr_auto_auto] items-center gap-3 border-b border-[var(--card-border)] px-4 py-2.5 last:border-0 hover:bg-[var(--overlay-subtle)] transition-colors"
+                  className="grid grid-cols-[24px_64px_1fr_auto] sm:grid-cols-[24px_80px_1fr_auto_auto] items-center gap-2 sm:gap-3 border-b border-[var(--card-border)] px-3 sm:px-4 py-2.5 last:border-0 hover:bg-[var(--overlay-subtle)] transition-colors"
                 >
                   <TicketTypeIcon typeName={t.type_name} typeIcon={t.type_icon} size="sm" />
                   <span className="font-mono text-[11px] font-bold text-secondary tabular-nums">{t.ticket_key}</span>
-                  <span className="flex items-center gap-1.5 text-[13px] text-primary truncate">
+                  <span className="flex items-center gap-1.5 text-[13px] text-primary truncate min-w-0">
                     <span className="truncate">{t.title}</span>
                     {t.snoozed_until && new Date(t.snoozed_until).getTime() > Date.now() && (
                       <span
@@ -329,7 +332,7 @@ export default function PersonalTicketList({
                     )}
                   </span>
                   <span
-                    className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium shrink-0"
+                    className="hidden sm:inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium shrink-0"
                     style={{ backgroundColor: t.status_color + '20', color: t.status_color }}
                   >
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.status_color }} />

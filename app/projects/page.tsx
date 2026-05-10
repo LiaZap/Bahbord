@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart } from 'lucide-react';
+import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart, FileText } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import { useToast } from '@/components/ui/Toast';
+import EmptyState from '@/components/ui/EmptyState';
 
 interface Project {
   id: string;
@@ -133,6 +134,16 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {projects.length === 0 && !showCreate ? (
+        <EmptyState
+          illustration="no-projects"
+          title="Nenhum projeto ainda"
+          description="Crie seu primeiro projeto pra organizar boards, tickets e clientes em um só lugar."
+          actions={[
+            { label: 'Criar projeto', onClick: () => setShowCreate(true), variant: 'primary' },
+          ]}
+        />
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {projects.map((p) => (
           <div
@@ -159,6 +170,16 @@ export default function ProjectsPage() {
                     aria-label="Status updates"
                   >
                     <FileBarChart size={13} />
+                  </button>
+                )}
+                {!p.is_archived && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/projects/${p.id}/spec` as never); }}
+                    className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
+                    title="Spec do projeto"
+                    aria-label="Spec do projeto"
+                  >
+                    <FileText size={13} />
                   </button>
                 )}
                 <button
@@ -204,6 +225,7 @@ export default function ProjectsPage() {
           <span className="mt-1 text-[11px] text-[var(--text-tertiary)]">Comece com um template ou do zero</span>
         </button>
       </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils/cn';
-import { Calendar, Check, Clock, Edit, Copy, Link as LinkIcon, Trash2, User, Flag } from 'lucide-react';
+import { Calendar, Check, Clock, Edit, Copy, Link as LinkIcon, Trash2, User, Flag, Users } from 'lucide-react';
 import { useBoardShell } from './BoardShell';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import Tooltip from '@/components/ui/Tooltip';
@@ -53,13 +53,15 @@ interface TicketCardProps {
   snoozedUntil?: string | null;
   /** ISO timestamp do SLA (vem da view tickets_full.sla_due_at). */
   slaDueAt?: string | null;
+  /** Quantidade de pedidos de clientes vinculados ao ticket (Sprint 4 — feature 4.3). */
+  customerRequestCount?: number;
   active: boolean;
   onClick: () => void;
   selected?: boolean;
   onToggleSelect?: () => void;
 }
 
-export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, snoozedUntil, slaDueAt, active, onClick, selected, onToggleSelect }: TicketCardProps) {
+export default function TicketCard({ id, title, service, serviceColor, due, assignee, priority, ticketKey, typeIcon, typeName, categoryName, completedAt, clientName, assigneeAvatar, snoozedUntil, slaDueAt, customerRequestCount, active, onClick, selected, onToggleSelect }: TicketCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const { openTicket } = useBoardShell();
@@ -208,6 +210,16 @@ export default function TicketCard({ id, title, service, serviceColor, due, assi
             >
               {service}
             </span>
+          )}
+          {typeof customerRequestCount === 'number' && customerRequestCount > 0 && (
+            <Tooltip
+              content={`${customerRequestCount} ${customerRequestCount === 1 ? 'cliente pediu' : 'clientes pediram'} esta feature`}
+            >
+              <span className="inline-flex items-center gap-1 rounded px-1.5 py-[3px] text-[11px] font-semibold bg-purple-500/10 text-purple-400 dark:text-purple-300">
+                <Users size={10} strokeWidth={2} />
+                <span className="tabular-nums">{customerRequestCount}</span>
+              </span>
+            </Tooltip>
           )}
         </div>
 

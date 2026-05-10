@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import SnoozeMenu from '@/components/tickets/SnoozeMenu';
 import TicketDependencies from '@/components/tickets/TicketDependencies';
+import CustomerRequestsSection from '@/components/tickets/CustomerRequestsSection';
 import {
   getSlaStatus,
   formatSlaRemaining,
@@ -754,6 +755,11 @@ export default function TicketSidebar({ ticket, onUpdate }: TicketSidebarProps) 
       {/* Bloqueios / Dependências */}
       <div className="mt-4">
         <TicketDependencies ticketId={ticket.id} />
+      </div>
+
+      {/* Pedidos de clientes (Sprint 4 — feature 4.3) */}
+      <div className="mt-4">
+        <CustomerRequestsSection ticketId={ticket.id} isAdmin={isAdmin} />
       </div>
 
     </div>

@@ -6,6 +6,8 @@ import KanbanColumn from './KanbanColumn';
 import TicketCard from './TicketCard';
 import BoardFilters from './BoardFilters';
 import BulkActionBar from './BulkActionBar';
+import EmptyState from '@/components/ui/EmptyState';
+import { useBoardShell } from './BoardShell';
 import { useBoard, type BoardItems } from '@/lib/hooks/useBoard';
 
 export type { TicketItem, BoardItems } from '@/lib/hooks/useBoard';
@@ -39,6 +41,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
   } = useBoard(initialItems, wipLimits);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const { createInColumn } = useBoardShell();
 
   // Bulk selection (Cmd/Ctrl+Click no card)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -97,6 +100,16 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
     ? allTickets.find((t) => t.id === selectedCard)
     : null;
 
+  const hasAnyTickets = allTickets.length > 0;
+  const hasActiveFilters =
+    !!filters.search ||
+    filters.services.length > 0 ||
+    filters.assignees.length > 0 ||
+    filters.types.length > 0 ||
+    filters.priorities.length > 0 ||
+    filters.projects.length > 0 ||
+    !!filters.onlyOverdue;
+
   return (
     <div className="flex h-full flex-col">
       <BoardFilters
@@ -109,6 +122,16 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
         overdueCount={overdueCount}
       />
 
+      {!hasAnyTickets && !hasActiveFilters ? (
+        <EmptyState
+          illustration="tickets"
+          title="Nenhum ticket aqui ainda"
+          description="Crie o primeiro ticket pra começar a organizar o trabalho do board."
+          actions={[
+            { label: 'Novo ticket', onClick: () => createInColumn('todo'), variant: 'primary' },
+          ]}
+        />
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -123,9 +146,10 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
           interval: 5,
         }}
       >
-        <div className="flex gap-3 pb-2 overflow-x-auto snap-x snap-mandatory md:snap-none">
+        {/* Mobile: scroll horizontal com snap; Desktop: layout natural */}
+        <div className="flex gap-3 pb-2 overflow-x-auto snap-x snap-mandatory md:snap-none -mx-2 px-2 sm:mx-0 sm:px-0">
           {columns.map((column) => (
-            <div key={column.id} className="w-[260px] shrink-0 snap-start">
+            <div key={column.id} className="w-[85vw] max-w-[280px] sm:w-[260px] shrink-0 snap-start">
               <KanbanColumn
                 id={column.id}
                 title={column.title}
@@ -154,6 +178,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
           ) : null}
         </DragOverlay>
       </DndContext>
+      )}
 
       {/* Floating bulk action bar */}
       <BulkActionBar

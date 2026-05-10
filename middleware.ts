@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/api/webhooks(.*)',
   '/share/(.*)',
+  '/feedback(.*)',
 ]);
 
 function addSecurityHeaders(response: NextResponse): NextResponse {
