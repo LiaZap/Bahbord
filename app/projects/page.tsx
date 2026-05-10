@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart, FileText } from 'lucide-react';
+import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart, FileText, Target } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import { useToast } from '@/components/ui/Toast';
 import EmptyState from '@/components/ui/EmptyState';
@@ -16,6 +16,7 @@ interface Project {
   is_archived: boolean;
   board_count: number;
   ticket_count: number;
+  initiative_count?: number;
 }
 
 interface Template {
@@ -182,6 +183,16 @@ export default function ProjectsPage() {
                     <FileText size={13} />
                   </button>
                 )}
+                {!p.is_archived && (p.initiative_count ?? 0) > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as never); }}
+                    className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
+                    title={`${p.initiative_count} iniciativa${p.initiative_count === 1 ? '' : 's'}`}
+                    aria-label="Iniciativas"
+                  >
+                    <Target size={13} />
+                  </button>
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleArchive(p.id); }}
                   className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--danger)]"
@@ -206,10 +217,22 @@ export default function ProjectsPage() {
             </div>
 
             <div className="mt-3 flex items-center justify-between text-[11px]">
-              <span className="text-[var(--text-tertiary)] flex items-center gap-1">
-                <FolderKanban size={11} />
-                {p.board_count || 0} board{p.board_count !== 1 ? 's' : ''}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[var(--text-tertiary)] flex items-center gap-1">
+                  <FolderKanban size={11} />
+                  {p.board_count || 0} board{p.board_count !== 1 ? 's' : ''}
+                </span>
+                {(p.initiative_count ?? 0) > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as never); }}
+                    className="text-[var(--text-tertiary)] flex items-center gap-1 transition hover:text-[var(--accent)]"
+                    title="Ver iniciativas no roadmap"
+                  >
+                    <Target size={11} />
+                    {p.initiative_count} iniciativa{p.initiative_count === 1 ? '' : 's'}
+                  </button>
+                )}
+              </div>
               <span className="text-[var(--accent)] font-medium opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
             </div>
           </div>

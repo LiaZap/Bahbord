@@ -28,6 +28,7 @@ const pageTitles: Record<string, string> = {
   '/teams': 'Equipes',
   '/filters': 'Filtros',
   '/boards': 'Boards',
+  '/roadmap': 'Roadmap',
 };
 
 export default function Header({ onCreateTicket }: HeaderProps) {

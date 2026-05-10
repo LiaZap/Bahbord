@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Search, Settings, Bell,
   Menu, X, PanelLeftClose, PanelLeft, Plus,
   FolderKanban, History, Filter, Users, BookOpen, FileBarChart, Columns3, Zap, Clock,
-  Inbox, Star, Calendar, BarChart3, MessageSquare
+  Inbox, Star, Calendar, BarChart3, MessageSquare, Target
 } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import ChangelogPanel from '@/components/changelog/ChangelogPanel';
@@ -178,6 +178,7 @@ export default function Sidebar() {
           <NavItem href="/inbox" label="Caixa de entrada" icon={Inbox} badge={counts.inbox} />
           <NavItem href="/my-tasks" label="Minhas tarefas" icon={Star} badge={counts.my_tasks} />
           <NavItem href="/this-week" label="Esta semana" icon={Calendar} badge={counts.this_week} />
+          <NavItem href="/roadmap" label="Roadmap" icon={Target} />
           {isAdminUser && <NavItem href="/docs" label="Documentação" icon={BookOpen} />}
           {isAdminUser && <NavItem href="/reports" label="Relatórios" icon={FileBarChart} />}
           <NavItem href="/reports/workload" label="Carga" icon={BarChart3} />

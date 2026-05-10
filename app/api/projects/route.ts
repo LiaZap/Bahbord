@@ -16,7 +16,14 @@ export async function GET(request: Request) {
         p.id, p.workspace_id, p.name, p.prefix, p.description, p.color,
         p.is_archived, p.created_at, p.updated_at,
         (SELECT COUNT(*) FROM boards b WHERE b.project_id = p.id)::int AS board_count,
-        (SELECT COUNT(*) FROM tickets t WHERE t.project_id = p.id)::int AS ticket_count
+        (SELECT COUNT(*) FROM tickets t WHERE t.project_id = p.id)::int AS ticket_count,
+        COALESCE((
+          SELECT COUNT(*)::int
+          FROM initiative_projects ip
+          JOIN initiatives i ON i.id = ip.initiative_id
+          WHERE ip.project_id = p.id
+            AND i.health NOT IN ('archived', 'completed')
+        ), 0) AS initiative_count
       FROM projects p`;
 
     let result;
