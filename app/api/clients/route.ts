@@ -1,22 +1,40 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
+
+// Prefix usado em todas as chaves do cache de clients (rota /api/clients).
+// Mutations (POST/PATCH/DELETE) chamam invalidateCachePrefix(CLIENTS_CACHE_PREFIX).
+// OBS: o cache em /api/options já existe sob o prefix 'options:clients:' — esses
+// dois caches são independentes (rotas diferentes); cada mutation invalida o
+// próprio. Quem precisa invalidar options:clients faria via outra rota.
+const CLIENTS_CACHE_PREFIX = 'clients:';
 
 export async function GET() {
   try {
     const workspaceId = await getDefaultWorkspaceId();
-    const result = await query(
-      `SELECT c.id, c.name, c.color, c.contact_email, c.contact_phone, c.is_active,
-        c.organization_id, c.created_at,
-        o.name AS organization_name,
-        (SELECT COUNT(*) FROM tickets t WHERE t.client_id = c.id)::int AS ticket_count
-       FROM clients c
-       LEFT JOIN organizations o ON o.id = c.organization_id
-       WHERE c.workspace_id = $1
-       ORDER BY c.name ASC`,
-      [workspaceId]
+
+    // Cache 60s. ticket_count via subquery muda com qualquer ticket criado, mas
+    // pra UI de listagem de clientes (admin) 60s de defasagem é aceitável e o
+    // ganho de evitar a subquery N vezes (uma por client) é significativo em
+    // workspaces com muitos clientes.
+    const rows = await cachedQuery(
+      `${CLIENTS_CACHE_PREFIX}${workspaceId}`,
+      async () => (await query(
+        `SELECT c.id, c.name, c.color, c.contact_email, c.contact_phone, c.is_active,
+          c.organization_id, c.created_at,
+          o.name AS organization_name,
+          (SELECT COUNT(*) FROM tickets t WHERE t.client_id = c.id)::int AS ticket_count
+         FROM clients c
+         LEFT JOIN organizations o ON o.id = c.organization_id
+         WHERE c.workspace_id = $1
+         ORDER BY c.name ASC`,
+        [workspaceId]
+      )).rows,
+      60_000
     );
-    return NextResponse.json(result.rows);
+
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('GET /api/clients error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -41,6 +59,7 @@ export async function POST(request: Request) {
        VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *`,
       [workspaceId, name.trim(), color || '#6366f1', contact_email || null, contact_phone || null, organization_id || null]
     );
+    invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (err) {
     console.error('POST /api/clients error:', err);
@@ -80,6 +99,7 @@ export async function PATCH(request: Request) {
     if (result.rowCount === 0) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
     }
+    invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
     return NextResponse.json(result.rows[0]);
   } catch (err) {
     console.error('PATCH /api/clients error:', err);
@@ -104,6 +124,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Não é possível remover: existem tickets vinculados a este cliente' }, { status: 409 });
     }
     await query(`DELETE FROM clients WHERE id = $1`, [id]);
+    invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/clients error:', err);

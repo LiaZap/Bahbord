@@ -24,6 +24,7 @@ export default function NotificationCenter() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -35,19 +36,44 @@ export default function NotificationCenter() {
     } catch (err) { console.error('Erro ao carregar notificações:', err); }
   }, []);
 
+  // Resolve user id once (used to scope realtime subscription)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled) setUserId(data?.member?.id ?? null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     fetchNotifications();
 
+    // Skip subscribe until we know who the recipient is — avoids
+    // a thundering-herd channel that fires on every workspace write.
+    if (!userId) return;
+
+    const filter = `recipient_id=eq.${userId}`;
     const channel = supabase
-      .channel('notifications-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => fetchNotifications())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, () => fetchNotifications())
+      .channel(`notifications-realtime:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter },
+        () => fetchNotifications()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter },
+        () => fetchNotifications()
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, userId]);
 
   // Close on click outside
   useEffect(() => {

@@ -63,7 +63,18 @@ export async function GET(request: Request) {
       WHERE t.is_archived = false ${accessFilter} ${snoozeFilter} ${slaFilter}`;
     const accessParams: unknown[] = userIsAdmin ? [] : [auth.id];
 
-    // If no page param, return all results (backward compat for board view)
+    // If no page param, return up to LIMIT 500 results (backward compat for
+    // board view + realtime refetch em useBoard.ts:77).
+    //
+    // Antes: SELECT ... ORDER BY created_at DESC (sem LIMIT) — workspace com
+    // 5k tickets gerava response de 2MB+ em cada update realtime do Supabase.
+    // O Kanban consome só os tickets ativos visíveis nas 4 colunas; 500 é
+    // largo o suficiente pra qualquer board real (limite WIP típico ~100).
+    //
+    // Para listas paginadas full, callers DEVEM usar ?page=1&limit=N (branch
+    // abaixo). app/board/page.tsx NÃO usa este endpoint (faz SSR direto via
+    // tickets_full), então o cap não afeta o board principal — só o realtime
+    // refetch em useBoard.ts.
     if (!pageParam) {
       const result = await query(
         `SELECT
@@ -77,7 +88,8 @@ export async function GET(request: Request) {
           sv.name AS service,
           m.display_name AS assignee
         ${baseQuery}
-        ORDER BY t.created_at DESC`,
+        ORDER BY t.created_at DESC
+        LIMIT 500`,
         accessParams.length ? accessParams : undefined
       );
       return NextResponse.json(result.rows);

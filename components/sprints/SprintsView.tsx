@@ -13,9 +13,17 @@ import {
   Repeat,
   RotateCw,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils/cn';
-import SprintBurndown from './SprintBurndown';
+import { Skeleton } from '@/components/ui/Skeleton';
 import Tooltip from '@/components/ui/Tooltip';
+
+// Lazy-load SprintBurndown — recharts (~95KB) is only needed for the
+// active sprint's chart and shouldn't block initial sprint list render.
+const SprintBurndown = dynamic(() => import('./SprintBurndown'), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full rounded-md" />,
+});
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 

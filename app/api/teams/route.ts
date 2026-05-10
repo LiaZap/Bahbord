@@ -1,32 +1,45 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
+
+// Prefix usado em todas as chaves do cache de teams. Mutations (POST/PATCH/
+// DELETE) chamam invalidateCachePrefix(TEAMS_CACHE_PREFIX) pra garantir que a
+// próxima leitura veja o write — TTL de 60s é só pra absorver bursts de leitura.
+const TEAMS_CACHE_PREFIX = 'teams:';
 
 export async function GET() {
   try {
     await getAuthMember();
     const workspaceId = await getDefaultWorkspaceId();
 
-    const result = await query(
-      `SELECT
-        t.id, t.name, t.description, t.color, t.created_at,
-        COUNT(tm.member_id)::int AS member_count,
-        COALESCE(
-          json_agg(
-            json_build_object('id', m.id, 'display_name', m.display_name, 'email', m.email, 'role', tm.role)
-          ) FILTER (WHERE m.id IS NOT NULL),
-          '[]'
-        ) AS members
-      FROM teams t
-      LEFT JOIN team_members tm ON tm.team_id = t.id
-      LEFT JOIN members m ON m.id = tm.member_id
-      WHERE t.workspace_id = $1
-      GROUP BY t.id
-      ORDER BY t.name ASC`,
-      [workspaceId]
+    // Cache 60s: teams + member_count + composição de members são quase-estáticos
+    // (mudam só em mutations admin). Resultado independe de role do requester
+    // — projeção é a mesma pra todo mundo (id/display_name/email/role).
+    const rows = await cachedQuery(
+      `${TEAMS_CACHE_PREFIX}${workspaceId}`,
+      async () => (await query(
+        `SELECT
+          t.id, t.name, t.description, t.color, t.created_at,
+          COUNT(tm.member_id)::int AS member_count,
+          COALESCE(
+            json_agg(
+              json_build_object('id', m.id, 'display_name', m.display_name, 'email', m.email, 'role', tm.role)
+            ) FILTER (WHERE m.id IS NOT NULL),
+            '[]'
+          ) AS members
+        FROM teams t
+        LEFT JOIN team_members tm ON tm.team_id = t.id
+        LEFT JOIN members m ON m.id = tm.member_id
+        WHERE t.workspace_id = $1
+        GROUP BY t.id
+        ORDER BY t.name ASC`,
+        [workspaceId]
+      )).rows,
+      60_000
     );
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('GET /api/teams error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -55,6 +68,7 @@ export async function POST(request: Request) {
       [workspaceId, name.trim(), description || null, color || '#6366f1']
     );
 
+    invalidateCachePrefix(TEAMS_CACHE_PREFIX);
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (err) {
     console.error('POST /api/teams error:', err);
@@ -86,6 +100,7 @@ export async function PATCH(request: Request) {
          ON CONFLICT (team_id, member_id) DO UPDATE SET role = $3`,
         [id, member_id, role || 'member']
       );
+      invalidateCachePrefix(TEAMS_CACHE_PREFIX);
       return NextResponse.json({ success: true });
     }
 
@@ -98,6 +113,7 @@ export async function PATCH(request: Request) {
         `DELETE FROM team_members WHERE team_id = $1 AND member_id = $2`,
         [id, member_id]
       );
+      invalidateCachePrefix(TEAMS_CACHE_PREFIX);
       return NextResponse.json({ success: true });
     }
 
@@ -124,6 +140,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Equipe não encontrada' }, { status: 404 });
     }
 
+    invalidateCachePrefix(TEAMS_CACHE_PREFIX);
     return NextResponse.json(result.rows[0]);
   } catch (err) {
     console.error('PATCH /api/teams error:', err);
@@ -153,6 +170,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Equipe não encontrada' }, { status: 404 });
     }
 
+    invalidateCachePrefix(TEAMS_CACHE_PREFIX);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error('DELETE /api/teams error:', err);
