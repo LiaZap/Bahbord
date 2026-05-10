@@ -33,6 +33,8 @@ export async function GET(request: Request) {
     const result = await query(
       `SELECT s.id, s.name, s.goal, s.start_date, s.end_date, s.is_active, s.is_completed,
         s.created_at, s.completed_at, s.project_id,
+        s.auto_rollover, s.cadence_days, s.rollover_strategy,
+        s.parent_sprint_id, s.rolled_over_at,
         p.name AS project_name,
         COUNT(t.id)::int AS ticket_count,
         COUNT(t.id) FILTER (WHERE st.is_done = true)::int AS done_count
@@ -60,19 +62,51 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
+    // Clonar request para conseguir ler o body cru DEPOIS do validateBody
+    // (precisamos dos campos extras de rollover que não estão no schema).
+    const reqClone = request.clone();
     const validation = await validateBody(request, createSprintSchema);
     if ('error' in validation) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
     const { name, goal, start_date, end_date, project_id } = validation.data;
 
+    let rawBody: Record<string, unknown> = {};
+    try {
+      rawBody = await reqClone.json();
+    } catch {
+      rawBody = {};
+    }
+    const autoRollover = typeof rawBody.auto_rollover === 'boolean' ? rawBody.auto_rollover : false;
+    const cadenceDays =
+      typeof rawBody.cadence_days === 'number' && rawBody.cadence_days > 0
+        ? Math.floor(rawBody.cadence_days)
+        : null;
+    const rolloverStrategy =
+      typeof rawBody.rollover_strategy === 'string' &&
+      ['move_incomplete', 'keep_in_place', 'archive_incomplete'].includes(rawBody.rollover_strategy)
+        ? rawBody.rollover_strategy
+        : 'move_incomplete';
+
     const wsId = await getDefaultWorkspaceId();
 
     const result = await query(
-      `INSERT INTO sprints (workspace_id, project_id, name, goal, start_date, end_date, is_active, is_completed)
-       VALUES ($1, $2, $3, $4, $5, $6, false, false)
+      `INSERT INTO sprints
+         (workspace_id, project_id, name, goal, start_date, end_date,
+          is_active, is_completed, auto_rollover, cadence_days, rollover_strategy)
+       VALUES ($1, $2, $3, $4, $5, $6, false, false, $7, $8, $9)
        RETURNING *`,
-      [wsId, project_id || null, name.trim(), goal || null, start_date || null, end_date || null]
+      [
+        wsId,
+        project_id || null,
+        name.trim(),
+        goal || null,
+        start_date || null,
+        end_date || null,
+        autoRollover,
+        cadenceDays,
+        rolloverStrategy,
+      ]
     );
 
     // Auto-create a board for this sprint inside the project
@@ -203,12 +237,35 @@ export async function PATCH(request: Request) {
     const values: unknown[] = [];
     let idx = 1;
 
+    const ALLOWED_PATCH = [
+      'name',
+      'goal',
+      'start_date',
+      'end_date',
+      'project_id',
+      'auto_rollover',
+      'cadence_days',
+      'rollover_strategy',
+    ];
     for (const [key, val] of Object.entries(fields)) {
-      if (['name', 'goal', 'start_date', 'end_date', 'project_id'].includes(key)) {
-        sets.push(`${key} = $${idx}`);
-        values.push(val);
-        idx++;
+      if (!ALLOWED_PATCH.includes(key)) continue;
+      // Validar enum de rollover_strategy
+      if (key === 'rollover_strategy' && typeof val === 'string' &&
+          !['move_incomplete', 'keep_in_place', 'archive_incomplete'].includes(val)) {
+        return NextResponse.json(
+          { error: 'rollover_strategy inválido' },
+          { status: 400 }
+        );
       }
+      // Validar cadence_days positivo
+      if (key === 'cadence_days' && val !== null && val !== undefined) {
+        if (typeof val !== 'number' || val <= 0) {
+          return NextResponse.json({ error: 'cadence_days deve ser > 0' }, { status: 400 });
+        }
+      }
+      sets.push(`${key} = $${idx}`);
+      values.push(val);
+      idx++;
     }
 
     if (sets.length === 0) {

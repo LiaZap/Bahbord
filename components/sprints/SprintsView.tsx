@@ -2,9 +2,24 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, Play, CheckCircle, Calendar, Target, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import {
+  Plus,
+  Play,
+  CheckCircle,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  Trash2,
+  Repeat,
+  RotateCw,
+} from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import SprintBurndown from './SprintBurndown';
+import Tooltip from '@/components/ui/Tooltip';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
+
+type RolloverStrategy = 'move_incomplete' | 'keep_in_place' | 'archive_incomplete';
 
 interface Sprint {
   id: string;
@@ -20,6 +35,11 @@ interface Sprint {
   done_count: number;
   project_id: string | null;
   project_name: string | null;
+  auto_rollover: boolean;
+  cadence_days: number | null;
+  rollover_strategy: RolloverStrategy;
+  parent_sprint_id: string | null;
+  rolled_over_at: string | null;
 }
 
 interface Project {
@@ -27,21 +47,46 @@ interface Project {
   name: string;
 }
 
+const STRATEGY_LABEL: Record<RolloverStrategy, string> = {
+  move_incomplete: 'Mover incompletos',
+  keep_in_place: 'Manter onde estão',
+  archive_incomplete: 'Arquivar incompletos',
+};
+
 export default function SprintsView() {
   const searchParams = useSearchParams();
   const boardIdParam = searchParams.get('board_id');
   const projectIdParam = searchParams.get('project_id');
+  const { toast } = useToast();
+  const { confirm } = useConfirm();
+
   const [sprints, setSprints] = useState<Sprint[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(projectIdParam);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [rollingId, setRollingId] = useState<string | null>(null);
+
+  // Form state — create
   const [newName, setNewName] = useState('');
   const [newGoal, setNewGoal] = useState('');
   const [newStart, setNewStart] = useState('');
   const [newEnd, setNewEnd] = useState('');
   const [newProjectId, setNewProjectId] = useState(projectIdParam || '');
+  const [newAutoRollover, setNewAutoRollover] = useState(false);
+  const [newCadenceDays, setNewCadenceDays] = useState<number>(14);
+  const [newRolloverStrategy, setNewRolloverStrategy] =
+    useState<RolloverStrategy>('move_incomplete');
+
+  // Edit state for inline rollover settings (per sprint)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAutoRollover, setEditAutoRollover] = useState(false);
+  const [editCadenceDays, setEditCadenceDays] = useState<number>(14);
+  const [editRolloverStrategy, setEditRolloverStrategy] =
+    useState<RolloverStrategy>('move_incomplete');
+
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchSprints = useCallback(async () => {
@@ -52,7 +97,7 @@ export default function SprintsView() {
         const bRes = await fetch('/api/boards');
         if (bRes.ok) {
           const boards = await bRes.json();
-          const board = boards.find((b: any) => b.id === boardIdParam);
+          const board = boards.find((b: { id: string; project_id: string | null }) => b.id === boardIdParam);
           projectId = board?.project_id || null;
           setCurrentProjectId(projectId);
           if (projectId) setNewProjectId(projectId);
@@ -66,22 +111,51 @@ export default function SprintsView() {
       ]);
       if (sprintRes.ok) setSprints(await sprintRes.json());
       if (projRes.ok) setProjects(await projRes.json());
-    } catch (err) { console.error('Erro ao carregar sprints:', err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('Erro ao carregar sprints:', err);
+    } finally {
+      setLoading(false);
+    }
   }, [boardIdParam, projectIdParam]);
 
-  useEffect(() => { fetchSprints(); }, [fetchSprints]);
+  useEffect(() => {
+    fetchSprints();
+  }, [fetchSprints]);
+
+  // Discover admin role (same pattern used in BoardShell / TimesheetView)
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const role = data?.member?.role;
+        setIsAdmin(role === 'owner' || role === 'admin');
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleCreate() {
     if (!newName.trim() || !newProjectId || !newStart || !newEnd) return;
+    if (newAutoRollover && (!newCadenceDays || newCadenceDays < 1)) {
+      toast('Defina uma cadência válida (mínimo 1 dia) para auto-rollover.', 'warning');
+      return;
+    }
     const res = await fetch('/api/sprints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim(), goal: newGoal || null, start_date: newStart, end_date: newEnd, project_id: newProjectId }),
+      body: JSON.stringify({
+        name: newName.trim(),
+        goal: newGoal || null,
+        start_date: newStart,
+        end_date: newEnd,
+        project_id: newProjectId,
+        auto_rollover: newAutoRollover,
+        cadence_days: newAutoRollover ? newCadenceDays : null,
+        rollover_strategy: newAutoRollover ? newRolloverStrategy : 'move_incomplete',
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert(err.error || 'Erro ao criar sprint');
+      toast(err.error || 'Erro ao criar sprint', 'error');
       return;
     }
     setNewName('');
@@ -89,12 +163,25 @@ export default function SprintsView() {
     setNewProjectId('');
     setNewStart('');
     setNewEnd('');
+    setNewAutoRollover(false);
+    setNewCadenceDays(14);
+    setNewRolloverStrategy('move_incomplete');
     setShowCreate(false);
+    toast('Sprint criada com sucesso.', 'success');
     await fetchSprints();
   }
 
   async function handleAction(id: string, action: string) {
-    if (action === 'complete' && !confirm('Concluir este sprint? Um próximo sprint será criado automaticamente.')) return;
+    if (action === 'complete') {
+      const ok = await confirm({
+        title: 'Concluir sprint?',
+        message:
+          'Concluir este sprint? Um próximo sprint será criado automaticamente.',
+        confirmText: 'Concluir',
+        variant: 'info',
+      });
+      if (!ok) return;
+    }
     await fetch('/api/sprints', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -117,10 +204,10 @@ export default function SprintsView() {
           const start = new Date(completed.start_date);
           const end = new Date(completed.end_date);
           const duration = end.getTime() - start.getTime();
-          const newStart = new Date(end.getTime() + 86400000); // +1 day after end
-          const newEnd = new Date(newStart.getTime() + duration);
-          nextStart = newStart.toISOString().split('T')[0];
-          nextEnd = newEnd.toISOString().split('T')[0];
+          const newStartDate = new Date(end.getTime() + 86400000); // +1 day after end
+          const newEndDate = new Date(newStartDate.getTime() + duration);
+          nextStart = newStartDate.toISOString().split('T')[0];
+          nextEnd = newEndDate.toISOString().split('T')[0];
         }
 
         await fetch('/api/sprints', {
@@ -140,19 +227,102 @@ export default function SprintsView() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este sprint? Esta ação não pode ser desfeita.')) return;
+    const ok = await confirm({
+      title: 'Remover sprint?',
+      message: 'Remover este sprint? Esta ação não pode ser desfeita.',
+      confirmText: 'Remover',
+      variant: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/sprints?id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
-      const err = await res.json();
-      alert(err.error || 'Erro ao remover sprint');
+      const err = await res.json().catch(() => ({}));
+      toast(err.error || 'Erro ao remover sprint', 'error');
       return;
     }
+    toast('Sprint removida.', 'success');
+    await fetchSprints();
+  }
+
+  async function handleRolloverNow(sprint: Sprint) {
+    if (sprint.rolled_over_at) {
+      toast('Esta sprint já foi rolada.', 'warning');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Rolar sprint agora?',
+      message:
+        'Isso vai criar uma nova sprint e mover os tickets incompletos conforme a estratégia escolhida. Continuar?',
+      confirmText: 'Rolar agora',
+      variant: 'warning',
+    });
+    if (!ok) return;
+
+    setRollingId(sprint.id);
+    try {
+      const res = await fetch(`/api/sprints/${sprint.id}/rollover`, {
+        method: 'POST',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || 'Erro ao rolar sprint', 'error');
+        return;
+      }
+      const moved = typeof data.moved_count === 'number' ? data.moved_count : 0;
+      const archived = typeof data.archived_count === 'number' ? data.archived_count : 0;
+      toast(
+        `Sprint rolada — ${moved} movidos, ${archived} arquivados. Nova sprint criada.`,
+        'success'
+      );
+      await fetchSprints();
+    } catch (err) {
+      console.error('rollover error:', err);
+      toast('Erro de rede ao rolar sprint', 'error');
+    } finally {
+      setRollingId(null);
+    }
+  }
+
+  function startEditRollover(sprint: Sprint) {
+    setEditingId(sprint.id);
+    setEditAutoRollover(sprint.auto_rollover);
+    setEditCadenceDays(sprint.cadence_days ?? 14);
+    setEditRolloverStrategy(sprint.rollover_strategy ?? 'move_incomplete');
+  }
+
+  async function saveEditRollover(sprintId: string) {
+    if (editAutoRollover && (!editCadenceDays || editCadenceDays < 1)) {
+      toast('Defina uma cadência válida (mínimo 1 dia).', 'warning');
+      return;
+    }
+    const res = await fetch('/api/sprints', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: sprintId,
+        auto_rollover: editAutoRollover,
+        cadence_days: editAutoRollover ? editCadenceDays : null,
+        rollover_strategy: editRolloverStrategy,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      toast(err.error || 'Erro ao salvar configuração', 'error');
+      return;
+    }
+    toast('Configuração de auto-rollover salva.', 'success');
+    setEditingId(null);
     await fetchSprints();
   }
 
   function formatDate(d: string | null) {
     if (!d) return '-';
     return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  }
+
+  function formatDateShort(d: string | null) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
   }
 
   function daysRemaining(endDate: string | null) {
@@ -164,7 +334,11 @@ export default function SprintsView() {
   }
 
   if (loading) {
-    return <div className="flex h-32 items-center justify-center"><div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
   }
 
   const activeSprints = sprints.filter((s) => s.is_active);
@@ -175,6 +349,9 @@ export default function SprintsView() {
     const progress = sprint.ticket_count > 0 ? (sprint.done_count / sprint.ticket_count) * 100 : 0;
     const isExpanded = expanded === sprint.id;
     const remaining = daysRemaining(sprint.end_date);
+    const parentName = sprint.parent_sprint_id
+      ? sprints.find((s) => s.id === sprint.parent_sprint_id)?.name ?? null
+      : null;
 
     return (
       <div key={sprint.id} className="rounded-lg border border-border/40 bg-surface2 overflow-hidden">
@@ -182,7 +359,11 @@ export default function SprintsView() {
           className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-surface"
           onClick={() => setExpanded(isExpanded ? null : sprint.id)}
         >
-          {isExpanded ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronRight size={14} className="text-slate-500" />}
+          {isExpanded ? (
+            <ChevronDown size={14} className="text-tertiary-muted" />
+          ) : (
+            <ChevronRight size={14} className="text-tertiary-muted" />
+          )}
 
           {/* Status badge */}
           {sprint.is_active && (
@@ -192,25 +373,65 @@ export default function SprintsView() {
             <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-semibold text-success">Concluído</span>
           )}
           {!sprint.is_active && !sprint.is_completed && (
-            <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-400">Futuro</span>
+            <span className="rounded-full bg-[var(--overlay-subtle)] px-2 py-0.5 text-[10px] font-semibold text-secondary-muted">
+              Futuro
+            </span>
           )}
 
-          <span className="text-sm font-medium text-white">{sprint.name}</span>
+          <span className="text-sm font-medium text-primary">{sprint.name}</span>
+
+          {/* Auto-rollover badge */}
+          {sprint.auto_rollover && (
+            <Tooltip
+              content={`Renova a cada ${sprint.cadence_days ?? 7}d · ${
+                STRATEGY_LABEL[sprint.rollover_strategy ?? 'move_incomplete']
+              }`}
+            >
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-1.5 py-0.5 text-[10px] font-medium text-secondary-muted">
+                <Repeat size={10} strokeWidth={2.5} />
+                Auto
+              </span>
+            </Tooltip>
+          )}
+
+          {/* Rolled-over badge */}
+          {sprint.rolled_over_at && (
+            <Tooltip
+              content={`Rolada em ${new Date(sprint.rolled_over_at).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}`}
+            >
+              <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success">
+                <CheckCircle size={10} strokeWidth={2.5} />
+                Rolada {formatDateShort(sprint.rolled_over_at)}
+              </span>
+            </Tooltip>
+          )}
+
           {sprint.project_name && (
-            <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-slate-400">{sprint.project_name}</span>
+            <span className="rounded bg-[var(--overlay-subtle)] px-1.5 py-0.5 text-[10px] font-medium text-secondary-muted">
+              {sprint.project_name}
+            </span>
           )}
 
-          <span className="text-[11px] text-slate-500">
+          <span className="text-[11px] text-tertiary-muted">
             {formatDate(sprint.start_date)} - {formatDate(sprint.end_date)}
           </span>
 
           {remaining && sprint.is_active && (
-            <span className={cn('text-[11px] font-medium', remaining === 'Finalizado' ? 'text-danger' : 'text-slate-400')}>
+            <span
+              className={cn(
+                'text-[11px] font-medium',
+                remaining === 'Finalizado' ? 'text-danger' : 'text-secondary-muted'
+              )}
+            >
               {remaining}
             </span>
           )}
 
-          <span className="ml-auto text-[11px] text-slate-400 tabular-nums">
+          <span className="ml-auto text-[11px] text-secondary-muted tabular-nums">
             {sprint.done_count}/{sprint.ticket_count} tickets
           </span>
 
@@ -225,18 +446,26 @@ export default function SprintsView() {
             {sprint.goal && (
               <div className="mb-3 flex items-start gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2">
                 <Target size={14} className="mt-0.5 text-accent shrink-0" />
-                <p className="text-[13px] text-slate-300">
+                <p className="text-[13px] text-secondary-muted">
                   <span className="font-semibold text-accent">Objetivo: </span>
                   {sprint.goal}
                 </p>
               </div>
             )}
 
+            {/* Parent sprint reference */}
+            {parentName && (
+              <p className="text-[11px] text-tertiary-muted">
+                Continuação de:{' '}
+                <span className="font-medium text-secondary-muted">{parentName}</span>
+              </p>
+            )}
+
             {/* Progress detail */}
             <div>
               <div className="mb-1 flex justify-between text-[11px]">
-                <span className="text-slate-500">Progresso</span>
-                <span className="text-slate-300 tabular-nums">{Math.round(progress)}%</span>
+                <span className="text-tertiary-muted">Progresso</span>
+                <span className="text-secondary-muted tabular-nums">{Math.round(progress)}%</span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-surface">
                 <div className="h-full rounded-full bg-success transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -246,11 +475,128 @@ export default function SprintsView() {
             {/* Burndown chart - only for active sprints */}
             {sprint.is_active && <SprintBurndown sprintId={sprint.id} />}
 
+            {/* Auto-rollover edit panel (admin only) */}
+            {isAdmin && !sprint.is_completed && (
+              <div className="rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)] p-3 space-y-2">
+                {editingId !== sprint.id ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[12px] text-secondary-muted">
+                      <Repeat size={12} className="mr-1.5 inline-block" strokeWidth={2.5} />
+                      Auto-rollover:{' '}
+                      <span className="font-medium text-primary">
+                        {sprint.auto_rollover ? 'Ativado' : 'Desativado'}
+                      </span>
+                      {sprint.auto_rollover && (
+                        <span className="text-tertiary-muted">
+                          {' '}
+                          · cada {sprint.cadence_days ?? 7}d ·{' '}
+                          {STRATEGY_LABEL[sprint.rollover_strategy ?? 'move_incomplete']}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditRollover(sprint);
+                      }}
+                      className="text-[11px] font-medium text-accent hover:underline"
+                    >
+                      Configurar
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    <label className="flex items-center gap-2 text-[12px] text-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editAutoRollover}
+                        onChange={(e) => setEditAutoRollover(e.target.checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-3.5 w-3.5 rounded border-[var(--card-border)] text-accent focus:ring-accent"
+                      />
+                      <Repeat size={12} strokeWidth={2.5} />
+                      Auto-rollover ativado
+                    </label>
+
+                    {editAutoRollover && (
+                      <>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                            Cadência (dias)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={editCadenceDays}
+                            onChange={(e) => setEditCadenceDays(parseInt(e.target.value) || 1)}
+                            className="w-32 rounded border border-[var(--card-border)] bg-surface px-2 py-1 text-[12px] text-primary outline-none focus:border-accent/60"
+                          />
+                          <p className="mt-1 text-[10px] text-tertiary-muted">Quantos dias entre sprints</p>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()} className="space-y-1">
+                          <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                            Estratégia ao rolar
+                          </label>
+                          {(
+                            [
+                              ['move_incomplete', 'Mover tickets incompletos pra próxima'],
+                              ['keep_in_place', 'Manter onde estão'],
+                              ['archive_incomplete', 'Arquivar incompletos'],
+                            ] as Array<[RolloverStrategy, string]>
+                          ).map(([val, label]) => (
+                            <label
+                              key={val}
+                              className="flex items-center gap-2 text-[12px] text-secondary-muted cursor-pointer"
+                            >
+                              <input
+                                type="radio"
+                                name={`strategy-${sprint.id}`}
+                                value={val}
+                                checked={editRolloverStrategy === val}
+                                onChange={() => setEditRolloverStrategy(val)}
+                                className="h-3.5 w-3.5 border-[var(--card-border)] text-accent focus:ring-accent"
+                              />
+                              {label}
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          saveEditRollover(sprint.id);
+                        }}
+                        className="rounded bg-accent px-3 py-1 text-[11px] font-medium text-white hover:bg-accent/90"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingId(null);
+                        }}
+                        className="text-[11px] text-tertiary-muted hover:text-primary"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {!sprint.is_active && !sprint.is_completed && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleAction(sprint.id, 'activate'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAction(sprint.id, 'activate');
+                  }}
                   className="flex items-center gap-1.5 rounded bg-accent/20 px-3 py-1.5 text-xs font-medium text-accent transition hover:bg-accent/30"
                 >
                   <Play size={12} fill="currentColor" />
@@ -259,16 +605,46 @@ export default function SprintsView() {
               )}
               {sprint.is_active && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleAction(sprint.id, 'complete'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAction(sprint.id, 'complete');
+                  }}
                   className="flex items-center gap-1.5 rounded bg-success/20 px-3 py-1.5 text-xs font-medium text-success transition hover:bg-success/30"
                 >
                   <CheckCircle size={12} />
                   Concluir sprint
                 </button>
               )}
+
+              {/* Rolar agora — admin, not already rolled */}
+              {isAdmin && !sprint.rolled_over_at && !sprint.is_completed && (
+                <button
+                  disabled={rollingId === sprint.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRolloverNow(sprint);
+                  }}
+                  className="flex items-center gap-1.5 rounded bg-warning/15 px-3 py-1.5 text-xs font-medium text-warning transition hover:bg-warning/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RotateCw size={12} className={rollingId === sprint.id ? 'animate-spin' : ''} />
+                  {rollingId === sprint.id ? 'Rolando...' : 'Rolar agora'}
+                </button>
+              )}
+
+              {/* Rolled badge replaces button */}
+              {sprint.rolled_over_at && (
+                <span className="flex items-center gap-1.5 rounded border border-success/30 bg-success/10 px-3 py-1.5 text-xs font-medium text-success">
+                  <CheckCircle size={12} />
+                  Rolada em {formatDateShort(sprint.rolled_over_at)}
+                </span>
+              )}
+
               {!sprint.is_active && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(sprint.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(sprint.id);
+                  }}
                   className="flex items-center gap-1.5 rounded bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/20"
                 >
                   <Trash2 size={12} />
@@ -293,10 +669,7 @@ export default function SprintsView() {
             Sprints <span className="em">— onde o tempo vira progresso.</span>
           </h1>
         </div>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="btn-premium btn-primary"
-        >
+        <button onClick={() => setShowCreate(true)} className="btn-premium btn-primary">
           <Plus size={13} strokeWidth={2.5} />
           Nova sprint
         </button>
@@ -305,67 +678,142 @@ export default function SprintsView() {
       {/* Create sprint form */}
       {showCreate && (
         <div className="rounded-lg border border-accent/30 bg-surface2 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white">Criar sprint</h3>
+          <h3 className="text-sm font-semibold text-primary">Criar sprint</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             {!currentProjectId && (
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-[10px] font-medium text-slate-500">Projeto <span className="text-red-400">*</span></label>
+                <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                  Projeto <span className="text-red-400">*</span>
+                </label>
                 <select
                   value={newProjectId}
                   onChange={(e) => setNewProjectId(e.target.value)}
-                  className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+                  className="w-full rounded border border-[var(--card-border)] bg-surface px-3 py-1.5 text-sm text-primary outline-none focus:border-accent/60"
                 >
                   <option value="">Selecione um projeto</option>
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </div>
             )}
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Nome <span className="text-red-400">*</span></label>
+              <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                Nome <span className="text-red-400">*</span>
+              </label>
               <input
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Sprint 24"
-                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+                className="w-full rounded border border-[var(--card-border)] bg-surface px-3 py-1.5 text-sm text-primary outline-none focus:border-accent/60"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Objetivo (opcional)</label>
+              <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">Objetivo (opcional)</label>
               <textarea
                 value={newGoal}
                 onChange={(e) => setNewGoal(e.target.value)}
                 placeholder="Ex: Lançar MVP do módulo X, finalizar testes de integração..."
                 rows={3}
-                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60 resize-y"
+                className="w-full rounded border border-[var(--card-border)] bg-surface px-3 py-1.5 text-sm text-primary outline-none focus:border-accent/60 resize-y"
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Início <span className="text-red-400">*</span></label>
+              <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                Início <span className="text-red-400">*</span>
+              </label>
               <input
                 type="date"
                 value={newStart}
                 onChange={(e) => setNewStart(e.target.value)}
-                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+                className="w-full rounded border border-[var(--card-border)] bg-surface px-3 py-1.5 text-sm text-primary outline-none focus:border-accent/60"
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-medium text-slate-500">Fim <span className="text-red-400">*</span></label>
+              <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                Fim <span className="text-red-400">*</span>
+              </label>
               <input
                 type="date"
                 value={newEnd}
                 onChange={(e) => setNewEnd(e.target.value)}
-                className="w-full rounded border border-border/40 bg-surface px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-accent/60"
+                className="w-full rounded border border-[var(--card-border)] bg-surface px-3 py-1.5 text-sm text-primary outline-none focus:border-accent/60"
               />
+            </div>
+
+            {/* Auto-rollover section */}
+            <div className="sm:col-span-2 rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)] p-3 space-y-2.5">
+              <Tooltip
+                content="Quando esta sprint terminar, criar automaticamente uma nova com a mesma cadência."
+                side="right"
+              >
+                <label className="inline-flex items-center gap-2 text-[12px] font-medium text-primary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newAutoRollover}
+                    onChange={(e) => setNewAutoRollover(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-[var(--card-border)] text-accent focus:ring-accent"
+                  />
+                  <Repeat size={12} strokeWidth={2.5} />
+                  Auto-rollover
+                </label>
+              </Tooltip>
+
+              {newAutoRollover && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                      Cadência (dias)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={newCadenceDays}
+                      onChange={(e) => setNewCadenceDays(parseInt(e.target.value) || 1)}
+                      className="w-32 rounded border border-[var(--card-border)] bg-surface px-2 py-1 text-[12px] text-primary outline-none focus:border-accent/60"
+                    />
+                    <p className="mt-1 text-[10px] text-tertiary-muted">Quantos dias entre sprints</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="mb-1 block text-[10px] font-medium text-tertiary-muted">
+                      Estratégia ao rolar
+                    </label>
+                    {(
+                      [
+                        ['move_incomplete', 'Mover tickets incompletos pra próxima'],
+                        ['keep_in_place', 'Manter onde estão'],
+                        ['archive_incomplete', 'Arquivar incompletos'],
+                      ] as Array<[RolloverStrategy, string]>
+                    ).map(([val, label]) => (
+                      <label
+                        key={val}
+                        className="flex items-center gap-2 text-[12px] text-secondary-muted cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="new-strategy"
+                          value={val}
+                          checked={newRolloverStrategy === val}
+                          onChange={() => setNewRolloverStrategy(val)}
+                          className="h-3.5 w-3.5 border-[var(--card-border)] text-accent focus:ring-accent"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
             <button onClick={handleCreate} className="rounded bg-accent px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-500">
               Criar
             </button>
-            <button onClick={() => setShowCreate(false)} className="text-xs text-slate-500 hover:text-slate-300">
+            <button onClick={() => setShowCreate(false)} className="text-xs text-tertiary-muted hover:text-primary">
               Cancelar
             </button>
           </div>
@@ -375,7 +823,7 @@ export default function SprintsView() {
       {/* Active sprints */}
       {activeSprints.length > 0 && (
         <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Sprint ativo</h2>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-tertiary-muted">Sprint ativo</h2>
           <div className="space-y-1">{activeSprints.map(renderSprint)}</div>
         </div>
       )}
@@ -383,7 +831,7 @@ export default function SprintsView() {
       {/* Future sprints */}
       {futureSprints.length > 0 && (
         <div>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Próximos sprints</h2>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-tertiary-muted">Próximos sprints</h2>
           <div className="space-y-1">{futureSprints.map(renderSprint)}</div>
         </div>
       )}
@@ -393,7 +841,7 @@ export default function SprintsView() {
         <div>
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition"
+            className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-tertiary-muted hover:text-primary transition"
           >
             {showHistory ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             Histórico ({completedSprints.length})
@@ -403,8 +851,8 @@ export default function SprintsView() {
       )}
 
       {sprints.length === 0 && (
-        <div className="py-12 text-center text-sm text-slate-500">
-          Nenhum sprint criado. Clique em "Novo sprint" para começar.
+        <div className="py-12 text-center text-sm text-tertiary-muted">
+          Nenhum sprint criado. Clique em "Nova sprint" para começar.
         </div>
       )}
     </div>

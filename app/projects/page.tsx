@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, FolderKanban, Archive, ArrowLeft } from 'lucide-react';
+import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import { useToast } from '@/components/ui/Toast';
 
@@ -150,14 +150,26 @@ export default function ProjectsPage() {
                   {p.description || 'Sem descrição'}
                 </p>
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleArchive(p.id); }}
-                className="shrink-0 rounded p-1 text-[var(--text-tertiary)] opacity-0 transition hover:text-[var(--danger)] group-hover:opacity-100"
-                title="Arquivar"
-                aria-label="Arquivar"
-              >
-                <Archive size={13} />
-              </button>
+              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                {!p.is_archived && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); router.push(`/projects/${p.id}/updates` as never); }}
+                    className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
+                    title="Status updates"
+                    aria-label="Status updates"
+                  >
+                    <FileBarChart size={13} />
+                  </button>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleArchive(p.id); }}
+                  className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--danger)]"
+                  title="Arquivar"
+                  aria-label="Arquivar"
+                >
+                  <Archive size={13} />
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between mb-2 text-[11px]">
