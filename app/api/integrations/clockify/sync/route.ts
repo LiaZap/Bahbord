@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 interface ClockifyConfig {
@@ -26,7 +26,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     // 1. Get Clockify config
     const configResult = await query(

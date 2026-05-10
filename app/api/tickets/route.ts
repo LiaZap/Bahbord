@@ -95,8 +95,8 @@ export async function GET(request: Request) {
       return NextResponse.json(result.rows);
     }
 
-    const page = Math.max(1, parseInt(pageParam) || 1);
-    const limit = Math.max(1, Math.min(200, parseInt(limitParam || '50') || 50));
+    const page = Math.max(1, parseInt(pageParam, 10) || 1);
+    const limit = Math.max(1, Math.min(200, parseInt(limitParam || '50', 10) || 50));
     const offset = (page - 1) * limit;
     const limitIdx = userIsAdmin ? 1 : 2;
     const offsetIdx = userIsAdmin ? 2 : 3;
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
       ),
     ]);
 
-    const total = parseInt(countResult.rows[0].total);
+    const total = parseInt(countResult.rows[0].total, 10);
 
     return NextResponse.json({
       data: result.rows,

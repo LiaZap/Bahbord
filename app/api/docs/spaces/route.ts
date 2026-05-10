@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const result = await query(
       `SELECT id, name, description, icon, is_public, created_at, updated_at
        FROM doc_spaces
@@ -23,9 +24,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const body = await request.json();
     const { name, description, icon } = body;
 

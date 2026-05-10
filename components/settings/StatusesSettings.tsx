@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useConfirm } from '@/components/ui/ConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 
 interface Status {
   id: string;
@@ -14,13 +16,14 @@ interface Status {
 }
 
 export default function StatusesSettings() {
+  const { confirm: doConfirm } = useConfirm();
+  const { toast } = useToast();
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#6b7280');
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     fetchStatuses();
@@ -61,12 +64,12 @@ export default function StatusesSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Tem certeza que deseja remover este status?')) return;
+    const ok = await doConfirm({ title: 'Remover status', message: 'Tem certeza que deseja remover este status?', variant: 'danger' });
+    if (!ok) return;
     const res = await fetch(`/api/settings?table=statuses&id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json();
-      setMessage(err.error);
-      setTimeout(() => setMessage(''), 3000);
+      toast(err.error || 'Erro ao remover status', 'error');
       return;
     }
     await fetchStatuses();
@@ -88,10 +91,6 @@ export default function StatusesSettings() {
           Novo status
         </button>
       </div>
-
-      {message && (
-        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{message}</div>
-      )}
 
       {/* Mini kanban preview */}
       <div className="flex gap-2 overflow-x-auto pb-2">
@@ -145,7 +144,7 @@ export default function StatusesSettings() {
               <input
                 type="number"
                 value={s.wip_limit ?? ''}
-                onChange={(e) => handleUpdate(s.id, 'wip_limit', e.target.value ? parseInt(e.target.value) : null)}
+                onChange={(e) => handleUpdate(s.id, 'wip_limit', e.target.value ? parseInt(e.target.value, 10) : null)}
                 placeholder="-"
                 className="w-12 rounded border border-border/40 bg-surface px-1.5 py-0.5 text-center text-xs text-slate-300 outline-none"
               />

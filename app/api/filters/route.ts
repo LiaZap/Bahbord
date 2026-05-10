@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId, getDefaultMemberId } from '@/lib/db';
+import { query, getDefaultMemberId } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
   try {
-    await getAuthMember();
-    const workspaceId = await getDefaultWorkspaceId();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    const workspaceId = auth.workspace_id;
     const memberId = await getDefaultMemberId();
 
     const result = await query(
@@ -27,7 +28,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const body = await request.json();
     const { name, filter_config, is_shared } = body;
 
@@ -35,7 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nome e configuração são obrigatórios' }, { status: 400 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const memberId = await getDefaultMemberId();
 
     const result = await query(

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Paperclip, Upload, Trash2, FileText, Image, File, Film, X } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface Attachment {
   id: string;
@@ -34,6 +35,7 @@ function getFileIcon(mime: string | null) {
 
 export default function AttachmentList({ ticketId }: AttachmentListProps) {
   const { toast } = useToast();
+  const { confirm: doConfirm } = useConfirm();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<Attachment | null>(null);
@@ -71,7 +73,8 @@ export default function AttachmentList({ ticketId }: AttachmentListProps) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este anexo?')) return;
+    const ok = await doConfirm({ title: 'Remover anexo', message: 'Remover este anexo?', variant: 'danger' });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/attachments?id=${id}`, { method: 'DELETE' });
       if (res.ok) {

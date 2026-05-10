@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Search } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface TicketLink {
   id: string;
@@ -32,6 +33,7 @@ interface LinkedTicketsProps {
 }
 
 export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
+  const { confirm: doConfirm } = useConfirm();
   const [links, setLinks] = useState<TicketLink[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,7 +74,8 @@ export default function LinkedTickets({ ticketId }: LinkedTicketsProps) {
   }
 
   async function handleRemove(linkId: string) {
-    if (!confirm('Remover este vínculo?')) return;
+    const ok = await doConfirm({ title: 'Remover vínculo', message: 'Remover este vínculo?', variant: 'danger' });
+    if (!ok) return;
     await fetch(`/api/ticket-links?id=${linkId}`, { method: 'DELETE' });
     await fetchLinks();
   }

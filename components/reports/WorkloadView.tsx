@@ -13,6 +13,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import Modal from '@/components/ui/Modal';
 import Tooltip from '@/components/ui/Tooltip';
 import { useToast } from '@/components/ui/Toast';
+import { getInitials, colorFromName } from '@/lib/utils/avatar';
 
 // ----------------------------------------------------------------------------
 // Types (mirror /api/reports/workload response)
@@ -218,22 +219,6 @@ const PRIORITY_DOT: Record<string, string> = {
   low: 'bg-sky-500',
 };
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .filter(Boolean)
-    .join('')
-    .substring(0, 2)
-    .toUpperCase();
-}
-
-function colourFromName(name: string): string {
-  const palette = ['#3b6cf5', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#06b6d4'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return palette[Math.abs(hash) % palette.length];
-}
 
 // ----------------------------------------------------------------------------
 // Component
@@ -568,7 +553,7 @@ function Heatmap({
                   ) : (
                     <div
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ backgroundColor: colourFromName(member.display_name) }}
+                      style={{ backgroundColor: colorFromName(member.display_name) }}
                     >
                       {getInitials(member.display_name)}
                     </div>

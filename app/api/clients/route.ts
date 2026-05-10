@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
@@ -12,7 +12,9 @@ const CLIENTS_CACHE_PREFIX = 'clients:';
 
 export async function GET() {
   try {
-    const workspaceId = await getDefaultWorkspaceId();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    const workspaceId = auth.workspace_id;
 
     // Cache 60s. ticket_count via subquery muda com qualquer ticket criado, mas
     // pra UI de listagem de clientes (admin) 60s de defasagem é aceitável e o
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const result = await query(
       `INSERT INTO clients (workspace_id, name, color, contact_email, contact_phone, organization_id, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *`,
@@ -120,7 +122,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
     const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE client_id = $1`, [id]);
-    if (parseInt(check.rows[0].cnt) > 0) {
+    if (parseInt(check.rows[0].cnt, 10) > 0) {
       return NextResponse.json({ error: 'Não é possível remover: existem tickets vinculados a este cliente' }, { status: 409 });
     }
     await query(`DELETE FROM clients WHERE id = $1`, [id]);

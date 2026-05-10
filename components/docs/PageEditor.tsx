@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils/cn';
 import { Pencil, Save, X, Trash2, Clock, User } from 'lucide-react';
 import RichTextEditor from '@/components/editor/RichTextEditor';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface PageData {
   id: string;
@@ -23,6 +24,7 @@ interface PageEditorProps {
 }
 
 export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
+  const { confirm: doConfirm } = useConfirm();
   const [page, setPage] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -72,7 +74,14 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
   }
 
   async function deletePage() {
-    if (!page || !window.confirm('Excluir esta página? Esta ação não pode ser desfeita.')) return;
+    if (!page) return;
+    const ok = await doConfirm({
+      title: 'Excluir página',
+      message: 'Excluir esta página? Esta ação não pode ser desfeita.',
+      variant: 'danger',
+      confirmText: 'Excluir',
+    });
+    if (!ok) return;
     try {
       await fetch(`/api/docs/pages?id=${page.id}`, { method: 'DELETE' });
       setPage(null);

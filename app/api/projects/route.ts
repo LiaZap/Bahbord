@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createProjectSchema } from '@/lib/validators';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const baseSelect = `
       SELECT
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
     }
     const { name, prefix, description, color, template_id } = parsed.data;
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const requesterId = typeof rawBody.requester_id === 'string' ? rawBody.requester_id : undefined;
 
     // Se requester_id informado, verificar se é owner/admin da org

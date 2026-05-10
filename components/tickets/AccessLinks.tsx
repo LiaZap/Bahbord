@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, Plus, X, Globe, Server, Shield, FileText, Code2, Link, Eye, EyeOff, Copy } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface AccessLink {
   id: string;
@@ -26,6 +27,7 @@ interface AccessLinksProps {
 }
 
 export default function AccessLinks({ ticketId }: AccessLinksProps) {
+  const { confirm: doConfirm } = useConfirm();
   const [links, setLinks] = useState<AccessLink[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [label, setLabel] = useState('');
@@ -61,7 +63,8 @@ export default function AccessLinks({ ticketId }: AccessLinksProps) {
   }
 
   async function handleRemove(id: string) {
-    if (!confirm('Remover este acesso?')) return;
+    const ok = await doConfirm({ title: 'Remover acesso', message: 'Remover este acesso?', variant: 'danger' });
+    if (!ok) return;
     await fetch(`/api/access-links?id=${id}`, { method: 'DELETE' });
     await fetchLinks();
   }

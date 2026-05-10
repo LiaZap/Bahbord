@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 import { computeNextRunAt } from '@/lib/recurring';
@@ -27,7 +27,7 @@ export async function GET() {
     if (!auth) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `SELECT r.id, r.workspace_id, r.project_id, r.board_id, r.name,
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `INSERT INTO recurring_tickets (

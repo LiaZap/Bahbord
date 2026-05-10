@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { routes } from '@/lib/utils/nav';
 import type { InboxItem, OptionItem } from './types';
 
 interface InboxAcceptModalProps {
@@ -135,7 +136,7 @@ export default function InboxAcceptModal({
       onAccepted(item.id, ticketId || '');
       onClose();
       if (ticketId) {
-        router.push(`/ticket/${ticketId}` as never);
+        router.push(routes.ticket(ticketId));
       }
     } catch {
       setError('Erro de conexão.');

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils/cn';
 import Modal from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { routes } from '@/lib/utils/nav';
 
 type Source = 'manual' | 'share_link' | 'email' | 'form';
 
@@ -417,7 +418,7 @@ export default function CustomerRequestsPage() {
                       {req.ticket_id ? (
                         <button
                           type="button"
-                          onClick={() => router.push(`/ticket/${req.ticket_id}` as never)}
+                          onClick={() => router.push(routes.ticket(req.ticket_id!))}
                           className="text-[12px] text-blue-400 hover:underline"
                         >
                           Abrir ticket

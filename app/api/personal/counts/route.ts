@@ -29,9 +29,9 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      inbox: parseInt(inbox.rows[0]?.count || '0'),
-      my_tasks: parseInt(myTasks.rows[0]?.count || '0'),
-      this_week: parseInt(thisWeek.rows[0]?.count || '0'),
+      inbox: parseInt(inbox.rows[0]?.count || '0', 10),
+      my_tasks: parseInt(myTasks.rows[0]?.count || '0', 10),
+      this_week: parseInt(thisWeek.rows[0]?.count || '0', 10),
     });
   } catch (err) {
     console.error('GET /api/personal/counts error:', err);

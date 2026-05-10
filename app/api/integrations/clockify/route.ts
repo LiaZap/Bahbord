@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 // GET — returns current Clockify config (api_key masked)
 export async function GET() {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `SELECT id, config, is_active FROM integrations
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const config = {
       api_key,
@@ -89,7 +90,7 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     await query(
       `DELETE FROM integrations WHERE workspace_id = $1 AND provider = 'clockify'`,

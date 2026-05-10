@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId, filterAllowedColumns } from '@/lib/db';
+import { query, filterAllowedColumns } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 
@@ -94,7 +94,7 @@ export async function PATCH(request: Request) {
     }
 
     sets.push(`updated_at = NOW()`);
-    const wsId = await getDefaultWorkspaceId();
+    const wsId = auth.workspace_id;
     values.push(wsId);
     const result = await query(
       `UPDATE workspaces SET ${sets.join(', ')} WHERE id = $${idx + 1} RETURNING *`,
@@ -136,10 +136,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tabela não permitida' }, { status: 400 });
     }
 
-    let workspaceId: string;
-    try {
-      workspaceId = await getDefaultWorkspaceId();
-    } catch {
+    const workspaceId = auth.workspace_id;
+    if (!workspaceId) {
       return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
     }
 
@@ -198,7 +196,7 @@ export async function DELETE(request: Request) {
       const roleCheck = await query(
         `SELECT COUNT(*) AS cnt FROM org_roles WHERE role IN ('owner', 'admin')`
       );
-      const currentCount = parseInt(roleCheck.rows[0].cnt);
+      const currentCount = parseInt(roleCheck.rows[0].cnt, 10);
       const memberRole = await query(
         `SELECT role FROM org_roles WHERE member_id = $1`, [id]
       );
@@ -211,28 +209,28 @@ export async function DELETE(request: Request) {
     // Verificar se tem tickets associados (para statuses e services)
     if (table === 'statuses') {
       const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE status_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt) > 0) {
+      if (parseInt(check.rows[0].cnt, 10) > 0) {
         return NextResponse.json({ error: 'Não é possível remover: existem tickets com este status' }, { status: 409 });
       }
     }
 
     if (table === 'services') {
       const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE service_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt) > 0) {
+      if (parseInt(check.rows[0].cnt, 10) > 0) {
         return NextResponse.json({ error: 'Não é possível remover: existem tickets com este serviço' }, { status: 409 });
       }
     }
 
     if (table === 'clients') {
       const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE client_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt) > 0) {
+      if (parseInt(check.rows[0].cnt, 10) > 0) {
         return NextResponse.json({ error: 'Não é possível remover: existem tickets com este cliente' }, { status: 409 });
       }
     }
 
     if (table === 'categories') {
       const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE category_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt) > 0) {
+      if (parseInt(check.rows[0].cnt, 10) > 0) {
         return NextResponse.json({ error: 'Não é possível remover: existem tickets com esta categoria' }, { status: 409 });
       }
     }

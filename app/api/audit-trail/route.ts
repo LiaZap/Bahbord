@@ -15,8 +15,8 @@ export async function GET(request: Request) {
     const projectId = searchParams.get('project_id');
     const workspaceId = searchParams.get('workspace_id');
     const entityType = searchParams.get('entity_type');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
-    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
 
     const db = await getDb();
     const col = db.collection<AuditTrailDoc>(COLLECTIONS.AUDIT_TRAIL);

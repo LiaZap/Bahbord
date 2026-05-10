@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit2, FileText, Loader2, X } from 'lucide-react';
 import RichTextEditor from '@/components/editor/RichTextEditor';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface TicketTemplate {
   id: string;
@@ -44,6 +45,7 @@ const emptyForm = {
 };
 
 export default function TicketTemplatesSettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [templates, setTemplates] = useState<TicketTemplate[]>([]);
   const [ticketTypes, setTicketTypes] = useState<SelectItem[]>([]);
   const [services, setServices] = useState<SelectItem[]>([]);
@@ -159,7 +161,8 @@ export default function TicketTemplatesSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este template?')) return;
+    const ok = await doConfirm({ title: 'Remover template', message: 'Remover este template?', variant: 'danger' });
+    if (!ok) return;
     try {
       await fetch(`/api/ticket-templates?id=${id}`, { method: 'DELETE' });
       fetchTemplates();

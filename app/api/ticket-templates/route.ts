@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 
@@ -30,7 +30,7 @@ export async function GET() {
     if (!auth) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `SELECT t.id, t.workspace_id, t.name, t.ticket_type_id, t.title_template,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'priority inválido' }, { status: 400 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const subtasks = normalizeSubtasks(body.subtasks);
 
     const result = await query(

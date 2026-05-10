@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { name } = body;
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     if (!name) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });

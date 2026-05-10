@@ -1,6 +1,11 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
+import { getInitials } from '@/lib/utils/avatar';
+
+// Re-export pra manter compat com imports antigos (`import { getInitials } from '@/components/ui/Avatar'`).
+// Toda a lógica vive em `lib/utils/avatar.ts`.
+export { getInitials };
 
 const gradients = [
   'from-blue-600 to-blue-500',
@@ -16,11 +21,7 @@ const gradients = [
 function nameToColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return gradients[Math.abs(hash) % gradients.length];
-}
-
-export function getInitials(name: string): string {
-  return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
+  return gradients[Math.abs(hash) % gradients.length]!;
 }
 
 const sizeMap = {

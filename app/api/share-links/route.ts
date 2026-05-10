@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { hashSharePassword, generateSlug } from '@/lib/share-links';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
@@ -11,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const workspaceId = auth.workspace_id || (await getDefaultWorkspaceId());
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `SELECT
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const workspaceId = auth.workspace_id || (await getDefaultWorkspaceId());
+    const workspaceId = auth.workspace_id;
 
     // Garantir slug único
     let slug = generateSlug();
@@ -126,7 +126,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
 
-    const workspaceId = auth.workspace_id || (await getDefaultWorkspaceId());
+    const workspaceId = auth.workspace_id;
 
     const result = await query<{ id: string; slug: string }>(
       `DELETE FROM share_links WHERE id = $1 AND workspace_id = $2 RETURNING id, slug`,

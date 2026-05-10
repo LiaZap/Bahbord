@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     if (!role) {
       return NextResponse.json({ error: 'role é obrigatório' }, { status: 400 });
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     }
     const body = await request.json();
     const { role_name, permission_id } = body;
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     if (!role_name || !permission_id) {
       return NextResponse.json({ error: 'role_name e permission_id são obrigatórios' }, { status: 400 });

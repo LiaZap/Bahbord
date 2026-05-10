@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 import { computeInitiativeProgress } from '@/lib/initiatives';
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const { searchParams } = new URL(request.url);
     const healthFilter = searchParams.get('health');
     const includeArchived = searchParams.get('include_archived') === 'true';
@@ -223,7 +223,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'name muito longo (máx 200)' }, { status: 400 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     // Valida owner_id se passado (deve ser membro do workspace)
     if (body.owner_id) {

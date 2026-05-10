@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const result = await query(
       `INSERT INTO organizations (workspace_id, name, domain, logo_url)
        VALUES ($1, $2, $3, $4) RETURNING *`,
@@ -95,7 +95,7 @@ export async function DELETE(request: Request) {
     }
     // Check if org has clients
     const check = await query(`SELECT COUNT(*) AS cnt FROM clients WHERE organization_id = $1`, [id]);
-    if (parseInt(check.rows[0].cnt) > 0) {
+    if (parseInt(check.rows[0].cnt, 10) > 0) {
       return NextResponse.json({ error: 'Não é possível remover: existem clientes vinculados a esta organização' }, { status: 409 });
     }
     await query(`DELETE FROM organizations WHERE id = $1`, [id]);

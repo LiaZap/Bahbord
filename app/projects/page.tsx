@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Plus, FolderKanban, Archive, ArrowLeft, FileBarChart, FileText, Target } from 'lucide-react';
 import { useProject } from '@/lib/project-context';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 import EmptyState from '@/components/ui/EmptyState';
+import { routes } from '@/lib/utils/nav';
+import type { Route } from 'next';
 
 interface Project {
   id: string;
@@ -29,6 +32,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const { setProject } = useProject();
   const { toast } = useToast();
+  const { confirm: doConfirm } = useConfirm();
   const [projects, setProjects] = useState<Project[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +71,8 @@ export default function ProjectsPage() {
   }
 
   async function handleArchive(id: string) {
-    if (!confirm('Arquivar este projeto?')) return;
+    const ok = await doConfirm({ title: 'Arquivar projeto', message: 'Arquivar este projeto?', variant: 'warning', confirmText: 'Arquivar' });
+    if (!ok) return;
     await fetch('/api/projects', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -165,7 +170,7 @@ export default function ProjectsPage() {
               <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                 {!p.is_archived && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/projects/${p.id}/updates` as never); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(routes.projectUpdates(p.id)); }}
                     className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
                     title="Status updates"
                     aria-label="Status updates"
@@ -175,7 +180,7 @@ export default function ProjectsPage() {
                 )}
                 {!p.is_archived && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/projects/${p.id}/spec` as never); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(routes.projectSpec(p.id)); }}
                     className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
                     title="Spec do projeto"
                     aria-label="Spec do projeto"
@@ -185,7 +190,7 @@ export default function ProjectsPage() {
                 )}
                 {!p.is_archived && (p.initiative_count ?? 0) > 0 && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as never); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as Route); }}
                     className="rounded p-1 text-[var(--text-tertiary)] transition hover:text-[var(--accent)]"
                     title={`${p.initiative_count} iniciativa${p.initiative_count === 1 ? '' : 's'}`}
                     aria-label="Iniciativas"
@@ -224,7 +229,7 @@ export default function ProjectsPage() {
                 </span>
                 {(p.initiative_count ?? 0) > 0 && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as never); }}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/roadmap?project_id=${p.id}` as Route); }}
                     className="text-[var(--text-tertiary)] flex items-center gap-1 transition hover:text-[var(--accent)]"
                     title="Ver iniciativas no roadmap"
                   >

@@ -21,6 +21,9 @@ import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
 import EmptyState from '@/components/ui/EmptyState';
+import { getInitials, colorFromName } from '@/lib/utils/avatar';
+import { routes } from '@/lib/utils/nav';
+import type { Route } from 'next';
 import InitiativeFormModal from './InitiativeFormModal';
 
 export type HealthStatus = 'on_track' | 'at_risk' | 'off_track' | 'completed' | 'archived';
@@ -164,18 +167,6 @@ function relativeDate(target: string | null): string | null {
   return `atrasou há ${Math.round(past / 365)} ano(s)`;
 }
 
-function getInitials(name?: string | null): string {
-  if (!name) return '?';
-  return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-}
-
-function colorFromName(name: string): string {
-  const palette = ['#3b6cf5', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#06b6d4'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return palette[Math.abs(hash) % palette.length];
-}
-
 function renderIcon(iconKey: string | null, size = 16): JSX.Element {
   if (!iconKey) return <Target size={size} />;
   const Comp = ICON_MAP[iconKey.toLowerCase()];
@@ -258,7 +249,7 @@ export default function RoadmapView({
   }, [projectFilterParam, projects]);
 
   function clearProjectFilter() {
-    router.replace('/roadmap' as never);
+    router.replace('/roadmap' as Route);
   }
 
   const handleSaved = useCallback((saved: RoadmapInitiative) => {
@@ -411,7 +402,7 @@ export default function RoadmapView({
             return (
               <div
                 key={initiative.id}
-                onClick={() => router.push(`/roadmap/${initiative.id}` as never)}
+                onClick={() => router.push(routes.initiative(initiative.id))}
                 className="card-premium group cursor-pointer p-5 transition"
               >
                 {/* Top row */}
@@ -502,7 +493,7 @@ export default function RoadmapView({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/roadmap?project_id=${p.project_id}` as never);
+                          router.push(`/roadmap?project_id=${p.project_id}` as Route);
                         }}
                         className="inline-flex items-center gap-1.5 rounded-full border border-[var(--card-border)] bg-[var(--overlay-subtle)] px-2 py-0.5 text-[11px] font-medium text-secondary-muted transition hover:text-primary"
                       >

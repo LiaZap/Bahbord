@@ -5,6 +5,7 @@ import { Check, X, CheckCircle, XCircle, Briefcase, Layout, Building2 } from 'lu
 import { cn } from '@/lib/utils/cn';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface ApprovalRequest {
   id: string;
@@ -33,6 +34,7 @@ const typeLabels: Record<string, string> = {
 
 export default function ApprovalsSettings() {
   const { toast } = useToast();
+  const { confirm: doConfirm } = useConfirm();
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>('pending');
@@ -135,7 +137,8 @@ export default function ApprovalsSettings() {
 
   async function handleBulkApprove() {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Aprovar ${selectedIds.size} pedido(s) selecionado(s)?`)) return;
+    const ok = await doConfirm({ title: 'Aprovar pedidos', message: `Aprovar ${selectedIds.size} pedido(s) selecionado(s)?`, variant: 'info', confirmText: 'Aprovar' });
+    if (!ok) return;
 
     setBulkLoading(true);
     const ids = Array.from(selectedIds);

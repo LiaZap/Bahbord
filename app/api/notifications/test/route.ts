@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createNotification } from '@/lib/notifications';
 
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const targetId = body.member_id || auth.id;
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     // Conta antes
     const before = await query<{ count: string }>(
@@ -67,9 +67,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       target_member_id: targetId,
       target_workspace_id: workspaceId,
-      count_before: parseInt(before.rows[0]?.count || '0'),
-      count_after: parseInt(after.rows[0]?.count || '0'),
-      created: parseInt(after.rows[0]?.count || '0') > parseInt(before.rows[0]?.count || '0'),
+      count_before: parseInt(before.rows[0]?.count || '0', 10),
+      count_after: parseInt(after.rows[0]?.count || '0', 10),
+      created: parseInt(after.rows[0]?.count || '0', 10) > parseInt(before.rows[0]?.count || '0', 10),
       create_error: createError,
       last_notification: last.rows[0] || null,
       schema: cols.rows,

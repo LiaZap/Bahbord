@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     if (!auth) return NextResponse.json([], { status: 200 });
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
-    const limitParam = parseInt(searchParams.get('limit') || '12');
+    const limitParam = parseInt(searchParams.get('limit') || '12', 10);
     const limit = Math.min(50, Math.max(1, limitParam));
 
     const isValidUuid = projectId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId);

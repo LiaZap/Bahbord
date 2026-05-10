@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Building2, Package, Users, Trash2, X, Mail, Phone, ExternalLink, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
+import { useConfirm } from '@/components/ui/ConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 
 // ── Types ──────────────────────────────────────────────────
 interface Client {
@@ -140,6 +142,8 @@ export default function ClientsPage() {
 
 // ── Clients Tab ────────────────────────────────────────────
 function ClientsTab({ clients, orgs, onRefresh }: { clients: Client[]; orgs: Organization[]; onRefresh: () => void }) {
+  const { confirm: doConfirm } = useConfirm();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -148,7 +152,6 @@ function ClientsTab({ clients, orgs, onRefresh }: { clients: Client[]; orgs: Org
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [orgId, setOrgId] = useState('');
-  const [message, setMessage] = useState('');
 
   const filtered = useMemo(() => {
     if (!search) return clients;
@@ -202,12 +205,12 @@ function ClientsTab({ clients, orgs, onRefresh }: { clients: Client[]; orgs: Org
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este cliente?')) return;
+    const ok = await doConfirm({ title: 'Remover cliente', message: 'Remover este cliente?', variant: 'danger' });
+    if (!ok) return;
     const res = await fetch(`/api/clients?id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json();
-      setMessage(err.error);
-      setTimeout(() => setMessage(''), 3000);
+      toast(err.error || 'Erro ao remover cliente', 'error');
       return;
     }
     onRefresh();
@@ -233,10 +236,6 @@ function ClientsTab({ clients, orgs, onRefresh }: { clients: Client[]; orgs: Org
           Novo cliente
         </button>
       </div>
-
-      {message && (
-        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{message}</div>
-      )}
 
       {/* Form modal */}
       {showForm && (
@@ -362,11 +361,12 @@ function ClientsTab({ clients, orgs, onRefresh }: { clients: Client[]; orgs: Org
 
 // ── Organizations Tab ──────────────────────────────────────
 function OrganizationsTab({ orgs, onRefresh }: { orgs: Organization[]; onRefresh: () => void }) {
+  const { confirm: doConfirm } = useConfirm();
+  const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
-  const [message, setMessage] = useState('');
 
   function resetForm() {
     setName(''); setDomain(''); setShowForm(false); setEditId(null);
@@ -393,12 +393,12 @@ function OrganizationsTab({ orgs, onRefresh }: { orgs: Organization[]; onRefresh
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover esta organizacao?')) return;
+    const ok = await doConfirm({ title: 'Remover organização', message: 'Remover esta organizacao?', variant: 'danger' });
+    if (!ok) return;
     const res = await fetch(`/api/organizations?id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json();
-      setMessage(err.error);
-      setTimeout(() => setMessage(''), 3000);
+      toast(err.error || 'Erro ao remover organização', 'error');
       return;
     }
     onRefresh();
@@ -416,10 +416,6 @@ function OrganizationsTab({ orgs, onRefresh }: { orgs: Organization[]; onRefresh
           Nova organizacao
         </button>
       </div>
-
-      {message && (
-        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{message}</div>
-      )}
 
       {showForm && (
         <div className="rounded-lg border border-accent/30 bg-surface2 p-5 space-y-4">
@@ -505,6 +501,7 @@ function OrganizationsTab({ orgs, onRefresh }: { orgs: Organization[]; onRefresh
 
 // ── Products Tab ───────────────────────────────────────────
 function ProductsTab({ products, onRefresh }: { products: Product[]; onRefresh: () => void }) {
+  const { confirm: doConfirm } = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6366f1');
@@ -535,7 +532,8 @@ function ProductsTab({ products, onRefresh }: { products: Product[]; onRefresh: 
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este produto?')) return;
+    const ok = await doConfirm({ title: 'Remover produto', message: 'Remover este produto?', variant: 'danger' });
+    if (!ok) return;
     await fetch(`/api/products?id=${id}`, { method: 'DELETE' });
     onRefresh();
   }

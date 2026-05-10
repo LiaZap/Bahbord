@@ -28,7 +28,7 @@ jobs:
       - name: Lint
         run: npx next lint
       - name: Unit tests
-        run: npm test -- --run
+        run: npm test
       - name: Build
         env:
           DATABASE_URL: 'postgresql://dummy:dummy@localhost:5432/dummy'

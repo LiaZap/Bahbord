@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get('group_id');
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     let sql = `
       SELECT p.id, p.key, p.display_name, p.group_id, p.scope, p.created_at,
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const { key, display_name, group_id, scope } = body;
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     if (!key || !display_name) {
       return NextResponse.json({ error: 'key e display_name são obrigatórios' }, { status: 400 });

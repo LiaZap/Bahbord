@@ -19,8 +19,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const status = (searchParams.get('status') || 'pending').toLowerCase();
-    const limit = Math.max(1, Math.min(200, parseInt(searchParams.get('limit') || '50') || 50));
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0') || 0);
+    const limit = Math.max(1, Math.min(200, parseInt(searchParams.get('limit') || '50', 10) || 50));
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0);
 
     const params: unknown[] = [auth.workspace_id];
     let statusFilter = '';

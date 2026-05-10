@@ -7,6 +7,7 @@ import { Plus, Sun, Moon, Sparkles, Filter as FilterIcon } from 'lucide-react';
 import { UserButton } from '@clerk/nextjs';
 import NotificationCenter from '@/components/ui/NotificationCenter';
 import { useTheme } from '@/lib/theme-context';
+import { getInitials, colorFromName } from '@/lib/utils/avatar';
 
 interface HeaderProps {
   onCreateTicket?: () => void;
@@ -68,18 +69,6 @@ export default function Header({ onCreateTicket }: HeaderProps) {
       .then((data) => setMemberAvatars(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
-
-  function getInitials(name?: string): string {
-    if (!name) return '?';
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  function colorFromName(name: string): string {
-    const palette = ['#3b6cf5', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#06b6d4'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return palette[Math.abs(hash) % palette.length];
-  }
 
   const visibleAvatars = memberAvatars.slice(0, 3);
   const overflow = Math.max(0, memberAvatars.length - visibleAvatars.length);

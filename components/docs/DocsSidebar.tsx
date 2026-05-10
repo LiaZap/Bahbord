@@ -6,6 +6,7 @@ import {
   BookOpen, Folder, FolderOpen, FileText, ChevronRight, ChevronDown,
   Plus, MoreHorizontal, Pencil, Trash2, FilePlus, FolderPlus, PanelLeftClose, PanelLeft
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface Space {
   id: string;
@@ -35,6 +36,7 @@ interface DocsSidebarProps {
 }
 
 export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }: DocsSidebarProps) {
+  const { confirm: doConfirm } = useConfirm();
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [expandedSpaces, setExpandedSpaces] = useState<Set<string>>(new Set());
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -193,7 +195,13 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
 
   async function deleteItem(type: string, id: string, spaceId: string) {
     const label = type === 'space' ? 'espaço' : type === 'folder' ? 'pasta' : 'página';
-    if (!window.confirm(`Excluir ${label}? Esta ação não pode ser desfeita.`)) return;
+    const ok = await doConfirm({
+      title: `Excluir ${label}`,
+      message: `Excluir ${label}? Esta ação não pode ser desfeita.`,
+      variant: 'danger',
+      confirmText: 'Excluir',
+    });
+    if (!ok) return;
     try {
       const endpoint = type === 'space' ? 'spaces' : type === 'folder' ? 'folders' : 'pages';
       await fetch(`/api/docs/${endpoint}?id=${id}`, { method: 'DELETE' });

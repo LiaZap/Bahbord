@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
@@ -10,8 +10,9 @@ const TEAMS_CACHE_PREFIX = 'teams:';
 
 export async function GET() {
   try {
-    await getAuthMember();
-    const workspaceId = await getDefaultWorkspaceId();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    const workspaceId = auth.workspace_id;
 
     // Cache 60s: teams + member_count + composição de members são quase-estáticos
     // (mudam só em mutations admin). Resultado independe de role do requester
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `INSERT INTO teams (workspace_id, name, description, color)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET() {
@@ -8,7 +8,7 @@ export async function GET() {
     if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     // Importante: NUNCA retornar a coluna `secret` em listagens. Substituímos
     // por um booleano `has_secret` pra UI saber se há segredo configurado
     // sem expor o valor (evita leak via DevTools / logs / cache).
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
 
     const result = await query(
       `INSERT INTO webhook_subscriptions (workspace_id, url, secret, events)

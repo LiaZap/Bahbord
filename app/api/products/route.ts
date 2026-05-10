@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const result = await query(
       `INSERT INTO products (workspace_id, name, color, description)
        VALUES ($1, $2, $3, $4) RETURNING *`,

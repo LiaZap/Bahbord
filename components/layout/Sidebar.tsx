@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/cn';
+import { getInitials, colorFromName } from '@/lib/utils/avatar';
+import type { Route } from 'next';
 import {
   LayoutDashboard, Search, Settings, Bell,
   Menu, X, PanelLeftClose, PanelLeft, Plus,
@@ -28,6 +30,7 @@ interface MeData {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const tNav = useTranslations('nav');
   const tAuth = useTranslations('auth');
   const tSearch = useTranslations('search');
@@ -88,7 +91,7 @@ export default function Sidebar() {
     const active = pathname === basePath;
     const button = (
       <button
-        onClick={() => { setMobileOpen(false); window.location.href = href; }}
+        onClick={() => { setMobileOpen(false); router.push(href as Route); }}
         className={cn(
           'group flex w-full items-center gap-2 rounded-md px-2 py-[6px] text-[13px] transition-colors',
           active
@@ -110,18 +113,6 @@ export default function Sidebar() {
     return button;
   }
 
-  function getInitials(name?: string): string {
-    if (!name) return '?';
-    return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  function colorFromName(name: string): string {
-    const palette = ['#3b6cf5', '#22c55e', '#ef4444', '#a855f7', '#f97316', '#06b6d4'];
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    return palette[Math.abs(hash) % palette.length];
-  }
-
   const sidebarContent = (
     <>
       {/* Workspace header */}
@@ -134,7 +125,7 @@ export default function Sidebar() {
             {isAdminUser && (
               <Tooltip content={tNav('newProject')} side="right">
                 <button
-                  onClick={() => { window.location.href = '/projects'; }}
+                  onClick={() => { router.push('/projects'); }}
                   className="rounded p-1 text-slate-500 hover:bg-white/[0.06] hover:text-white transition-colors shrink-0"
                   aria-label={tNav('newProject')}
                 >
@@ -195,7 +186,7 @@ export default function Sidebar() {
               <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">{tNav('projects')}</span>
               {isAdminUser && (
                 <button
-                  onClick={() => { window.location.href = '/projects'; }}
+                  onClick={() => { router.push('/projects'); }}
                   className="rounded p-0.5 text-slate-600 hover:bg-white/[0.06] hover:text-white transition-colors"
                   aria-label={tNav('newProject')}
                 >
@@ -216,7 +207,7 @@ export default function Sidebar() {
                       if (defaultBoard) {
                         setBoard(defaultBoard.id);
                         setMobileOpen(false);
-                        window.location.href = `/board?board_id=${defaultBoard.id}`;
+                        router.push(`/board?board_id=${defaultBoard.id}` as Route);
                       }
                     }}
                     className={cn(
@@ -235,7 +226,7 @@ export default function Sidebar() {
               })}
               {isAdminUser && (
                 <button
-                  onClick={() => { window.location.href = '/projects'; }}
+                  onClick={() => { router.push('/projects'); }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] text-slate-600 hover:bg-white/[0.03] hover:text-slate-400 transition-colors"
                 >
                   <FolderKanban size={11} className="text-slate-700" />

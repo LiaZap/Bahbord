@@ -202,7 +202,7 @@ export default function SprintsView() {
       if (completed && completed.project_id) {
         // Calculate next sprint number from name
         const match = completed.name.match(/(\d+)/);
-        const nextNum = match ? parseInt(match[1]) + 1 : 1;
+        const nextNum = match ? parseInt(match[1], 10) + 1 : 1;
         const nextName = match ? completed.name.replace(/\d+/, String(nextNum)) : `Sprint ${nextNum}`;
 
         // Calculate next dates (same duration)
@@ -537,7 +537,7 @@ export default function SprintsView() {
                             min={1}
                             max={365}
                             value={editCadenceDays}
-                            onChange={(e) => setEditCadenceDays(parseInt(e.target.value) || 1)}
+                            onChange={(e) => setEditCadenceDays(parseInt(e.target.value, 10) || 1)}
                             className="w-32 rounded border border-[var(--card-border)] bg-surface px-2 py-1 text-[12px] text-primary outline-none focus:border-accent/60"
                           />
                           <p className="mt-1 text-[10px] text-tertiary-muted">Quantos dias entre sprints</p>
@@ -781,7 +781,7 @@ export default function SprintsView() {
                       min={1}
                       max={365}
                       value={newCadenceDays}
-                      onChange={(e) => setNewCadenceDays(parseInt(e.target.value) || 1)}
+                      onChange={(e) => setNewCadenceDays(parseInt(e.target.value, 10) || 1)}
                       className="w-32 rounded border border-[var(--card-border)] bg-surface px-2 py-1 text-[12px] text-primary outline-none focus:border-accent/60"
                     />
                     <p className="mt-1 text-[10px] text-tertiary-muted">Quantos dias entre sprints</p>

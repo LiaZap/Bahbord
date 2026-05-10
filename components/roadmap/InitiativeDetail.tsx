@@ -22,6 +22,8 @@ import {
 import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import { routes } from '@/lib/utils/nav';
+import type { Route } from 'next';
 import InitiativeFormModal from './InitiativeFormModal';
 import type {
   RoadmapInitiative,
@@ -303,7 +305,7 @@ export default function InitiativeDetail({
       {/* Back link */}
       <button
         type="button"
-        onClick={() => router.push('/roadmap' as never)}
+        onClick={() => router.push('/roadmap' as Route)}
         className="inline-flex items-center gap-1.5 text-[12px] text-secondary-muted transition hover:text-primary"
       >
         <ArrowLeft size={13} />
@@ -440,7 +442,7 @@ export default function InitiativeDetail({
                     >
                       <button
                         type="button"
-                        onClick={() => router.push(`/projects/${p.project_id}/spec` as never)}
+                        onClick={() => router.push(routes.projectSpec(p.project_id))}
                         className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
                         <div

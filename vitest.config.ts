@@ -10,6 +10,10 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     // e2e/ é Playwright (rodar via `npm run e2e`), não vitest
     exclude: ['node_modules', 'dist', '.next', 'e2e'],
+    // forks evita cross-pollution de mocks entre arquivos (vitest 4.x threads
+    // pool tem bug com globals/jsdom — falha "Cannot read properties of
+    // undefined (reading 'config')" quando rodam juntos)
+    pool: 'forks',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json-summary'],

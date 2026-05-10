@@ -11,8 +11,8 @@ export async function GET(request: Request) {
     const workspaceId = searchParams.get('workspace_id');
     const memberId = searchParams.get('member_id');
     const action = searchParams.get('action');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
-    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
 
     const db = await getDb();
     const col = db.collection<AccessLogDoc>(COLLECTIONS.ACCESS_LOGS);

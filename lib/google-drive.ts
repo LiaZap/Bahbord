@@ -135,7 +135,7 @@ export async function uploadToDrive(
     file_id: fileData.id!,
     file_name: fileData.name!,
     file_url: fileData.webViewLink || `https://drive.google.com/file/d/${fileData.id}/view`,
-    file_size: parseInt(fileData.size || '0'),
+    file_size: parseInt(fileData.size || '0', 10),
     mime_type: fileData.mimeType || mimeType,
     drive_folder_id: folderId,
   };

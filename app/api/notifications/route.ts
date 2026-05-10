@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '30')));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '30', 10)));
 
     const result = await query(
       `SELECT n.id, n.type, n.title, n.message, n.link, n.is_read, n.created_at,

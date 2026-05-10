@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Save, Trash2, RefreshCw, Check, AlertCircle, Link2 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface ClockifyConfig {
   enabled: boolean;
@@ -11,6 +12,7 @@ interface ClockifyConfig {
 }
 
 export default function ClockifySettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [config, setConfig] = useState<ClockifyConfig | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [workspaceId, setWorkspaceId] = useState('');
@@ -78,7 +80,8 @@ export default function ClockifySettings() {
   }
 
   async function handleRemove() {
-    if (!confirm('Tem certeza que deseja remover a integração com o Clockify?')) return;
+    const ok = await doConfirm({ title: 'Remover integração', message: 'Tem certeza que deseja remover a integração com o Clockify?', variant: 'danger' });
+    if (!ok) return;
 
     setRemoving(true);
     setError(null);

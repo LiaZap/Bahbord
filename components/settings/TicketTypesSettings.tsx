@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface TicketType {
   id: string;
@@ -14,6 +15,7 @@ interface TicketType {
 }
 
 export default function TicketTypesSettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [types, setTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,7 +60,8 @@ export default function TicketTypesSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este tipo de ticket?')) return;
+    const ok = await doConfirm({ title: 'Remover tipo', message: 'Remover este tipo de ticket?', variant: 'danger' });
+    if (!ok) return;
     await fetch(`/api/settings?table=ticket_types&id=${id}`, { method: 'DELETE' });
     await fetchTypes();
   }

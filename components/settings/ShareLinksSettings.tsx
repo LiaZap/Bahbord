@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Copy, Check, Loader2, Lock, Eye, Calendar } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface Project {
   id: string;
@@ -31,6 +32,7 @@ interface ShareLink {
 }
 
 export default function ShareLinksSettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [links, setLinks] = useState<ShareLink[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -127,7 +129,8 @@ export default function ShareLinksSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este link? Clientes com o link perderão o acesso.')) return;
+    const ok = await doConfirm({ title: 'Remover link', message: 'Remover este link? Clientes com o link perderão o acesso.', variant: 'danger' });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/share-links?id=${id}`, { method: 'DELETE' });
       if (res.ok) fetchLinks();

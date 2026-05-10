@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import { useConfirm } from '@/components/ui/ConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 
 interface Service {
   id: string;
@@ -12,12 +14,13 @@ interface Service {
 }
 
 export default function ServicesSettings() {
+  const { confirm: doConfirm } = useConfirm();
+  const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#6366f1');
-  const [message, setMessage] = useState('');
 
   async function fetchServices() {
     try {
@@ -51,12 +54,12 @@ export default function ServicesSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover este serviço?')) return;
+    const ok = await doConfirm({ title: 'Remover serviço', message: 'Remover este serviço?', variant: 'danger' });
+    if (!ok) return;
     const res = await fetch(`/api/settings?table=services&id=${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json();
-      setMessage(err.error);
-      setTimeout(() => setMessage(''), 3000);
+      toast(err.error || 'Erro ao remover serviço', 'error');
       return;
     }
     await fetchServices();
@@ -78,10 +81,6 @@ export default function ServicesSettings() {
           Novo serviço
         </button>
       </div>
-
-      {message && (
-        <div className="rounded border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{message}</div>
-      )}
 
       <div className="space-y-1">
         {services.map((s) => (

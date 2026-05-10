@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const wsId = await getDefaultWorkspaceId();
+    const wsId = auth.workspace_id;
     const result = await query<{ id: string; onboarded_at: string }>(
       `UPDATE workspaces SET onboarded_at = NOW() WHERE id = $1 RETURNING id, onboarded_at`,
       [wsId]

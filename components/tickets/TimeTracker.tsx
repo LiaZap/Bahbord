@@ -151,7 +151,7 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
                   min={0}
                   max={99}
                   value={manualHours}
-                  onChange={(e) => setManualHours(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setManualHours(Math.max(0, parseInt(e.target.value, 10) || 0))}
                   className="w-14 rounded border border-border/40 bg-input px-2 py-1 text-center text-xs text-white"
                 />
                 <span className="text-[11px] text-slate-500">h</span>
@@ -162,7 +162,7 @@ export default function TimeTracker({ ticketId }: TimeTrackerProps) {
                   min={0}
                   max={59}
                   value={manualMinutes}
-                  onChange={(e) => setManualMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  onChange={(e) => setManualMinutes(Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0)))}
                   className="w-14 rounded border border-border/40 bg-input px-2 py-1 text-center text-xs text-white"
                 />
                 <span className="text-[11px] text-slate-500">min</span>

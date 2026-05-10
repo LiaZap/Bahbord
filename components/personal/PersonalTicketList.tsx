@@ -7,6 +7,8 @@ import { useTranslations } from 'next-intl';
 import { Moon } from 'lucide-react';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import EmptyState from '@/components/ui/EmptyState';
+import { routes } from '@/lib/utils/nav';
+import type { Route } from 'next';
 
 interface PersonalTicket {
   id: string;
@@ -127,7 +129,7 @@ export default function PersonalTicketList({
       params.set('show_snoozed', 'true');
     }
     const qs = params.toString();
-    router.push((qs ? `${pathname}?${qs}` : pathname) as any);
+    router.push((qs ? `${pathname}?${qs}` : pathname) as Route);
   }
 
   // Hidrata filtro do localStorage no mount
@@ -227,7 +229,7 @@ export default function PersonalTicketList({
                 const params = new URLSearchParams(searchParams?.toString() || '');
                 params.delete('show_snoozed');
                 const qs = params.toString();
-                router.push((qs ? `${pathname}?${qs}` : pathname) as any);
+                router.push((qs ? `${pathname}?${qs}` : pathname) as Route);
               }
               setFilter(c.key);
             }}
@@ -318,7 +320,7 @@ export default function PersonalTicketList({
               return (
                 <Link
                   key={t.id}
-                  href={`/ticket/${t.id}` as any}
+                  href={routes.ticket(t.id)}
                   className="grid grid-cols-[24px_64px_1fr_auto] sm:grid-cols-[24px_80px_1fr_auto_auto] items-center gap-2 sm:gap-3 border-b border-[var(--card-border)] px-3 sm:px-4 py-2.5 last:border-0 hover:bg-[var(--overlay-subtle)] transition-colors"
                 >
                   <TicketTypeIcon typeName={t.type_name} typeIcon={t.type_icon} size="sm" />

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface QuickReaction {
   id: string;
@@ -11,6 +12,7 @@ interface QuickReaction {
 }
 
 export default function QuickReactionsSettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [reactions, setReactions] = useState<QuickReaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -51,7 +53,8 @@ export default function QuickReactionsSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover esta reação?')) return;
+    const ok = await doConfirm({ title: 'Remover reação', message: 'Remover esta reação?', variant: 'danger' });
+    if (!ok) return;
     await fetch(`/api/settings?table=quick_reactions&id=${id}`, { method: 'DELETE' });
     await fetchReactions();
   }

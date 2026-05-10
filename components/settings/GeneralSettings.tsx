@@ -5,6 +5,8 @@ import { useLocale } from 'next-intl';
 import { Save, Sun, Moon, Monitor, RefreshCw, Languages } from 'lucide-react';
 import { useTheme } from '@/lib/theme-context';
 import { locales, localeLabels, type Locale } from '@/i18n/routing';
+import { useConfirm } from '@/components/ui/ConfirmModal';
+import { useToast } from '@/components/ui/Toast';
 
 interface Workspace {
   id: string;
@@ -15,6 +17,8 @@ interface Workspace {
 }
 
 export default function GeneralSettings() {
+  const { confirm: doConfirm } = useConfirm();
+  const { toast } = useToast();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [name, setName] = useState('');
   const [prefix, setPrefix] = useState('');
@@ -50,16 +54,22 @@ export default function GeneralSettings() {
   }
 
   async function handleSyncOrphans() {
-    if (!confirm('Sincronizar tickets sem projeto? Os tickets serão atribuídos aos projetos baseado no acesso do relator/responsável.')) return;
+    const ok = await doConfirm({
+      title: 'Sincronizar tickets',
+      message: 'Sincronizar tickets sem projeto? Os tickets serão atribuídos aos projetos baseado no acesso do relator/responsável.',
+      variant: 'info',
+      confirmText: 'Sincronizar',
+    });
+    if (!ok) return;
     setSyncing(true);
     try {
       const res = await fetch('/api/tickets/sync-project', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        alert(`${data.synced} ticket(s) sincronizado(s) com sucesso.`);
+        toast(`${data.synced} ticket(s) sincronizado(s) com sucesso.`, 'success');
       } else {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Erro ao sincronizar');
+        toast(err.error || 'Erro ao sincronizar', 'error');
       }
     } finally {
       setSyncing(false);

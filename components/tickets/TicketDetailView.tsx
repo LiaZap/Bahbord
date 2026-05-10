@@ -11,6 +11,7 @@ import SubtaskList from './SubtaskList';
 import TicketSidebar from './TicketSidebar';
 import { DetailSkeleton, Skeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 import TicketTypeIcon from '@/components/ui/TicketTypeIcon';
 import { cn } from '@/lib/utils/cn';
 import DOMPurify from 'dompurify';
@@ -93,6 +94,7 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
   const showTimeTracker = isAdmin || canTrackTime;
   const titleRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { confirm: doConfirm } = useConfirm();
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => {
@@ -145,7 +147,13 @@ export default function TicketDetailView({ ticketId }: TicketDetailViewProps) {
   }, []);
 
   async function handleDeleteTicket() {
-    if (!confirm('Excluir este ticket permanentemente? Esta ação não pode ser desfeita.')) return;
+    const ok = await doConfirm({
+      title: 'Excluir ticket',
+      message: 'Excluir este ticket permanentemente? Esta ação não pode ser desfeita.',
+      variant: 'danger',
+      confirmText: 'Excluir',
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/tickets/${ticketId}`, { method: 'DELETE' });
       if (res.ok) {

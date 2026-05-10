@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const autoApprove = body.auto_approve === true;
 
-    const workspaceId = await getDefaultWorkspaceId();
+    const workspaceId = auth.workspace_id;
     const client = await clerkClient();
 
     // Page through all Clerk users (max 500 per page)

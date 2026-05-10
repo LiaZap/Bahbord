@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     // If no page param, return results with default limit (backward compat)
     if (!pageParam) {
-      const limit = Math.max(1, Math.min(200, parseInt(limitParam || '15') || 15));
+      const limit = Math.max(1, Math.min(200, parseInt(limitParam || '15', 10) || 15));
       const result = await query(
         `SELECT
           tf.id, tf.title, tf.ticket_key,
@@ -38,8 +38,8 @@ export async function GET(request: Request) {
       return NextResponse.json(result.rows);
     }
 
-    const page = Math.max(1, parseInt(pageParam) || 1);
-    const limit = Math.max(1, Math.min(200, parseInt(limitParam || '50') || 50));
+    const page = Math.max(1, parseInt(pageParam, 10) || 1);
+    const limit = Math.max(1, Math.min(200, parseInt(limitParam || '50', 10) || 50));
     const offset = (page - 1) * limit;
 
     const [countResult, result] = await Promise.all([
@@ -56,7 +56,7 @@ export async function GET(request: Request) {
       ),
     ]);
 
-    const total = parseInt(countResult.rows[0].total);
+    const total = parseInt(countResult.rows[0].total, 10);
 
     return NextResponse.json({
       data: result.rows,

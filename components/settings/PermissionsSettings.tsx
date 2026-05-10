@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Shield, X, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -76,6 +77,7 @@ function ScopeBadge({ scope, permKey }: { scope: string; permKey?: string }) {
 /* ------------------------------------------------------------------ */
 
 export default function PermissionsSettings() {
+  const { confirm: doConfirm } = useConfirm();
   const [tab, setTab] = useState<Tab>('catalog');
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [groups, setGroups] = useState<PermissionGroup[]>([]);
@@ -235,7 +237,8 @@ export default function PermissionsSettings() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Remover esta permissão? Isso também remove as atribuições de cargo vinculadas.')) return;
+    const ok = await doConfirm({ title: 'Remover permissão', message: 'Remover esta permissão? Isso também remove as atribuições de cargo vinculadas.', variant: 'danger' });
+    if (!ok) return;
     try {
       await fetch(`/api/permissions?id=${id}`, { method: 'DELETE' });
       await Promise.all([fetchPermissions(), fetchGroups()]);

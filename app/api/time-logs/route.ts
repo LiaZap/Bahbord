@@ -13,8 +13,8 @@ export async function GET(request: Request) {
     const workspaceId = searchParams.get('workspace_id');
     const isBillable = searchParams.get('is_billable');
     const period = searchParams.get('period'); // days
-    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
-    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '100', 10), 500);
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10), 1);
 
     const db = await getDb();
     const col = db.collection<TimeLogDoc>(COLLECTIONS.TIME_LOGS);
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     if (isBillable === 'true') filter.is_billable = true;
     if (isBillable === 'false') filter.is_billable = false;
     if (period) {
-      filter.started_at = { $gte: new Date(Date.now() - parseInt(period) * 86400000) };
+      filter.started_at = { $gte: new Date(Date.now() - parseInt(period, 10) * 86400000) };
     }
 
     const [docs, total] = await Promise.all([

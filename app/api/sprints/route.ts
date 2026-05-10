@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createSprintSchema, validateBody } from '@/lib/validators';
 
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const auth = await getAuthMember();
     if (!auth) return NextResponse.json([], { status: 200 });
-    const wsId = await getDefaultWorkspaceId();
+    const wsId = auth.workspace_id;
 
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         ? rawBody.rollover_strategy
         : 'move_incomplete';
 
-    const wsId = await getDefaultWorkspaceId();
+    const wsId = auth.workspace_id;
 
     const result = await query(
       `INSERT INTO sprints

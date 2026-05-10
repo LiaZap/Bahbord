@@ -5,6 +5,7 @@ import { Plus, Users, Trash2, UserPlus, UserMinus, Pencil, X, ChevronDown, Shiel
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmModal';
 
 interface Member {
   id: string;
@@ -31,6 +32,7 @@ interface AvailableMember {
 export default function TeamsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { confirm: doConfirm } = useConfirm();
   const [teams, setTeams] = useState<Team[]>([]);
   const [allMembers, setAllMembers] = useState<AvailableMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,8 @@ export default function TeamsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Excluir esta equipe?')) return;
+    const ok = await doConfirm({ title: 'Excluir equipe', message: 'Excluir esta equipe?', variant: 'danger', confirmText: 'Excluir' });
+    if (!ok) return;
     try {
       await fetch(`/api/teams?id=${id}`, { method: 'DELETE' });
       toast('Equipe excluída', 'success');
