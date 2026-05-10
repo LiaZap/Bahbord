@@ -99,6 +99,57 @@ curl -X POST http://localhost:3000/api/cron/sla-check \
    failure (`Settings → Notifications`) ou use o `Notify on failure` step
    (igual ao `backup.yml`).
 
+## Monitoring
+
+Os 4 cron handlers são instrumentados com `Sentry.withMonitor` (Fase 7.3).
+Cada execução manda check-in pro Sentry Crons:
+
+- `in_progress` quando começa
+- `ok` quando termina sem exception
+- `error` quando lança
+- `missed` quando o schedule passou e não houve check-in (calculado pelo
+  Sentry com base no `schedule` declarado no handler)
+- `timeout` quando excede `maxRuntime`
+
+| Endpoint | Monitor slug | maxRuntime | checkinMargin |
+|---|---|---|---|
+| `/api/cron/sla-check`          | `cron-sla-check`          | 10 min | 5 min  |
+| `/api/cron/recurring-tickets`  | `cron-recurring-tickets`  | 10 min | 5 min  |
+| `/api/cron/sprint-rollover`    | `cron-sprint-rollover`    | 10 min | 10 min |
+| `/api/cron/project-updates`    | `cron-project-updates`    | 15 min | 10 min |
+
+### Dashboard Sentry Crons
+
+Acesse: `https://<seu-org>.sentry.io/crons/` (substituir `<seu-org>` pela
+slug da org Sentry — preencher após primeiro deploy com DSN ativo).
+
+### Alertas configurados (configurar no Sentry UI)
+
+Para cada monitor, configurar em `Settings → Crons → <slug> → Alerts`:
+
+- **Missed**: 1 missed check-in → notificar Slack `#incidents`
+- **Late**: check-in atrasou > `checkinMargin` → notificar `#incidents`
+- **Failed**: 1 erro → notificar `#incidents`
+- **Recovered**: 1 OK consecutivo → resolver issue automaticamente
+
+> **Quando não há DSN configurado** (`NEXT_PUBLIC_SENTRY_DSN` /
+> `SENTRY_DSN` vazios), `Sentry.withMonitor` degrada pra no-op gracioso —
+> roda o callback direto sem instrumentação. Não quebra dev nem ambientes
+> sem Sentry.
+
+### Verificar última execução real (sem Sentry)
+
+```bash
+# Lista as últimas runs do workflow (qualquer endpoint)
+gh run list -w cron.yml --limit 10
+
+# Detalhe de uma run específica
+gh run view <RUN_ID>
+
+# Logs de falha
+gh run view <RUN_ID> --log-failed
+```
+
 ## Limites importantes
 
 - **Timeout do workflow**: 15 min (`timeout-minutes`). Endpoints longos

@@ -1,23 +1,93 @@
 # Migrations
 
-**56 migrations** sequenciais em `db/0XX_*.sql` (045-056 adicionadas nas
-Sprints 1-5 — snooze, ticket_relations, multi_assignees, ticket_embeddings,
-triage_inbox, sla, project_updates, sprint_auto_rollover, customer_requests,
-project_specs, initiatives, perf_indexes). Aplicação manual — não há
-ferramenta dedicada (Prisma migrate, Knex, etc). Todas as migrations são
-**idempotentes**: usam `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD
-COLUMN IF NOT EXISTS`, e blocos `DO $$ BEGIN ... EXCEPTION WHEN
-duplicate_object THEN NULL; END $$;` quando precisam criar tipos/índices.
+**59 migrations** sequenciais em `db/NNN_*.sql`. A partir da **059
+(`schema_migrations`)** existe um runner real em `scripts/migrate.ts` que
+controla quais já rodaram, calcula `sha256` do conteúdo, registra
+timestamp + duração, e aplica em transação. **Use `npm run migrate`** —
+o loop `for f in db/0*.sql; do psql ...; done` virou **legacy fallback**
+(só pra debugar uma migration específica).
+
+Todas as migrations continuam **idempotentes**: usam `CREATE TABLE IF NOT
+EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, e blocos `DO $$
+BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;` quando
+precisam criar tipos/índices.
+
+## Como rodar com `migrate.ts` (recomendado)
+
+```bash
+# Ver o que está pendente sem aplicar
+npm run migrate:check        # exit 0=ok, 2=tem drift
+
+# Listar pendentes (sem aplicar)
+npm run migrate:dry
+
+# Aplicar pendentes em transação (BEGIN/COMMIT por migration)
+npm run migrate
+```
+
+O runner:
+
+1. Lê `db/schema.sql` + `db/NNN_*.sql` em ordem alfanumérica.
+2. Calcula `sha256` do conteúdo de cada arquivo.
+3. Compara com `schema_migrations.checksum` no banco.
+4. **Aplica só as ausentes** — em transação própria por migration
+   (`BEGIN/COMMIT/ROLLBACK`). Se uma falha, as anteriores ficam
+   commitadas e o runner para — você corrige e re-roda.
+5. Registra `filename`, `checksum`, `duration_ms`, `applied_by` em
+   `schema_migrations`.
+
+### Detectando drift
+
+Se um arquivo `db/NNN_*.sql` foi **modificado depois de aplicado** (sha
+muda mas o registro persiste), o runner emite **WARNING** mas
+**não falha** e **não re-aplica** — porque rodar uma migration duas
+vezes em produção é mais perigoso que a divergência. O sentinel
+`manual-backfill` (usado pelo bootstrap da 059 pras migrations 002-058)
+nunca conta como drift.
+
+```bash
+$ npm run migrate:check
+AVISO: 1 migrations DRIFTED (conteudo mudou apos apply):
+   - 048_ticket_embeddings.sql
+STATUS: 58/58 aplicadas
+# exit code 2
+```
+
+### Skip / re-aplicar manualmente uma migration
+
+```sql
+-- Marcar uma migration como aplicada SEM rodar (skip)
+INSERT INTO schema_migrations (filename, checksum, applied_by)
+VALUES ('060_minha_migration.sql', 'skipped', 'manual')
+ON CONFLICT (filename) DO NOTHING;
+
+-- Forçar re-aplicação na próxima `npm run migrate`
+DELETE FROM schema_migrations WHERE filename = '048_ticket_embeddings.sql';
+```
+
+### Bootstrap em banco fresh
+
+A `059_schema_migrations.sql` cria a tabela **e faz backfill** das 002-058
+com `checksum = 'manual-backfill'`. Se você acabou de criar o banco e
+quer aplicar tudo via runner do zero, **edite a 059** removendo o bloco
+`INSERT INTO schema_migrations ... VALUES (...)` antes de rodar — assim
+o runner vai aplicar 002-058 de verdade.
+
+## Legacy: como rodar com loop manual (fallback)
+
+> **Use só se** `npm run migrate` não estiver disponível (ex: container
+> sem `node_modules`) ou pra debugar uma migration específica isoladamente.
+> O loop não consulta `schema_migrations` — vai re-rodar tudo (graças à
+> idempotência funciona, mas é mais lento e não atualiza
+> `schema_migrations.checksum`).
 
 **Variant CONCURRENTLY** (`db/manual/perf_indexes_concurrent.sql`):
 versão do 056 pra rodar em produção sem bloquear escritas. Roda fora do
-loop padrão (script à parte), porque `CREATE INDEX CONCURRENTLY` não pode
-estar em transação.
+runner padrão também, porque `CREATE INDEX CONCURRENTLY` não pode estar
+em transação.
 
 A ordem **importa** — algumas migrations dependem de colunas/tabelas
 criadas pelas anteriores.
-
-## Como rodar
 
 ### Local (psql)
 
@@ -28,20 +98,15 @@ for f in db/0*.sql; do
 done
 ```
 
-### Local (npm script auxiliar — se existir)
-
-Não há script npm dedicado; use o loop acima.
-
-### Produção (EasyPanel)
+### Produção (EasyPanel) — fallback
 
 A pasta `db/` é copiada para a imagem (`COPY --from=builder /app/db ./db`
-no `Dockerfile`). Após o deploy:
+no `Dockerfile`). Preferir `npm run migrate` (tsx + scripts/migrate.ts)
+no console do container. Se não der:
 
-1. Abra o **Console** do container no EasyPanel.
-2. Rode:
-   ```bash
-   for f in db/0*.sql; do psql "$DATABASE_URL" -f "$f"; done
-   ```
+```bash
+for f in db/0*.sql; do psql "$DATABASE_URL" -f "$f"; done
+```
 
 ### Setup inicial completo
 
@@ -121,6 +186,9 @@ para dev local.
 | 055 | `055_initiatives.sql` | Tabelas `initiatives` + `initiative_projects` (com weight) — camada acima de projeto. |
 | 056 | `056_perf_indexes.sql` | 16 índices de perf (assignee_active, project_status, sla_due_at, snoozed_until, audit, customer_requests_unresolved, etc). |
 | 056 | `manual/perf_indexes_concurrent.sql` | **Variant CONCURRENTLY pra produção** — fora do loop padrão. Roda em script separado. |
+| 057 | `057_drop_duplicate_indexes.sql` | Remove índices duplicados detectados pelo `pg_stat_user_indexes`. |
+| 058 | `058_tickets_full_consolidate.sql` | Consolidação final da view `tickets_full` com todos os campos das migrations 045-056. |
+| 059 | `059_schema_migrations.sql` | Tabela `schema_migrations` (filename PK, sha256 checksum, applied_at, duration_ms, applied_by) + backfill 002-058 com sentinel `manual-backfill`. Habilita `scripts/migrate.ts`. |
 
 ## Convenções
 

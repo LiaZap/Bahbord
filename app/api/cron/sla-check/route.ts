@@ -1,7 +1,32 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { query } from '@/lib/db';
 import { notifyMember } from '@/lib/notifications';
 import { safeEqual } from '@/lib/crypto-utils';
+
+/**
+ * Sentry Cron monitoring (Fase 7.3).
+ *
+ * `Sentry.withMonitor` faz check-in automático no Sentry Crons:
+ *  - in_progress quando começa
+ *  - ok quando o callback resolve
+ *  - error quando lança
+ *  - missed quando o cron deveria ter rodado e não rodou (calculado pelo
+ *    Sentry com base no schedule abaixo)
+ *  - timeout quando excede maxRuntime
+ *
+ * Se NEXT_PUBLIC_SENTRY_DSN / SENTRY_DSN não estiver setado,
+ * Sentry.init é pulado em sentry.server.config.ts e withMonitor degrada
+ * pra no-op (executa o callback direto, sem instrumentação). Não quebra
+ * em dev nem em ambientes sem Sentry.
+ */
+const MONITOR_SLUG = 'cron-sla-check';
+const MONITOR_CONFIG = {
+  schedule: { type: 'crontab', value: '*/30 * * * *' },
+  checkinMargin: 5,   // toleração de atraso em minutos
+  maxRuntime: 10,     // alerta se a execução exceder 10 min
+  timezone: 'UTC',
+} as const;
 
 /**
  * Cron worker — verifica tickets cujo SLA está perto de vencer e dispara
@@ -115,7 +140,7 @@ async function sendSlackAlert(url: string, text: string, link: string): Promise<
   }
 }
 
-export async function POST(request: Request) {
+async function runSlaCheck(request: Request): Promise<NextResponse> {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -218,8 +243,16 @@ export async function POST(request: Request) {
   }
 }
 
+export async function POST(request: Request): Promise<NextResponse> {
+  return Sentry.withMonitor(
+    MONITOR_SLUG,
+    () => runSlaCheck(request),
+    MONITOR_CONFIG,
+  );
+}
+
 // Vercel Cron usa GET por padrão — proxy.
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   return POST(request);
 }
 

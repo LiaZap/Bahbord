@@ -4,6 +4,7 @@ import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 import { safeEqual } from '@/lib/crypto-utils';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // ----------------------------------------------------------------------------
 // /api/customer-requests
@@ -99,6 +100,20 @@ export async function POST(request: Request) {
     let actorId: string | null = null;
 
     if (isPublic) {
+      // Rate limit por IP no modo público (form externo). 10/min é apertado
+      // de propósito: cada submissão "real" é um pedido manual de cliente,
+      // bursts indicam scripted abuse. Membros autenticados NÃO passam por
+      // esse limite (já têm gate Clerk + auth check downstream).
+      const { ipAddress } = extractRequestMeta(request);
+      const ipKey = ipAddress || 'unknown';
+      const rl = checkRateLimit(`customer-requests-public:${ipKey}`, 10, 60_000);
+      if (!rl.ok) {
+        return NextResponse.json(
+          { error: 'Rate limit excedido', retryAfter: rl.retryAfter },
+          { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } }
+        );
+      }
+
       // Público: precisa resolver workspace. Se vier ticket_id, deriva. Senão,
       // pega o workspace default (assume single-tenant pra v1).
       if (ticket_id) {

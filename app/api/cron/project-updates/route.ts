@@ -1,8 +1,24 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { query } from '@/lib/db';
 import { notifyMember } from '@/lib/notifications';
 import { generateAndSaveUpdateForProject } from '@/lib/project-updates';
 import { safeEqual } from '@/lib/crypto-utils';
+
+/**
+ * Sentry Cron monitoring (Fase 7.3) — ver comentário equivalente em
+ * /api/cron/sla-check/route.ts. No-op gracioso quando DSN não definido.
+ *
+ * Schedule: sexta 20:00 UTC (= 17:00 America/Sao_Paulo).
+ * maxRuntime maior porque o resumo semanal pode chamar a OpenAI por projeto.
+ */
+const MONITOR_SLUG = 'cron-project-updates';
+const MONITOR_CONFIG = {
+  schedule: { type: 'crontab', value: '0 20 * * 5' },
+  checkinMargin: 10,
+  maxRuntime: 15,
+  timezone: 'UTC',
+} as const;
 
 /**
  * Cron worker — gera o status update semanal de cada projeto não-arquivado
@@ -109,7 +125,7 @@ async function findWorkspaceOwner(workspaceId: string): Promise<string | null> {
   }
 }
 
-export async function POST(request: Request) {
+async function runProjectUpdates(request: Request): Promise<NextResponse> {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -200,8 +216,16 @@ export async function POST(request: Request) {
   }
 }
 
+export async function POST(request: Request): Promise<NextResponse> {
+  return Sentry.withMonitor(
+    MONITOR_SLUG,
+    () => runProjectUpdates(request),
+    MONITOR_CONFIG,
+  );
+}
+
 // Vercel Cron usa GET por padrão — proxy.
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   return POST(request);
 }
 

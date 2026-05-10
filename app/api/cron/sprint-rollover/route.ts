@@ -1,8 +1,23 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { query } from '@/lib/db';
 import { notifyMember } from '@/lib/notifications';
 import { rolloverSprint } from '@/lib/sprint-rollover';
 import { safeEqual } from '@/lib/crypto-utils';
+
+/**
+ * Sentry Cron monitoring (Fase 7.3) — ver comentário equivalente em
+ * /api/cron/sla-check/route.ts. No-op gracioso quando DSN não definido.
+ *
+ * Schedule: diário 09:00 UTC (= 06:00 America/Sao_Paulo).
+ */
+const MONITOR_SLUG = 'cron-sprint-rollover';
+const MONITOR_CONFIG = {
+  schedule: { type: 'crontab', value: '0 9 * * *' },
+  checkinMargin: 10,
+  maxRuntime: 10,
+  timezone: 'UTC',
+} as const;
 
 /**
  * Cron worker — rola sprints expiradas com `auto_rollover=true` para a
@@ -113,7 +128,7 @@ async function fetchSprintName(sprintId: string): Promise<string | null> {
   }
 }
 
-export async function POST(request: Request) {
+async function runSprintRollover(request: Request): Promise<NextResponse> {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -198,8 +213,16 @@ export async function POST(request: Request) {
   }
 }
 
+export async function POST(request: Request): Promise<NextResponse> {
+  return Sentry.withMonitor(
+    MONITOR_SLUG,
+    () => runSprintRollover(request),
+    MONITOR_CONFIG,
+  );
+}
+
 // Vercel Cron usa GET por padrão — proxy.
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   return POST(request);
 }
 

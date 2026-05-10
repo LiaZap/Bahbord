@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { safeEqual } from '@/lib/crypto-utils';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { extractRequestMeta } from '@/lib/audit';
 
 /**
  * POST /api/webhooks/inbox/share-link
@@ -29,6 +31,19 @@ interface SharePayload {
 
 export async function POST(request: Request) {
   try {
+    // Rate limit por IP — formulário público (cliente sem login). Limite menor
+    // que slack-webhook porque cada submissão real é manual; 30/min cobre
+    // copy/paste rápido e bloqueia spam scripts.
+    const { ipAddress } = extractRequestMeta(request);
+    const ipKey = ipAddress || 'unknown';
+    const rl = checkRateLimit(`webhook-share-link:${ipKey}`, 30, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Rate limit excedido', retryAfter: rl.retryAfter },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } }
+      );
+    }
+
     const expected = process.env.WEBHOOK_SECRET_INBOX;
     const provided = request.headers.get('x-webhook-secret');
     if (!expected) {

@@ -10,8 +10,23 @@
  */
 import { NextResponse } from 'next/server';
 import { isLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE } from '@/i18n/routing';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { extractRequestMeta } from '@/lib/audit';
 
 export async function POST(request: Request) {
+  // Rate limit por IP — endpoint trivial mas público (sem auth). 60/min é
+  // generoso o bastante pra usuário acidentalmente clicar várias vezes,
+  // bloqueia loop malicioso.
+  const { ipAddress } = extractRequestMeta(request);
+  const ipKey = ipAddress || 'unknown';
+  const rl = checkRateLimit(`locale:${ipKey}`, 60, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Rate limit excedido', retryAfter: rl.retryAfter },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

@@ -32,6 +32,14 @@ vi.mock('next/headers', () => ({
   }),
 }));
 
+// Rate limiter (in-memory Map global) é estado compartilhado entre testes
+// sequenciais — todos rodam com o mesmo IP fake ('unknown'), saturando o
+// bucket. Mockamos pra sempre permitir; o comportamento do rate limiter
+// está coberto em tests/lib/rate-limit.test.ts.
+vi.mock('@/lib/rate-limit', () => ({
+  checkRateLimit: vi.fn().mockReturnValue({ ok: true }),
+}));
+
 describe('app/feedback/actions — submitFeedback', () => {
   beforeEach(() => {
     vi.clearAllMocks();

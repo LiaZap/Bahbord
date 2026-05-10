@@ -1,130 +1,165 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
+import {
+  QUERY_CATALOG,
+  getCatalogForLLM,
+  findCatalogEntry,
+} from '@/lib/ai-query-catalog';
+import { logAudit, extractRequestMeta } from '@/lib/audit';
 import { checkRateLimit } from '@/lib/rate-limit';
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
 /**
- * POST /api/ai/chat
- * Body: { message: string, history?: Array<{ role, content }> }
- * Admin-only. Permite consultar dados via SQL gerado por IA, com limites:
- * - SOMENTE SELECT (rejeita INSERT/UPDATE/DELETE/DDL)
- * - LIMIT máximo 100 rows
- * - Tabelas/views permitidas: tickets_full, projects, members, sprints, statuses
+ * POST /api/ai/chat — assistente conversacional do admin sobre os dados do
+ * workspace.
+ *
+ * SEGURANÇA (Fase 7.1):
+ *   A versão antiga aceitava SQL gerado pelo LLM e tentava sanitizar via
+ *   regex (SELECT-only + allowlist de tabelas). Esse approach é
+ *   fundamentalmente quebrado:
+ *     - CTEs com UPDATE: `WITH x AS (UPDATE ...) SELECT * FROM x`
+ *     - Comentários: `/* UPDATE * / SELECT ...`
+ *     - Funções privilegiadas: `pg_read_server_files()`, `pg_sleep()` (timing oracle)
+ *     - Ataques de side-channel via `pg_stat_*`, `current_setting('...')`
+ *
+ *   A nova abordagem usa **function calling com query catalog**: o LLM só
+ *   pode invocar funções pré-aprovadas de QUERY_CATALOG, cujo SQL é fixo,
+ *   parametrizado e SEMPRE escopado por workspace_id (vindo do auth, NUNCA
+ *   dos params do LLM). Não há SQL livre em nenhum caminho.
  */
 export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
-    if (!auth || !isAdmin(auth.role)) {
+    if (!auth) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
+    if (!isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    if (!checkRateLimit(`ai-chat:${auth.id}`, 30, 60_000)) {
-      return NextResponse.json({ error: 'Muitas requisições. Aguarde.' }, { status: 429 });
+    // Rate limit por usuário (defesa contra abuso de tokens OpenAI)
+    const rl = checkRateLimit(`ai-chat:${auth.id}`, 30, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Muitas requisições. Aguarde.' },
+        { status: 429 },
+      );
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OPENAI_API_KEY não configurada' }, { status: 500 });
+      return NextResponse.json({ error: 'IA não configurada' }, { status: 503 });
     }
 
-    const { message, history = [] } = await request.json();
-    if (!message?.trim()) {
-      return NextResponse.json({ error: 'message obrigatório' }, { status: 400 });
+    const body = (await request.json().catch(() => ({}))) as {
+      question?: unknown;
+      message?: unknown;
+    };
+    // Aceita "question" (novo) ou "message" (compat com UI antigo)
+    const raw = body.question ?? body.message;
+    if (typeof raw !== 'string' || raw.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'question obrigatório' },
+        { status: 400 },
+      );
     }
+    const question = raw.trim().slice(0, 2000);
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const tools = getCatalogForLLM().map((t) => ({
+      type: 'function' as const,
+      function: t,
+    }));
 
-    const systemPrompt = `Você é um assistente do Bah!Flow (sistema de gestão de projetos). O admin pode te perguntar sobre os dados do workspace e você responde executando SQL no banco Postgres.
-
-REGRAS RÍGIDAS:
-1. APENAS SELECT. Nunca INSERT/UPDATE/DELETE/DROP/ALTER/CREATE.
-2. Sempre incluir LIMIT 100 (ou menor) no final.
-3. Use APENAS estas views/tabelas: tickets_full, projects, members, sprints, statuses, services.
-4. Quando precisar consultar dados, gere o SQL e responda APENAS com o JSON: {"sql": "SELECT ...;", "explanation": "frase em português explicando o que vai buscar"}.
-5. Se a pergunta não precisar de SQL (ex: "olá", "obrigado"), responda em texto normal sem JSON.
-6. Se precisar de mais contexto, peça antes de gerar SQL.
-
-Schema relevante:
-- tickets_full: id, ticket_key, title, priority (urgent|high|medium|low), status_name, status_color, is_done, type_name, assignee_id, assignee_name, reporter_name, project_id, project_name, sprint_name, due_date, created_at, completed_at, is_archived
-- projects: id, name, prefix, color, is_archived, created_at
-- members: id, display_name, email, role, is_approved, can_track_time
-- sprints: id, name, project_id, is_active, start_date, end_date
-- statuses: id, name, color, is_done, position`;
-
-    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      { role: 'system', content: systemPrompt },
-      ...history.slice(-10).map((h: { role: string; content: string }) => ({
-        role: (h.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-        content: h.content,
-      })),
-      { role: 'user', content: message },
-    ];
-
-    const completion = await openai.chat.completions.create({
+    const completion = await client.chat.completions.create({
       model: MODEL,
       max_tokens: 1024,
-      messages,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Você é um assistente do Bah!Flow que responde perguntas do admin sobre os dados do workspace usando APENAS as funções disponíveis. NUNCA escreva SQL nem invente nomes de função. Se a pergunta não for respondível com nenhuma função, diga isso explicitamente em português. Use list_members / list_projects pra descobrir UUIDs antes de chamar funções que pedem ID.',
+        },
+        { role: 'user', content: question },
+      ],
+      tools,
+      tool_choice: 'auto',
     });
 
-    const aiText = completion.choices[0]?.message?.content || '';
+    const msg = completion.choices[0]?.message;
+    const toolCalls = msg?.tool_calls ?? [];
 
-    // Tenta parsear JSON com SQL
-    const jsonMatch = aiText.match(/\{[\s\S]*"sql"[\s\S]*\}/);
-    if (!jsonMatch) {
-      // Resposta em texto normal
-      return NextResponse.json({ type: 'text', text: aiText });
+    // Executa cada tool call. Função desconhecida ou args inválidos viram
+    // erro estruturado (não derrubam o request).
+    const results: Array<{
+      name: string;
+      args?: Record<string, unknown>;
+      result?: { columns: string[]; rows: unknown[][] };
+      error?: string;
+    }> = [];
+
+    for (const tc of toolCalls) {
+      if (tc.type !== 'function') continue;
+      const fnName = tc.function.name;
+      const def = findCatalogEntry(fnName);
+      if (!def) {
+        results.push({ name: fnName, error: 'Função desconhecida' });
+        continue;
+      }
+
+      let parsedArgs: Record<string, unknown> = {};
+      try {
+        parsedArgs = tc.function.arguments
+          ? (JSON.parse(tc.function.arguments) as Record<string, unknown>)
+          : {};
+      } catch {
+        results.push({ name: fnName, error: 'Argumentos inválidos (JSON malformado)' });
+        continue;
+      }
+
+      try {
+        const out = await def.execute(parsedArgs, auth.workspace_id);
+        results.push({ name: fnName, args: parsedArgs, result: out });
+      } catch (err) {
+        // NUNCA vaza err.message pro cliente (pode conter detalhes de schema/conn)
+        console.error(`[ai-chat] erro executando ${fnName}:`, err);
+        results.push({
+          name: fnName,
+          args: parsedArgs,
+          error: 'Erro ao executar função',
+        });
+      }
     }
 
-    let parsed: { sql: string; explanation: string };
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      return NextResponse.json({ type: 'text', text: aiText });
-    }
+    // Audit log: registra a pergunta + funções chamadas (sem rows pra não inflar).
+    // Fire-and-forget — auditoria não pode quebrar o request.
+    const meta = extractRequestMeta(request);
+    void logAudit({
+      workspaceId: auth.workspace_id,
+      actorId: auth.id,
+      action: 'ai_chat.query',
+      entityType: 'ai_chat',
+      entityId: null,
+      changes: {
+        question,
+        functions_called: results.map((r) => ({
+          name: r.name,
+          ok: !r.error,
+          error: r.error,
+        })),
+      },
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
 
-    const sql = parsed.sql.trim();
-    // Validações de segurança
-    const upperSql = sql.toUpperCase();
-    if (!upperSql.trim().startsWith('SELECT')) {
-      return NextResponse.json({ type: 'text', text: 'Só consigo executar consultas SELECT. ' + parsed.explanation });
-    }
-    const dangerous = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|EXECUTE)\b/i;
-    if (dangerous.test(sql)) {
-      return NextResponse.json({ type: 'text', text: 'A consulta gerada teve comandos não permitidos. Tente reformular.' });
-    }
-    // Tabelas permitidas
-    const allowedTables = /\b(tickets_full|tickets|projects|members|sprints|statuses|services|categories|ticket_types|board_roles|project_roles)\b/i;
-    if (!allowedTables.test(sql)) {
-      return NextResponse.json({ type: 'text', text: 'A consulta acessa tabelas não permitidas.' });
-    }
-
-    // Adiciona LIMIT 100 se não tiver
-    let safeSql = sql.replace(/;\s*$/, '');
-    if (!/\bLIMIT\b/i.test(safeSql)) {
-      safeSql += ' LIMIT 100';
-    }
-
-    try {
-      const result = await query(safeSql);
-      return NextResponse.json({
-        type: 'sql',
-        explanation: parsed.explanation,
-        sql: safeSql,
-        rows: result.rows.slice(0, 100),
-        rowCount: result.rowCount,
-      });
-    } catch (sqlErr) {
-      return NextResponse.json({
-        type: 'sql_error',
-        explanation: parsed.explanation,
-        sql: safeSql,
-        error: sqlErr instanceof Error ? sqlErr.message : String(sqlErr),
-      });
-    }
+    return NextResponse.json({
+      text: msg?.content ?? '',
+      function_results: results,
+      catalog_size: QUERY_CATALOG.length,
+    });
   } catch (err) {
     console.error('POST /api/ai/chat error:', err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Erro interno' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

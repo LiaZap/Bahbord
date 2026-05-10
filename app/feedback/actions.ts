@@ -3,6 +3,7 @@
 import { headers } from 'next/headers';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export interface FeedbackPayload {
   customer_email: string;
@@ -31,6 +32,22 @@ const MAX_NAME_LENGTH = 200;
  */
 export async function submitFeedback(payload: FeedbackPayload): Promise<FeedbackResult> {
   try {
+    // Rate limit por IP — Server Action é POST do client, vulnerável a abuso.
+    // 5/min é apertado de propósito (feedback genuíno não vem em rajadas);
+    // bloqueia spam sem incomodar usuário real.
+    const hdrs = await headers();
+    const rlIp =
+      hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      hdrs.get('x-real-ip') ||
+      'unknown';
+    const rl = checkRateLimit(`feedback-action:${rlIp}`, 5, 60_000);
+    if (!rl.ok) {
+      return {
+        ok: false,
+        error: `Muitas tentativas. Aguarde ${rl.retryAfter ?? 60}s e tente novamente.`,
+      };
+    }
+
     const customerEmail = (payload.customer_email ?? '').trim();
     const customerName = (payload.customer_name ?? '').trim();
     const requestText = (payload.request_text ?? '').trim();
@@ -66,11 +83,8 @@ export async function submitFeedback(payload: FeedbackPayload): Promise<Feedback
     );
 
     const created = inserted.rows[0];
-    const hdrs = await headers();
-    const ipAddress =
-      hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      hdrs.get('x-real-ip') ||
-      null;
+    // Reaproveita `hdrs` do bloco de rate limit acima (evita 2x await headers()).
+    const ipAddress = rlIp === 'unknown' ? null : rlIp;
     const userAgent = hdrs.get('user-agent') || null;
 
     await logAudit({

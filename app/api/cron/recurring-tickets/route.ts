@@ -1,8 +1,21 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { query } from '@/lib/db';
 import { computeNextRunAt, renderTitleTemplate } from '@/lib/recurring';
 import { safeEqual } from '@/lib/crypto-utils';
 import { createTicket, type TicketPriority } from '@/lib/tickets';
+
+/**
+ * Sentry Cron monitoring (Fase 7.3) — ver comentário equivalente em
+ * /api/cron/sla-check/route.ts. No-op gracioso quando DSN não definido.
+ */
+const MONITOR_SLUG = 'cron-recurring-tickets';
+const MONITOR_CONFIG = {
+  schedule: { type: 'crontab', value: '*/15 * * * *' },
+  checkinMargin: 5,
+  maxRuntime: 10,
+  timezone: 'UTC',
+} as const;
 
 /**
  * Cron worker — chamado externamente (Vercel Cron, cron-job.org, etc.)
@@ -66,7 +79,7 @@ async function resolveDefaultStatusId(workspaceId: string): Promise<string | nul
   }
 }
 
-export async function POST(request: Request) {
+async function runRecurringTickets(request: Request): Promise<NextResponse> {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -163,7 +176,15 @@ export async function POST(request: Request) {
   }
 }
 
+export async function POST(request: Request): Promise<NextResponse> {
+  return Sentry.withMonitor(
+    MONITOR_SLUG,
+    () => runRecurringTickets(request),
+    MONITOR_CONFIG,
+  );
+}
+
 // Permite GET pra healthcheck via Vercel Cron (que usa GET por padrão).
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   return POST(request);
 }

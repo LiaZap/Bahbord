@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { safeEqual } from '@/lib/crypto-utils';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { extractRequestMeta } from '@/lib/audit';
 
 /**
  * POST /api/webhooks/inbox/slack
@@ -47,6 +49,18 @@ interface SlackPayload {
 
 export async function POST(request: Request) {
   try {
+    // Rate limit por IP — webhooks Slack legítimos podem ter pequenos bursts
+    // (retries, múltiplos channels). 60 req/min absorve isso e bloqueia abuso.
+    const { ipAddress } = extractRequestMeta(request);
+    const ipKey = ipAddress || 'unknown';
+    const rl = checkRateLimit(`webhook-slack:${ipKey}`, 60, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Rate limit excedido', retryAfter: rl.retryAfter },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } }
+      );
+    }
+
     const expected = process.env.WEBHOOK_SECRET_INBOX;
     const provided = request.headers.get('x-webhook-secret');
     if (!expected) {

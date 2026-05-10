@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
 import { safeEqual } from '@/lib/crypto-utils';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // ----------------------------------------------------------------------------
 // POST /api/webhooks/customer-form
@@ -22,6 +23,18 @@ import { safeEqual } from '@/lib/crypto-utils';
 
 export async function POST(request: Request) {
   try {
+    // Rate limit por IP — webhook de form externo. 30/min absorve uso normal
+    // (form embedável) e bloqueia spam massivo de pedidos falsos.
+    const { ipAddress } = extractRequestMeta(request);
+    const ipKey = ipAddress || 'unknown';
+    const rl = checkRateLimit(`webhook-customer-form:${ipKey}`, 30, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { ok: false, error: 'Rate limit excedido', retryAfter: rl.retryAfter },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter ?? 60) } }
+      );
+    }
+
     const secret = request.headers.get('x-form-secret');
     const expected = process.env.PUBLIC_FORM_SECRET;
 
