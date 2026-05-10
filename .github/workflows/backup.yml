@@ -6,6 +6,9 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -32,3 +35,15 @@ jobs:
         run: |
           chmod +x scripts/backup-db.sh
           ./scripts/backup-db.sh
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          echo "::error::Backup failed - check job logs and S3 sync"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H 'Content-Type: application/json' \
+              --data "{\"text\":\":rotating_light: Backup DB falhou — run ${GITHUB_RUN_ID} (${GITHUB_REPOSITORY})\"}" \
+              "$SLACK_WEBHOOK_URL" || true
+          fi

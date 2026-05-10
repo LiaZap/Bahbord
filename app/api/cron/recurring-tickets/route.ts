@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { computeNextRunAt, renderTitleTemplate } from '@/lib/recurring';
+import { safeEqual } from '@/lib/crypto-utils';
 
 /**
  * Cron worker — chamado externamente (Vercel Cron, cron-job.org, etc.)
@@ -42,8 +43,9 @@ function isAuthorized(request: Request): boolean {
   }
   const headerSecret =
     request.headers.get('x-cron-secret') ||
-    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  return headerSecret === secret;
+    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+    null;
+  return safeEqual(headerSecret, secret);
 }
 
 async function resolveDefaultStatusId(workspaceId: string): Promise<string | null> {

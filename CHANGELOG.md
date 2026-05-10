@@ -5,17 +5,57 @@ Os agrupamentos são por mês — o projeto não usa releases versionados.
 
 ## [Não lançado]
 
-### Added
+### Sprint 5B — i18n + Performance audit (`7b4fe1b`)
+- **next-intl** com cookie strategy (sem URL prefix), 11 namespaces PT/EN, 7 telas migradas (Sidebar, Header, CommandPalette, PersonalTicketList, BoardFilters, InboxList, ProjectUpdatesList).
+- **Locale switcher** em GeneralSettings + endpoint POST `/api/locale`.
+- **16 índices Postgres** (migration 056) + variant CONCURRENTLY pra prod.
+- **Cache TTL 30s** in-memory (`lib/cache.ts`) em `/api/options` e `/api/projects`.
+- **VirtualList** wrapper de react-window pra listas >50 items.
+- **Lazy-loads ssr:false** em TipTap (3 lugares), Recharts, sub-components do TicketDetailView. -200KB no bundle inicial.
+
+### Sprint 5A — Initiatives/Roadmap + Automations Builder (`01c89e2`)
+- **Initiatives** (migration 055): camada acima de projeto, agrupa N projects sob meta com health (on_track/at_risk/off_track). Página `/roadmap` + detalhe `/roadmap/[id]` com breakdown ponderado por weight.
+- **Automation Builder visual**: form em 3 steps (Quando/Se/Faça) em `/settings/automations`. Reusa endpoint /api/automations existente (032).
+
+### Sprint 4 — Polish (workload, spec, customer, empty, mobile) (`1db20cd`)
+- **Workload heatmap** (`/reports/workload`): 5 níveis emerald→amber→rose, tooltip + modal por célula.
+- **Project specs inline** (migration 054): TipTap reusado, optimistic versioning 409, backlinks BAH-X parseados.
+- **Customer requests** (migration 053): badge "X clientes pediram" no card, página `/customer-requests` admin, form público `/feedback` via Server Action.
+- **Empty states ilustrados**: 6 SVGs aplicados em 7 telas.
+- **Mobile responsivo**: board snap horizontal, settings tabs scroll, my-tasks compactado.
+
+### Sprint 3B — Status updates IA + Auto-rollover de sprints (`3d501e7`)
+- **Status updates semanais** (migration 051): cron sexta 17h SP, IA gera resumo do projeto. Tab `/projects/[id]/updates` com PM notes editável.
+- **Sprints auto-rollover** (migration 052): cadência fixa, 3 estratégias (mover/manter/arquivar), botão "Rolar agora" manual. Cron diário 6h SP.
+- **lib/ai-status.ts** + **lib/sprint-rollover.ts** com fallback sem OpenAI.
+
+### Sprint 3A — Triage Inbox IA + SLA escalation (`aaac9c2`)
+- **Triage Inbox** (migration 049): `/inbox` com 3 atalhos teclado (1/2/3), IA classifica priority/projeto/labels/assignee + duplicate check via embeddings. Webhooks `/api/webhooks/inbox/{slack,share-link}`.
+- **SLA escalation** (migration 050): policies por priority + cron `/api/cron/sla-check` dispara Slack 24h antes. Badge no card (verde→amber→vermelho), página `/settings/sla`.
+- **lib/ai-triage.ts** com `classifyAndSave` helper.
+
+### Sprint 2 — Quick Wins (`2ec97f0`)
+- **Snooze de tickets** (migration 045): presets + custom datetime + chip "Snoozed" em /my-tasks.
+- **Dependencies** (migration 046): blocks/blocked_by/relates_to com espelho automático + warning ao concluir bloqueado.
+- **Multi-assignees** (migration 047): avatares stackados, primary marcado, notificação automática.
+- **Cmd+Shift+M global** + chips Hoje/Semana/Atrasados/Tudo com persistência.
+- **Detecção de duplicatas IA** (migration 048): `text-embedding-3-small` + cosine similarity, banner amber no CreateTicketModal.
+
+### Sprint 1 — Light Mode 100% usável (`25d7487`)
+- 9 arquivos refatorados pra tokens CSS vars (`text-primary`, `text-secondary-muted`, etc).
+- Overrides de blue-400/violet em light mode pra contraste AA.
+
+### Anteriores
 - Edição inline da duração no Timesheet e no TimeTracker (`fecf08d`).
+- Coluna "Projetos" em `Settings → Membros` virou botão + popover via portal (`26cdce2`, `8cfbee5`, `1188e9e`).
+- Adicionar membro a múltiplos projetos (`b64d8ab`).
+- Popover do menu de Projetos com separador `|` (`660c04d`).
+- Timesheet filtra por projeto/board do contexto (`45e6cf1`).
 
-### Changed
-- Coluna "Projetos" em `Settings → Membros` virou botão + popover via portal,
-  resolvendo cortes por `overflow-hidden` (`26cdce2`, `8cfbee5`, `1188e9e`).
-- Adicionar membro a múltiplos projetos diretamente pela section (`b64d8ab`).
-
-### Fixed
-- Popover do menu de Projetos não abria por causa de separador `|` na key (`660c04d`).
-- Timesheet filtra por projeto/board do contexto, não pela visão geral (`45e6cf1`).
+### Auditoria + Hotfixes (atual)
+- **Fase 0 (Higiene)**: 24 arquivos lixo removidos da raiz, `.dockerignore` estendido, colisão 056 resolvida (`db/manual/perf_indexes_concurrent.sql`).
+- **Fase 1 (Segurança P0)**: 15 arquivos. PATCH /api/tickets validando auth+hasTicketAccess, subtasks/attachments/upload/webhook-subscriptions com RBAC, Clerk webhook com svix HMAC, stack trace removido, ALTER TABLE em request removido, cross-tenant via member_id bloqueado, `lib/crypto-utils.ts` (timingSafeEqual) em 8 endpoints.
+- **Fase 2 (Operacional)**: `/api/health`, HEALTHCHECK no Dockerfile, `.github/workflows/cron.yml` (4 schedules), `npm test` no CI, `next lint` blocking, `permissions:` + `concurrency:` nos workflows, backup com notify on failure, `docs/CRON.md`.
 
 ---
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { safeEqual } from '@/lib/crypto-utils';
 
 /**
  * POST /api/webhooks/inbox/slack
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
         { status: 503 }
       );
     }
-    if (provided !== expected) {
+    if (!safeEqual(provided, expected)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

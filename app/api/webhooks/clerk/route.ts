@@ -1,32 +1,54 @@
 import { NextResponse } from 'next/server';
+import { Webhook } from 'svix';
 import { query } from '@/lib/db';
 
 // Clerk webhook to sync user data
 // Configure in Clerk Dashboard → Webhooks → Add Endpoint
 // URL: https://your-domain.com/api/webhooks/clerk
 // Events: user.created, user.updated, user.deleted
+//
+// Validação HMAC via svix SDK (Clerk usa svix internamente).
+// CLERK_WEBHOOK_SECRET vem do dashboard Clerk → Webhooks → Signing Secret.
+
+interface ClerkUserPayload {
+  type: 'user.created' | 'user.updated' | 'user.deleted';
+  data: {
+    id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    email_addresses?: Array<{ email_address: string }>;
+  };
+}
 
 export async function POST(request: Request) {
   try {
-    // Verify webhook secret
     const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = request.headers.get('svix-signature');
-      const timestamp = request.headers.get('svix-timestamp');
-      const svixId = request.headers.get('svix-id');
-
-      if (!signature || !timestamp || !svixId) {
-        return NextResponse.json({ error: 'Missing webhook headers' }, { status: 401 });
-      }
-
-      // Basic timestamp validation (prevent replay attacks > 5 min)
-      const ts = parseInt(timestamp);
-      if (Math.abs(Date.now() / 1000 - ts) > 300) {
-        return NextResponse.json({ error: 'Webhook timestamp expired' }, { status: 401 });
-      }
+    if (!webhookSecret) {
+      console.error('Clerk webhook: CLERK_WEBHOOK_SECRET não configurado');
+      return NextResponse.json({ error: 'Webhook não configurado' }, { status: 503 });
     }
 
-    const body = await request.json();
+    const svixId = request.headers.get('svix-id');
+    const svixTimestamp = request.headers.get('svix-timestamp');
+    const svixSignature = request.headers.get('svix-signature');
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      return NextResponse.json({ error: 'Missing webhook headers' }, { status: 401 });
+    }
+
+    const rawBody = await request.text();
+    const wh = new Webhook(webhookSecret);
+    let body: ClerkUserPayload;
+    try {
+      body = wh.verify(rawBody, {
+        'svix-id': svixId,
+        'svix-timestamp': svixTimestamp,
+        'svix-signature': svixSignature,
+      }) as ClerkUserPayload;
+    } catch (err) {
+      console.error('Clerk webhook: assinatura inválida', err);
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
     const { type, data } = body;
 
     switch (type) {

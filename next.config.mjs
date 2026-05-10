@@ -10,8 +10,9 @@ const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   eslint: {
-    // Lint não bloqueia build (rodar manual com `npm run lint`)
-    ignoreDuringBuilds: true,
+    // Lint bloqueia build — CI também roda `next lint` standalone, mas
+    // habilitar aqui garante que builds locais e Docker peguem regressões.
+    ignoreDuringBuilds: false,
   },
   experimental: {
     typedRoutes: true

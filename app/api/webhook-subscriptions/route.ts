@@ -4,10 +4,17 @@ import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET() {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth || !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
     const workspaceId = await getDefaultWorkspaceId();
+    // Importante: NUNCA retornar a coluna `secret` em listagens. Substituímos
+    // por um booleano `has_secret` pra UI saber se há segredo configurado
+    // sem expor o valor (evita leak via DevTools / logs / cache).
     const result = await query(
-      `SELECT id, url, secret, events, is_active, created_at
+      `SELECT id, url, (secret IS NOT NULL AND secret <> '') AS has_secret,
+              events, is_active, created_at
        FROM webhook_subscriptions
        WHERE workspace_id = $1
        ORDER BY created_at DESC`,

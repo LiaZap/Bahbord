@@ -7,9 +7,18 @@ import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
 export async function GET(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get('member_id');
+
+    // Bloqueia cross-tenant: usuário só pode passar o próprio member_id,
+    // exceto admin/owner que pode consultar em nome de outros.
+    if (memberId && memberId !== auth.id && !isAdmin(auth.role)) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
     const workspaceId = await getDefaultWorkspaceId();
 
     const baseSelect = `

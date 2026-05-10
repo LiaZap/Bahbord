@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   } catch (err) {
     console.error('POST /api/notifications/test error:', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Erro interno', stack: err instanceof Error ? err.stack : undefined },
+      { error: 'Erro interno' },
       { status: 500 }
     );
   }

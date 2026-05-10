@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { notifyMember } from '@/lib/notifications';
 import { rolloverSprint } from '@/lib/sprint-rollover';
+import { safeEqual } from '@/lib/crypto-utils';
 
 /**
  * Cron worker — rola sprints expiradas com `auto_rollover=true` para a
@@ -52,8 +53,9 @@ function isAuthorized(request: Request): boolean {
   }
   const headerSecret =
     request.headers.get('x-cron-secret') ||
-    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  return headerSecret === secret;
+    request.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+    null;
+  return safeEqual(headerSecret, secret);
 }
 
 function appUrl(): string {

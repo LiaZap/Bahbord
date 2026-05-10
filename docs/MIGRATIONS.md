@@ -1,10 +1,18 @@
 # Migrations
 
-44 migrations sequenciais em `db/0XX_*.sql`. Aplicação manual — não há
+**56 migrations** sequenciais em `db/0XX_*.sql` (045-056 adicionadas nas
+Sprints 1-5 — snooze, ticket_relations, multi_assignees, ticket_embeddings,
+triage_inbox, sla, project_updates, sprint_auto_rollover, customer_requests,
+project_specs, initiatives, perf_indexes). Aplicação manual — não há
 ferramenta dedicada (Prisma migrate, Knex, etc). Todas as migrations são
 **idempotentes**: usam `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD
 COLUMN IF NOT EXISTS`, e blocos `DO $$ BEGIN ... EXCEPTION WHEN
 duplicate_object THEN NULL; END $$;` quando precisam criar tipos/índices.
+
+**Variant CONCURRENTLY** (`db/manual/perf_indexes_concurrent.sql`):
+versão do 056 pra rodar em produção sem bloquear escritas. Roda fora do
+loop padrão (script à parte), porque `CREATE INDEX CONCURRENTLY` não pode
+estar em transação.
 
 A ordem **importa** — algumas migrations dependem de colunas/tabelas
 criadas pelas anteriores.
@@ -100,6 +108,19 @@ para dev local.
 | 042 | `042_recurring_tickets.sql` | Tabela `recurring_tickets` (cron-driven). |
 | 043 | `043_workspace_onboarded.sql` | `onboarded_at` em `workspaces` (gate do wizard). |
 | 044 | `044_saved_views.sql` | Saved views — combinação de filtros como atalho na sidebar. |
+| 045 | `045_snooze.sql` | Coluna `tickets.snoozed_until` + recreate da view `tickets_full` com `snoozed_until`. |
+| 046 | `046_ticket_relations.sql` | Tabela `ticket_relations` (blocks/blocked_by/relates_to) com UNIQUE + CHECK anti self-ref. |
+| 047 | `047_multi_assignees.sql` | Tabela `ticket_assignees` (many-to-many) + backfill do `tickets.assignee_id` legado como `is_primary`. |
+| 048 | `048_ticket_embeddings.sql` | Tabela `ticket_embeddings` (JSONB de 1536 dims do `text-embedding-3-small`). |
+| 049 | `049_triage_inbox.sql` | Tabela `triage_inbox` + dedup UNIQUE (workspace, source, source_external_id). |
+| 050 | `050_sla.sql` | Tabela `sla_policies` + colunas `sla_due_at`/`sla_alert_sent_at` em `tickets` + função `compute_ticket_sla_due_at()` + 2 triggers + recreate da view. |
+| 051 | `051_project_updates.sql` | Tabela `project_updates` (status semanal por projeto) com UNIQUE(project, period). |
+| 052 | `052_sprint_auto_rollover.sql` | 5 colunas em `sprints` (auto_rollover, cadence_days, rollover_strategy, parent_sprint_id, rolled_over_at). |
+| 053 | `053_customer_requests.sql` | Tabela `customer_requests` (linka feedback externo a tickets, source enum). |
+| 054 | `054_project_specs.sql` | Tabelas `project_specs` (rich text) + `project_spec_backlinks` (BAH-X parser). |
+| 055 | `055_initiatives.sql` | Tabelas `initiatives` + `initiative_projects` (com weight) — camada acima de projeto. |
+| 056 | `056_perf_indexes.sql` | 16 índices de perf (assignee_active, project_status, sla_due_at, snoozed_until, audit, customer_requests_unresolved, etc). |
+| 056 | `manual/perf_indexes_concurrent.sql` | **Variant CONCURRENTLY pra produção** — fora do loop padrão. Roda em script separado. |
 
 ## Convenções
 

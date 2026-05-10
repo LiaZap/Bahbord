@@ -1,0 +1,74 @@
+name: Cron jobs
+
+on:
+  schedule:
+    # SLA check: a cada 30 min
+    - cron: '*/30 * * * *'
+    # Sprint rollover: diário 9h UTC (= 6h America/Sao_Paulo)
+    - cron: '0 9 * * *'
+    # Project updates: sexta 20h UTC (= 17h America/Sao_Paulo)
+    - cron: '0 20 * * 5'
+    # Recurring tickets: a cada 15 min
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: 'Endpoint pra disparar manualmente'
+        required: true
+        type: choice
+        options:
+          - sla-check
+          - sprint-rollover
+          - project-updates
+          - recurring-tickets
+
+permissions:
+  contents: read
+
+# Não cancela schedules em andamento (pode duplicar trabalho), só serializa
+# por schedule. workflow_dispatch fica sempre permitido (group por endpoint).
+concurrency:
+  group: cron-${{ github.event.schedule || github.event.inputs.endpoint }}
+  cancel-in-progress: false
+
+jobs:
+  fire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Pick endpoint
+        id: pick
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "endpoint=${{ inputs.endpoint }}" >> "$GITHUB_OUTPUT"
+          else
+            case "${{ github.event.schedule }}" in
+              "*/30 * * * *") echo "endpoint=sla-check"          >> "$GITHUB_OUTPUT" ;;
+              "0 9 * * *")    echo "endpoint=sprint-rollover"    >> "$GITHUB_OUTPUT" ;;
+              "0 20 * * 5")   echo "endpoint=project-updates"    >> "$GITHUB_OUTPUT" ;;
+              "*/15 * * * *") echo "endpoint=recurring-tickets"  >> "$GITHUB_OUTPUT" ;;
+              *)
+                echo "::error::Schedule não mapeado: ${{ github.event.schedule }}"
+                exit 1
+                ;;
+            esac
+          fi
+
+      - name: Fire ${{ steps.pick.outputs.endpoint }}
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ENDPOINT: ${{ steps.pick.outputs.endpoint }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "::error::APP_URL ou CRON_SECRET não configurados nos secrets do repo"
+            exit 1
+          fi
+          echo "Disparando POST $APP_URL/api/cron/$ENDPOINT"
+          curl -fsS -X POST "$APP_URL/api/cron/$ENDPOINT" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --max-time 600 \
+            --retry 2 \
+            --retry-delay 5 \
+            --retry-connrefused

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { safeEqual } from '@/lib/crypto-utils';
 
 // ----------------------------------------------------------------------------
 // POST /api/webhooks/customer-form
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       // Configuração ausente -> rejeita (evita aceitar form com secret vazio)
       return NextResponse.json({ ok: false, error: 'Webhook não configurado' }, { status: 503 });
     }
-    if (!secret || secret !== expected) {
+    if (!safeEqual(secret, expected)) {
       return NextResponse.json({ ok: false, error: 'Secret inválido' }, { status: 401 });
     }
 

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
+import { hasTicketAccess } from '@/lib/access-check';
 
 export async function GET(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const ticketId = searchParams.get('ticket_id');
@@ -12,6 +14,9 @@ export async function GET(request: Request) {
     if (!ticketId) {
       return NextResponse.json({ error: 'ticket_id obrigatório' }, { status: 400 });
     }
+
+    const allowed = await hasTicketAccess(auth, ticketId);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     const result = await query(
       `SELECT s.id, s.title, s.is_done AS is_completed, s.position, s.created_at, s.completed_at
@@ -30,7 +35,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const body = await request.json();
     const { ticket_id, title } = body;
@@ -38,6 +44,9 @@ export async function POST(request: Request) {
     if (!ticket_id || !title?.trim()) {
       return NextResponse.json({ error: 'ticket_id e title são obrigatórios' }, { status: 400 });
     }
+
+    const allowed = await hasTicketAccess(auth, ticket_id);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     const posResult = await query(
       `SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM subtasks WHERE ticket_id = $1`,
@@ -61,7 +70,8 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const body = await request.json();
     const { id, is_completed, title, position } = body;
@@ -69,6 +79,17 @@ export async function PATCH(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
+
+    // Resolve ticket_id da subtask para checar acesso ao ticket pai
+    const subRes = await query<{ ticket_id: string }>(
+      `SELECT ticket_id FROM subtasks WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!subRes.rows[0]) {
+      return NextResponse.json({ error: 'Subtask não encontrada' }, { status: 404 });
+    }
+    const allowed = await hasTicketAccess(auth, subRes.rows[0].ticket_id);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     const sets: string[] = [];
     const params: unknown[] = [];
@@ -117,7 +138,8 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -125,6 +147,16 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
+
+    const subRes = await query<{ ticket_id: string }>(
+      `SELECT ticket_id FROM subtasks WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!subRes.rows[0]) {
+      return NextResponse.json({ error: 'Subtask não encontrada' }, { status: 404 });
+    }
+    const allowed = await hasTicketAccess(auth, subRes.rows[0].ticket_id);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     await query(`DELETE FROM subtasks WHERE id = $1`, [id]);
     return NextResponse.json({ ok: true });

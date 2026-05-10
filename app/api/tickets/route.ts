@@ -6,6 +6,7 @@ import { createNotification } from '@/lib/notifications';
 import { runAutomations } from '@/lib/automations';
 import { createTicketSchema } from '@/lib/validators';
 import { upsertTicketEmbedding } from '@/lib/embeddings';
+import { hasTicketAccess } from '@/lib/access-check';
 
 export async function GET(request: Request) {
   try {
@@ -123,7 +124,8 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const body = await request.json();
     const ticketId = body.id as string | undefined;
@@ -132,6 +134,9 @@ export async function PATCH(request: Request) {
     if (!ticketId || !statusKey) {
       return NextResponse.json({ error: 'Missing ticket id or status_key' }, { status: 400 });
     }
+
+    const allowed = await hasTicketAccess(auth, ticketId);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     // Map status_key to search patterns (flexible matching)
     const statusPatterns: Record<string, string[]> = {
@@ -157,8 +162,6 @@ export async function PATCH(request: Request) {
     if (!statusResult.rows[0]) {
       return NextResponse.json({ error: `Nenhum status encontrado para "${statusKey}"` }, { status: 404 });
     }
-
-    console.log(`Drag: ticket ${ticketId} → status "${statusResult.rows[0].name}" (${statusResult.rows[0].id})`);
 
     const result = await query(
       `UPDATE tickets

@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { safeEqual } from '@/lib/crypto-utils';
 
 // ----------------------------------------------------------------------------
 // /api/customer-requests
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
     // -------- AUTH: público com secret OU membro autenticado --------
     const publicSecret = request.headers.get('x-public-form-secret');
     const expectedSecret = process.env.PUBLIC_FORM_SECRET;
-    const isPublic = !!(publicSecret && expectedSecret && publicSecret === expectedSecret);
+    const isPublic = !!(expectedSecret && safeEqual(publicSecret, expectedSecret));
 
     let workspaceId: string | null = null;
     let actorId: string | null = null;

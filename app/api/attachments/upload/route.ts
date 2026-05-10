@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { query, getDefaultMemberId } from '@/lib/db';
 import { isDriveConfigured, uploadToDrive, getTicketFolderId } from '@/lib/google-drive';
 import { getAuthMember } from '@/lib/api-auth';
+import { hasTicketAccess } from '@/lib/access-check';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
@@ -10,6 +11,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -18,6 +20,9 @@ export async function POST(request: Request) {
     if (!file || !ticketId) {
       return NextResponse.json({ error: 'file e ticket_id são obrigatórios' }, { status: 400 });
     }
+
+    const allowed = await hasTicketAccess(auth, ticketId);
+    if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     let fileUrl: string | null = null;

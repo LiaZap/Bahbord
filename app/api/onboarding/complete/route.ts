@@ -9,9 +9,9 @@ import { logAudit, extractRequestMeta } from '@/lib/audit';
  * Marca o workspace atual como tendo concluído o wizard de onboarding.
  * Apenas owner/admin podem chamar.
  *
- * Roda o ALTER TABLE de forma idempotente para garantir que a coluna
- * `onboarded_at` exista mesmo que a migration `db/043_workspace_onboarded.sql`
- * ainda não tenha sido aplicada manualmente no banco.
+ * A coluna `onboarded_at` é criada pela migration `db/043_workspace_onboarded.sql`.
+ * Aplicar a migration formalmente — não rodamos DDL em request (P0 de
+ * segurança: removido pra evitar superfície de ataque/race condition).
  */
 export async function POST(request: Request) {
   try {
@@ -19,11 +19,6 @@ export async function POST(request: Request) {
     if (!auth || !isAdmin(auth.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
-
-    // Garante a coluna (idempotente). Migration 043 faz isso também.
-    await query(
-      `ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS onboarded_at TIMESTAMPTZ`
-    );
 
     const wsId = await getDefaultWorkspaceId();
     const result = await query<{ id: string; onboarded_at: string }>(
