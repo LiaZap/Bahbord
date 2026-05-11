@@ -1,12 +1,15 @@
 /**
- * Next.js instrumentation hook (chamado pelo `instrumentationHook: true` em
- * next.config.mjs). Sem este arquivo, Next 14 com Sentry sai silenciosamente
- * após `Ready in Xms` — container fica em crash loop sem stack trace.
+ * Next.js instrumentation hook — necessário pelo experimental.instrumentationHook
+ * que o withSentryConfig liga automaticamente. Sem este arquivo, container saía
+ * silencioso após "Ready in Xms".
  *
- * O `register()` é invocado UMA vez no boot do server. Carregamos os configs
- * de Sentry só no runtime correspondente (Node ou Edge).
+ * Sentry SDK desabilitado temporariamente em runtime pra eliminar suspeita de
+ * crash em boot. Sentry build options continuam (source maps), mas init não
+ * roda em runtime. Reabilitar via SENTRY_RUNTIME_ENABLED=1.
  */
 export async function register() {
+  if (process.env.SENTRY_RUNTIME_ENABLED !== '1') return;
+
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./sentry.server.config');
   }
