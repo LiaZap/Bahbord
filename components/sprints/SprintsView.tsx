@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Plus,
@@ -12,6 +13,7 @@ import {
   Trash2,
   Repeat,
   RotateCw,
+  ArrowRightCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils/cn';
@@ -55,6 +57,21 @@ interface Project {
   name: string;
 }
 
+interface SprintTicket {
+  id: string;
+  ticket_key: string;
+  title: string;
+  priority: string | null;
+  status_name: string | null;
+  status_color: string | null;
+  is_done: boolean | null;
+  assignee_name: string | null;
+  assignee_avatar: string | null;
+  type_icon: string | null;
+  type_color: string | null;
+  due_date: string | null;
+}
+
 const STRATEGY_LABEL: Record<RolloverStrategy, string> = {
   move_incomplete: 'Mover incompletos',
   keep_in_place: 'Manter onde estão',
@@ -96,6 +113,12 @@ export default function SprintsView() {
     useState<RolloverStrategy>('move_incomplete');
 
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Tickets de cada sprint (lazy fetch quando expande)
+  const [sprintTickets, setSprintTickets] = useState<Record<string, SprintTicket[]>>({});
+  const [ticketsLoading, setTicketsLoading] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Record<string, Set<string>>>({});
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   const fetchSprints = useCallback(async () => {
     try {
@@ -291,6 +314,99 @@ export default function SprintsView() {
     }
   }
 
+  const fetchSprintTickets = useCallback(async (sprintId: string) => {
+    setTicketsLoading((prev) => ({ ...prev, [sprintId]: true }));
+    try {
+      const res = await fetch(`/api/sprints/${sprintId}/tickets`);
+      if (res.ok) {
+        const data = await res.json();
+        setSprintTickets((prev) => ({ ...prev, [sprintId]: data.tickets || [] }));
+      }
+    } catch (err) {
+      console.error('Erro ao carregar tickets da sprint:', err);
+    } finally {
+      setTicketsLoading((prev) => ({ ...prev, [sprintId]: false }));
+    }
+  }, []);
+
+  function toggleExpanded(sprintId: string) {
+    const isOpening = expanded !== sprintId;
+    setExpanded(isOpening ? sprintId : null);
+    if (isOpening && !sprintTickets[sprintId]) {
+      fetchSprintTickets(sprintId);
+    }
+  }
+
+  function toggleTicketSelected(sprintId: string, ticketId: string) {
+    setSelected((prev) => {
+      const cur = new Set(prev[sprintId] || []);
+      if (cur.has(ticketId)) cur.delete(ticketId);
+      else cur.add(ticketId);
+      return { ...prev, [sprintId]: cur };
+    });
+  }
+
+  function findNextSprint(sprint: Sprint): Sprint | null {
+    // Mesmo projeto, não-ativa, não-concluída, ordenada por created_at ASC
+    const candidates = sprints
+      .filter(
+        (s) =>
+          s.id !== sprint.id &&
+          s.project_id === sprint.project_id &&
+          !s.is_active &&
+          !s.is_completed
+      )
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return candidates[0] || null;
+  }
+
+  async function handleMoveSelectedToNext(sprint: Sprint) {
+    const sel = selected[sprint.id];
+    if (!sel || sel.size === 0) {
+      toast('Selecione ao menos um ticket pra mover.', 'warning');
+      return;
+    }
+    const next = findNextSprint(sprint);
+    if (!next) {
+      toast('Não há próxima sprint configurada pra este projeto.', 'warning');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Mover tickets?',
+      message: `Mover ${sel.size} ticket(s) pra "${next.name}"?`,
+      confirmText: 'Mover',
+      variant: 'info',
+    });
+    if (!ok) return;
+
+    setMovingId(sprint.id);
+    try {
+      const ids = Array.from(sel);
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch(`/api/tickets/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sprint_id: next.id }),
+          })
+        )
+      );
+      const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.ok)).length;
+      const moved = ids.length - failed;
+      if (moved > 0) toast(`${moved} ticket(s) movido(s) pra "${next.name}".`, 'success');
+      if (failed > 0) toast(`${failed} ticket(s) falharam ao mover.`, 'error');
+      setSelected((prev) => ({ ...prev, [sprint.id]: new Set() }));
+      // Refetch tickets das duas sprints + contadores
+      await Promise.all([
+        fetchSprintTickets(sprint.id),
+        fetchSprintTickets(next.id),
+        fetchSprints(),
+      ]);
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   function startEditRollover(sprint: Sprint) {
     setEditingId(sprint.id);
     setEditAutoRollover(sprint.auto_rollover);
@@ -365,7 +481,7 @@ export default function SprintsView() {
       <div key={sprint.id} className="rounded-lg border border-border/40 bg-surface2 overflow-hidden">
         <div
           className="flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-surface"
-          onClick={() => setExpanded(isExpanded ? null : sprint.id)}
+          onClick={() => toggleExpanded(sprint.id)}
         >
           {isExpanded ? (
             <ChevronDown size={14} className="text-tertiary-muted" />
@@ -482,6 +598,109 @@ export default function SprintsView() {
 
             {/* Burndown chart - only for active sprints */}
             {sprint.is_active && <SprintBurndown sprintId={sprint.id} />}
+
+            {/* Backlog da sprint (tickets) */}
+            {(() => {
+              const tickets = sprintTickets[sprint.id];
+              const isLoading = ticketsLoading[sprint.id];
+              const sel = selected[sprint.id] || new Set<string>();
+              const nextSprint = findNextSprint(sprint);
+              const canMove = !sprint.is_completed && nextSprint !== null;
+              return (
+                <div className="rounded-md border border-[var(--card-border)] bg-[var(--overlay-subtle)]">
+                  <div className="flex items-center justify-between gap-2 border-b border-border/30 px-3 py-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-tertiary-muted">
+                      Backlog ({tickets ? tickets.length : 0} ticket{tickets && tickets.length === 1 ? '' : 's'})
+                    </span>
+                    {canMove && tickets && tickets.length > 0 && (
+                      <button
+                        disabled={sel.size === 0 || movingId === sprint.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveSelectedToNext(sprint);
+                        }}
+                        className="flex items-center gap-1.5 rounded bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent transition hover:bg-accent/25 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={nextSprint ? `Mover pra ${nextSprint.name}` : ''}
+                      >
+                        <ArrowRightCircle size={12} />
+                        {movingId === sprint.id
+                          ? 'Movendo...'
+                          : `Mover ${sel.size || ''} ${sel.size === 1 ? 'ticket' : 'tickets'} → ${nextSprint?.name ?? 'próxima'}`}
+                      </button>
+                    )}
+                  </div>
+                  {isLoading ? (
+                    <div className="px-3 py-3 text-[11px] text-tertiary-muted">Carregando tickets...</div>
+                  ) : !tickets || tickets.length === 0 ? (
+                    <div className="px-3 py-3 text-[11px] text-tertiary-muted">Nenhum ticket nesta sprint.</div>
+                  ) : (
+                    <ul className="divide-y divide-border/20">
+                      {tickets.map((t) => {
+                        const isSel = sel.has(t.id);
+                        return (
+                          <li
+                            key={t.id}
+                            className="flex items-center gap-2 px-3 py-1.5 transition hover:bg-surface/40"
+                          >
+                            {canMove && (
+                              <input
+                                type="checkbox"
+                                checked={isSel}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleTicketSelected(sprint.id, t.id);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-3.5 w-3.5 rounded border-[var(--card-border)] text-accent focus:ring-accent"
+                              />
+                            )}
+                            <Link
+                              href={`/ticket/${t.ticket_key}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-mono text-[11px] text-accent hover:underline shrink-0"
+                            >
+                              {t.ticket_key}
+                            </Link>
+                            <span
+                              className={cn(
+                                'flex-1 truncate text-[12px]',
+                                t.is_done ? 'text-tertiary-muted line-through' : 'text-secondary-muted'
+                              )}
+                              title={t.title}
+                            >
+                              {t.title}
+                            </span>
+                            {t.status_name && (
+                              <span
+                                className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                                style={{
+                                  backgroundColor: t.status_color ? `${t.status_color}22` : 'var(--overlay-subtle)',
+                                  color: t.status_color || 'var(--text-secondary)',
+                                }}
+                              >
+                                {t.status_name}
+                              </span>
+                            )}
+                            {t.assignee_name && (
+                              <span className="text-[10px] text-tertiary-muted shrink-0" title={t.assignee_name}>
+                                {t.assignee_name}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {!canMove && tickets && tickets.length > 0 && (
+                    <p className="border-t border-border/20 px-3 py-1.5 text-[10px] text-tertiary-muted">
+                      {sprint.is_completed
+                        ? 'Sprint concluída — tickets não podem mais ser movidos.'
+                        : 'Sem próxima sprint disponível neste projeto. Crie uma nova sprint pra habilitar o move.'}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Auto-rollover edit panel (admin only) */}
             {isAdmin && !sprint.is_completed && (

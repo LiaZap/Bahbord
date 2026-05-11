@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Clock, User, DollarSign } from 'lucide-react';
+import { Clock, User, DollarSign, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface TimeEntry {
@@ -18,6 +18,16 @@ interface TimeEntry {
   member_name: string;
   ticket_key: string;
   ticket_title: string;
+  sprint_id: string | null;
+  sprint_name: string | null;
+}
+
+interface SprintOption {
+  id: string;
+  name: string;
+  is_active: boolean;
+  is_completed: boolean;
+  project_id: string | null;
 }
 
 interface MemberSummary {
@@ -40,11 +50,14 @@ export default function TimesheetView() {
   const [summary, setSummary] = useState<MemberSummary[]>([]);
   const [period, setPeriod] = useState<Period>('7');
   const [billableFilter, setBillableFilter] = useState<BillableFilter>('all');
+  const [sprintId, setSprintId] = useState<string>('');
+  const [sprints, setSprints] = useState<SprintOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [meId, setMeId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [resolvedProjectId, setResolvedProjectId] = useState<string | null>(null);
 
   // Detecta role do usuário
   useEffect(() => {
@@ -106,10 +119,12 @@ export default function TimesheetView() {
           }
         } catch {}
       }
+      setResolvedProjectId(projectId || null);
 
       const params = new URLSearchParams({ period });
       if (projectId) params.set('project_id', projectId);
       else if (boardId) params.set('board_id', boardId);
+      if (sprintId) params.set('sprint_id', sprintId);
 
       const res = await fetch(`/api/timesheet?${params}`);
       if (res.ok) {
@@ -119,9 +134,26 @@ export default function TimesheetView() {
       }
     } catch (err) { console.error('Erro ao carregar timesheet:', err); }
     finally { setLoading(false); }
-  }, [period, boardId, projectIdParam]);
+  }, [period, boardId, projectIdParam, sprintId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Carrega sprints disponíveis (scoped ao projeto quando aplicável)
+  useEffect(() => {
+    const url = resolvedProjectId
+      ? `/api/sprints?project_id=${resolvedProjectId}`
+      : '/api/sprints';
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (Array.isArray(data)) setSprints(data);
+      })
+      .catch(() => {});
+  }, [resolvedProjectId]);
+
+  function handlePrint() {
+    window.print();
+  }
 
   function formatMin(m: number): string {
     const h = Math.floor(m / 60);
@@ -140,16 +172,38 @@ export default function TimesheetView() {
     return true;
   });
 
+  const selectedSprintName = sprintId ? sprints.find((s) => s.id === sprintId)?.name : null;
+
   return (
-    <div className="mx-auto max-w-[1000px] space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-[1000px] space-y-6 print:max-w-none print:text-black timesheet-print-root">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Timesheet</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Total: <span className="font-medium text-white">{formatMin(totalMinutes)}</span> nos ultimos {period} dias
+          <h1 className="text-xl font-bold text-white print:text-black">Timesheet</h1>
+          <p className="mt-1 text-sm text-slate-500 print:text-black">
+            Total: <span className="font-medium text-white print:text-black">{formatMin(totalMinutes)}</span> nos ultimos {period} dias
+            {selectedSprintName && (
+              <> · Sprint: <span className="font-medium text-white print:text-black">{selectedSprintName}</span></>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
+          {/* Sprint filter */}
+          {sprints.length > 0 && (
+            <select
+              value={sprintId}
+              onChange={(e) => setSprintId(e.target.value)}
+              className="rounded-lg border border-border/40 bg-surface px-2.5 py-1.5 text-xs font-medium text-slate-300 outline-none hover:text-white focus:border-accent/60"
+              title="Filtrar por sprint"
+            >
+              <option value="">Todas as sprints</option>
+              {sprints.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.is_active ? ' · Ativa' : s.is_completed ? ' · Concluída' : ''}
+                </option>
+              ))}
+            </select>
+          )}
           {/* Billable filter */}
           <div className="flex items-center gap-1 rounded-lg border border-border/40 bg-surface p-0.5">
             {([
@@ -184,6 +238,15 @@ export default function TimesheetView() {
               </button>
             ))}
           </div>
+          {/* Print / PDF */}
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-surface px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:text-white"
+            title="Imprimir ou salvar como PDF"
+          >
+            <Printer size={13} />
+            Imprimir / PDF
+          </button>
         </div>
       </div>
 

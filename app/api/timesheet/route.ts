@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     const period = searchParams.get('period') || '7';
     const projectId = searchParams.get('project_id');
     const boardId = searchParams.get('board_id');
+    const sprintId = searchParams.get('sprint_id');
 
     const isUuid = (v: string | null) => !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
@@ -36,17 +37,24 @@ export async function GET(request: Request) {
       scopeFilter = ` AND tf.board_id = $${params.length}`;
     }
 
+    let sprintFilter = '';
+    if (isUuid(sprintId)) {
+      params.push(sprintId);
+      sprintFilter = ` AND tf.sprint_id = $${params.length}`;
+    }
+
     const result = await query(
       `SELECT
         te.id, te.description, te.started_at, te.ended_at,
         te.duration_minutes, te.is_running, te.is_billable, te.created_at,
         te.member_id,
         m.display_name AS member_name,
-        tf.ticket_key, tf.title AS ticket_title, tf.project_name
+        tf.ticket_key, tf.title AS ticket_title, tf.project_name,
+        tf.sprint_id, tf.sprint_name
       FROM time_entries te
       LEFT JOIN members m ON m.id = te.member_id
       LEFT JOIN tickets_full tf ON tf.id = te.ticket_id
-      WHERE te.started_at > NOW() - ($1 || ' days')::interval ${memberFilter} ${scopeFilter}
+      WHERE te.started_at > NOW() - ($1 || ' days')::interval ${memberFilter} ${scopeFilter} ${sprintFilter}
       ORDER BY te.started_at DESC`,
       params
     );
@@ -61,7 +69,7 @@ export async function GET(request: Request) {
       FROM time_entries te
       LEFT JOIN members m ON m.id = te.member_id
       LEFT JOIN tickets_full tf ON tf.id = te.ticket_id
-      WHERE te.started_at > NOW() - ($1 || ' days')::interval ${memberFilter} ${scopeFilter}
+      WHERE te.started_at > NOW() - ($1 || ' days')::interval ${memberFilter} ${scopeFilter} ${sprintFilter}
         AND te.is_running = false
       GROUP BY m.display_name
       ORDER BY total_minutes DESC`,
