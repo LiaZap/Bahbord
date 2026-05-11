@@ -1,4 +1,4 @@
-const CACHE = 'bahflow-v1';
+const CACHE = 'bahflow-v2';
 const ASSETS = ['/', '/bahflow-favicon-dark.svg', '/bahflow-logo-dark.svg'];
 
 self.addEventListener('install', (e) => {
