@@ -152,7 +152,15 @@ export default function TimesheetView() {
   }, [resolvedProjectId]);
 
   function handlePrint() {
-    window.print();
+    // Abre página dedicada de relatório com os filtros atuais — auto-dispara
+    // window.print() ao carregar. Layout pronto pra enviar ao cliente.
+    const params = new URLSearchParams();
+    params.set('period', period);
+    if (sprintId) params.set('sprint_id', sprintId);
+    if (projectIdParam) params.set('project_id', projectIdParam);
+    else if (boardId) params.set('board_id', boardId);
+    if (billableFilter !== 'all') params.set('billable', billableFilter);
+    window.open(`/timesheet/print?${params.toString()}`, '_blank', 'noopener');
   }
 
   function formatMin(m: number): string {
