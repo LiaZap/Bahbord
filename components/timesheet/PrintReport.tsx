@@ -32,6 +32,8 @@ interface MemberSummary {
 interface Sprint {
   id: string;
   name: string;
+  start_date: string | null;
+  end_date: string | null;
 }
 
 interface Project {
@@ -50,6 +52,8 @@ export default function PrintReport() {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [summary, setSummary] = useState<MemberSummary[]>([]);
   const [sprintName, setSprintName] = useState<string | null>(null);
+  const [sprintStartDate, setSprintStartDate] = useState<string | null>(null);
+  const [sprintEndDate, setSprintEndDate] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string | null>(null);
   const [workspaceName, setWorkspaceName] = useState<string>('Bah!Flow');
   const [loading, setLoading] = useState(true);
@@ -96,7 +100,11 @@ export default function PrintReport() {
       if (sprintsRes && sprintsRes.ok) {
         const allSprints: Sprint[] = await sprintsRes.json();
         const match = allSprints.find((s) => s.id === sprintId);
-        if (match) setSprintName(match.name);
+        if (match) {
+          setSprintName(match.name);
+          setSprintStartDate(match.start_date);
+          setSprintEndDate(match.end_date);
+        }
       }
 
       if (projectsRes && projectsRes.ok) {
@@ -199,10 +207,17 @@ export default function PrintReport() {
         </div>
       </header>
 
-      {/* TÍTULO */}
+      {/* TÍTULO — usa período da Sprint quando há uma selecionada (ex: Sprint 01 cobre Abril);
+          caso contrário usa o range dos entries ou os últimos N dias. */}
       <section className="report-title">
         <p className="eyebrow">Relatório de Atividades</p>
-        <h1>Horas trabalhadas — últimos {period} dias</h1>
+        <h1>
+          {sprintName ? (
+            <>Horas trabalhadas — {sprintName}</>
+          ) : (
+            <>Horas trabalhadas — últimos {period} dias</>
+          )}
+        </h1>
         {(projectName || sprintName) && (
           <p className="context">
             {projectName && <span>Projeto: <strong>{projectName}</strong></span>}
@@ -210,11 +225,34 @@ export default function PrintReport() {
             {sprintName && <span>Sprint: <strong>{sprintName}</strong></span>}
           </p>
         )}
-        {minDate && maxDate && (
-          <p className="period">
-            Período: {formatDate(minDate.toISOString())} — {formatDate(maxDate.toISOString())}
-          </p>
-        )}
+        {(() => {
+          // Prefere as datas da Sprint (mês de referência do trabalho).
+          // Fallback: range dos entries.
+          const startIso = sprintStartDate || minDate?.toISOString();
+          const endIso = sprintEndDate || maxDate?.toISOString();
+          if (!startIso || !endIso) return null;
+          const start = new Date(startIso);
+          const end = new Date(endIso);
+          const sameMonth =
+            start.getUTCFullYear() === end.getUTCFullYear() &&
+            start.getUTCMonth() === end.getUTCMonth();
+          const monthRef = start.toLocaleDateString('pt-BR', {
+            month: 'long',
+            year: 'numeric',
+          });
+          return (
+            <>
+              <p className="period">
+                Período: {formatDate(startIso)} — {formatDate(endIso)}
+              </p>
+              {sameMonth && (
+                <p className="month-ref">
+                  Referente a <strong>{monthRef.charAt(0).toUpperCase() + monthRef.slice(1)}</strong>
+                </p>
+              )}
+            </>
+          );
+        })()}
       </section>
 
       {/* RESUMO */}
@@ -419,6 +457,15 @@ export default function PrintReport() {
           margin: 4px 0 0;
           font-size: 12px;
           color: #888;
+        }
+        .month-ref {
+          margin: 8px 0 0;
+          font-size: 13px;
+          color: #333;
+        }
+        .month-ref strong {
+          color: #0a0a0a;
+          font-weight: 600;
         }
 
         /* Resumo */
