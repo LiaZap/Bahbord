@@ -522,21 +522,45 @@ select option {
    --------------------------------------------------------------------------- */
 @media print {
   @page { margin: 12mm; }
-  html, body { background: #fff !important; color: #000 !important; }
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
   /* Esconde shell (sidebar, header, abas) — só imprime o conteúdo */
   aside, header, nav, [data-print-hide], .print\:hidden { display: none !important; }
-  main { padding: 0 !important; overflow: visible !important; }
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  /* Remove qualquer scroll/overflow que esteja cortando conteúdo em página única */
   .timesheet-print-root,
   .timesheet-print-root * {
     color: #000 !important;
     background: transparent !important;
     border-color: #ccc !important;
     box-shadow: none !important;
+    overflow: visible !important;
+    max-height: none !important;
   }
   .timesheet-print-root a { color: #1d4ed8 !important; text-decoration: underline; }
   .timesheet-print-root .text-emerald-400,
   .timesheet-print-root .text-emerald-400 * { color: #047857 !important; }
   .timesheet-print-root .text-slate-600.line-through { color: #6b7280 !important; }
-  /* Garante que cada bloco se mantenha junto se possível */
-  .timesheet-print-root > * { break-inside: avoid; }
+
+  /* Summary cards (Horas Efetivas / Nao Cobradas / Membro) ficam juntos
+     numa única "página"; tabela de entries PRECISA quebrar entre páginas. */
+  .timesheet-print-root > .rounded-lg,
+  .timesheet-print-root > div > .rounded-lg {
+    break-inside: avoid;
+  }
+  /* A tabela de registros deve quebrar normalmente — não use break-inside: avoid */
+  .timesheet-print-root .divide-y > div {
+    break-inside: avoid;        /* cada linha não corta no meio */
+    page-break-inside: avoid;
+  }
+  /* Repete cabeçalho da tabela em cada nova página */
+  .timesheet-print-root thead { display: table-header-group; }
 }
