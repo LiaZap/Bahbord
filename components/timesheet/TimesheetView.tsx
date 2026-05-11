@@ -204,6 +204,7 @@ export default function TimesheetView() {
               title="Filtrar por sprint"
             >
               <option value="">Todas as sprints</option>
+              <option value="none">— Sem sprint atribuída —</option>
               {sprints.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

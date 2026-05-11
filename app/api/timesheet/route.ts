@@ -38,7 +38,10 @@ export async function GET(request: Request) {
     }
 
     let sprintFilter = '';
-    if (isUuid(sprintId)) {
+    if (sprintId === 'none') {
+      // Tickets sem sprint atribuída (sprint_id IS NULL)
+      sprintFilter = ` AND tf.sprint_id IS NULL`;
+    } else if (isUuid(sprintId)) {
       params.push(sprintId);
       sprintFilter = ` AND tf.sprint_id = $${params.length}`;
     }

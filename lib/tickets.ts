@@ -147,6 +147,26 @@ export async function createTicket(
   input: CreateTicketInput,
   ctx: CreateTicketContext = {}
 ): Promise<CreatedTicket> {
+  // Auto-atribui sprint ativa do projeto quando ticket é criado sem sprint
+  // explícita. Evita tickets "órfãos" (Sprint: Nenhum) que somem dos filtros
+  // de Timesheet/Backlog/Reports. Se já veio sprint_id no input, respeita.
+  let resolvedSprintId = input.sprint_id ?? null;
+  if (!resolvedSprintId && input.project_id) {
+    try {
+      const activeSprint = await query<{ id: string }>(
+        `SELECT id FROM sprints
+         WHERE project_id = $1 AND is_active = true AND is_completed = false
+         ORDER BY created_at DESC LIMIT 1`,
+        [input.project_id]
+      );
+      if (activeSprint.rows[0]) {
+        resolvedSprintId = activeSprint.rows[0].id;
+      }
+    } catch {
+      // sprints sem coluna is_active (migration antiga) — ignora silenciosamente
+    }
+  }
+
   // 1. INSERT em tickets — síncrono, caller precisa do id de volta
   const insertRes = await query<CreatedTicket>(
     `INSERT INTO tickets (
@@ -185,7 +205,7 @@ export async function createTicket(
       input.priority ?? 'medium',
       input.due_date ?? null,
       input.parent_id ?? null,
-      input.sprint_id ?? null,
+      resolvedSprintId,
       input.client_id ?? null,
       input.project_id ?? null,
       input.board_id ?? null,
