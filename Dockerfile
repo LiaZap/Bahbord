@@ -1,5 +1,5 @@
 FROM node:20-alpine AS base
-# build-rev: 2026-05-11-r2 (force cache invalidation)
+# build-rev: 2026-05-11-r3 (force cache invalidation + remove healthcheck)
 
 # Dependencies
 FROM base AS deps
@@ -51,9 +51,10 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Healthcheck bate em /api/health (200 = ok, 503 = degraded). Usa node em vez
-# de wget/curl porque node:20-alpine não traz nenhum dos dois por padrão.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+# Healthcheck desabilitado temporariamente — estava causando crash loop no
+# EasyPanel mesmo com /api/health retornando 200. Investigando se EasyPanel
+# tem healthcheck próprio que conflita com o Docker HEALTHCHECK.
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+#   CMD node -e "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "server.js"]
