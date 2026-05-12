@@ -98,6 +98,15 @@ Histórico granular de mudanças em tickets/projects.
 | `MONGODB_URI` | não (default `mongodb://localhost:27017`) | String de conexão. | `mongodb+srv://user:pass@cluster.mongodb.net/` |
 | `MONGODB_DB` | não (default `bahjira`) | Nome do database. | `bahflow_audit` |
 
+## Documentação — Credenciais (vault)
+
+Cifragem AES-256-GCM em camada de aplicação para o painel de credenciais
+de páginas de documentação (`/api/docs/credentials`).
+
+| Nome | Obrigatória | Descrição | Exemplo |
+|------|:-----------:|-----------|---------|
+| `DOC_SECRETS_KEY` | sim (pra usar vault de credenciais) | Chave AES-256. Idealmente 32 bytes em base64 (`openssl rand -base64 32`). Se for string qualquer, é derivada via SHA-256. **Trocar a chave invalida todos os secrets existentes.** | `base64-32-bytes` |
+
 ## Aplicação
 
 | Nome | Obrigatória | Descrição | Exemplo |

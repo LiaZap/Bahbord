@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils/cn';
 import { Pencil, Save, X, Trash2, Clock, User } from 'lucide-react';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { useConfirm } from '@/components/ui/ConfirmModal';
+import CredentialsPanel from './CredentialsPanel';
 
 interface PageData {
   id: string;
@@ -133,10 +134,10 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
       {/* Page header */}
       <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-3">
         <div className="flex items-center gap-2 text-xs text-slate-500">
-          {page.updated_by_name && (
+          {(page.created_by_name || page.updated_by_name) && (
             <>
               <User size={12} />
-              <span>{page.updated_by_name}</span>
+              <span>{page.created_by_name || page.updated_by_name}</span>
               <span className="text-slate-700">|</span>
             </>
           )}
@@ -208,6 +209,7 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
               ) : (
                 <p className="text-sm text-slate-600 italic">Página vazia. Clique em Editar para adicionar conteúdo.</p>
               )}
+              <CredentialsPanel pageId={page.id} />
             </>
           )}
         </div>
