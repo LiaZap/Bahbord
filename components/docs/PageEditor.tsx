@@ -131,19 +131,8 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Page header */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-3">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          {(page.created_by_name || page.updated_by_name) && (
-            <>
-              <User size={12} />
-              <span>{page.created_by_name || page.updated_by_name}</span>
-              <span className="text-slate-700">|</span>
-            </>
-          )}
-          <Clock size={12} />
-          <span>{formatTimeAgo(page.updated_at)}</span>
-        </div>
+      {/* Page header — só os botões. Autor/tempo viram subtítulo embaixo do H1. */}
+      <div className="flex items-center justify-end border-b border-white/[0.06] px-6 py-3">
         <div className="flex items-center gap-1.5">
           {editing ? (
             <>
@@ -195,7 +184,18 @@ export default function PageEditor({ pageId, onDeleted }: PageEditorProps) {
             </>
           ) : (
             <>
-              <h1 className="mb-6 text-2xl font-bold text-white">{page.title}</h1>
+              <h1 className="mb-1 text-2xl font-bold text-white">{page.title}</h1>
+              <div className="mb-6 flex items-center gap-2 text-xs text-slate-500">
+                {(page.created_by_name || page.updated_by_name) && (
+                  <>
+                    <User size={12} />
+                    <span>{page.created_by_name || page.updated_by_name}</span>
+                    <span className="text-slate-700">·</span>
+                  </>
+                )}
+                <Clock size={12} />
+                <span>{formatTimeAgo(page.updated_at)}</span>
+              </div>
               {page.content ? (
                 <div
                   className="prose prose-invert prose-sm max-w-none text-slate-300

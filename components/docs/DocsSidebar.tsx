@@ -42,7 +42,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [foldersByParent, setFoldersByParent] = useState<Record<string, DocFolder[]>>({});
   const [pagesByParent, setPagesByParent] = useState<Record<string, Page[]>>({});
-  const [menuTarget, setMenuTarget] = useState<{ type: 'space' | 'folder' | 'page'; id: string; spaceId: string; parentId?: string | null } | null>(null);
+  const [menuTarget, setMenuTarget] = useState<{ type: 'space' | 'folder' | 'page'; id: string; spaceId: string; parentId?: string | null; x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState<{ type: string; id: string } | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [newSpaceMode, setNewSpaceMode] = useState(false);
@@ -231,10 +231,17 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
   // Context menu
   function ContextMenu() {
     if (!menuTarget) return null;
+    const MENU_W = 176; // w-44
+    const MENU_H_EST = menuTarget.type === 'page' ? 80 : 144;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const left = Math.min(menuTarget.x, vw - MENU_W - 8);
+    const top = Math.min(menuTarget.y, vh - MENU_H_EST - 8);
     return (
       <div className="fixed inset-0 z-50" onClick={() => setMenuTarget(null)}>
         <div
-          className="absolute left-[180px] top-[40%] w-44 rounded-lg border border-border/60 bg-surface2 py-1 shadow-xl"
+          style={{ left, top }}
+          className="absolute w-44 rounded-lg border border-border/60 bg-surface2 py-1 shadow-xl"
           onClick={e => e.stopPropagation()}
         >
           {menuTarget.type !== 'page' && (
@@ -278,7 +285,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
       <button
         key={page.id}
         onClick={() => onSelectPage(page.id)}
-        onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'page', id: page.id, spaceId: page.space_id }); }}
+        onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'page', id: page.id, spaceId: page.space_id, x: e.clientX, y: e.clientY }); }}
         className={cn(
           'group flex w-full items-center gap-1.5 rounded px-2 py-[5px] text-[12px] transition',
           selectedPageId === page.id
@@ -301,7 +308,11 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
           <span className="flex-1 truncate text-left">{page.title}</span>
         )}
         <button
-          onClick={e => { e.stopPropagation(); setMenuTarget({ type: 'page', id: page.id, spaceId: page.space_id }); }}
+          onClick={e => {
+            e.stopPropagation();
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            setMenuTarget({ type: 'page', id: page.id, spaceId: page.space_id, x: r.right, y: r.bottom });
+          }}
           className="shrink-0 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-slate-300"
         >
           <MoreHorizontal size={13} />
@@ -322,7 +333,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
         <div key={folder.id}>
           <button
             onClick={() => toggleFolder(folder.id)}
-            onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'folder', id: folder.id, spaceId: folder.space_id, parentId: folder.parent_id }); }}
+            onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'folder', id: folder.id, spaceId: folder.space_id, parentId: folder.parent_id, x: e.clientX, y: e.clientY }); }}
             className="group flex w-full items-center gap-1.5 rounded px-2 py-[5px] text-[12px] text-slate-400 transition hover:bg-white/[0.04] hover:text-slate-200"
           >
             <ChevIcon size={11} className="shrink-0 text-slate-600" />
@@ -341,7 +352,11 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
               <span className="flex-1 truncate text-left">{folder.name}</span>
             )}
             <button
-              onClick={e => { e.stopPropagation(); setMenuTarget({ type: 'folder', id: folder.id, spaceId: folder.space_id, parentId: folder.parent_id }); }}
+              onClick={e => {
+                e.stopPropagation();
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setMenuTarget({ type: 'folder', id: folder.id, spaceId: folder.space_id, parentId: folder.parent_id, x: r.right, y: r.bottom });
+              }}
               className="shrink-0 opacity-0 group-hover:opacity-100 text-slate-600 hover:text-slate-300"
             >
               <MoreHorizontal size={13} />
@@ -400,7 +415,7 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
             <div key={space.id}>
               <button
                 onClick={() => toggleSpace(space.id)}
-                onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'space', id: space.id, spaceId: space.id }); }}
+                onContextMenu={e => { e.preventDefault(); setMenuTarget({ type: 'space', id: space.id, spaceId: space.id, x: e.clientX, y: e.clientY }); }}
                 className="group flex w-full items-center gap-1.5 rounded-md px-2 py-[6px] text-[12px] font-medium text-slate-300 transition hover:bg-white/[0.04]"
               >
                 {isExpanded ? <ChevronDown size={12} className="shrink-0 text-slate-500" /> : <ChevronRight size={12} className="shrink-0 text-slate-500" />}
@@ -425,7 +440,11 @@ export default function DocsSidebar({ selectedPageId, onSelectPage, onRefresh }:
                   <button onClick={e => { e.stopPropagation(); createFolder(space.id); }} className="rounded p-0.5 text-slate-600 hover:text-slate-300" title="Nova pasta">
                     <FolderPlus size={12} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); setMenuTarget({ type: 'space', id: space.id, spaceId: space.id }); }}
+                  <button onClick={e => {
+                    e.stopPropagation();
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setMenuTarget({ type: 'space', id: space.id, spaceId: space.id, x: r.right, y: r.bottom });
+                  }}
                     className="rounded p-0.5 text-slate-600 hover:text-slate-300">
                     <MoreHorizontal size={12} />
                   </button>
