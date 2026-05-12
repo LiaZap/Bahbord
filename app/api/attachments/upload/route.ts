@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { isDriveConfigured, uploadToDrive, getTicketFolderId } from '@/lib/google-drive';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
@@ -88,11 +88,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use authenticated member
-    let memberId = auth?.id;
-    if (!memberId) {
-      try { memberId = await getDefaultMemberId(); } catch {}
-    }
+    const memberId = auth.id;
 
     const result = await query(
       `INSERT INTO attachments (ticket_id, uploaded_by, file_name, file_url, file_size, mime_type)

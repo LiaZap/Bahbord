@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
@@ -74,7 +74,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await getAuthMember();
+    const member = await getAuthMember();
+    if (!member) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
     const body = await request.json();
     const { space_id, folder_id, title, content } = body;
@@ -83,8 +86,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'space_id e title são obrigatórios' }, { status: 400 });
     }
 
-    let memberId: string | null = null;
-    try { memberId = await getDefaultMemberId(); } catch { /* no member */ }
+    const memberId = member.id;
 
     const result = await query(
       `INSERT INTO doc_pages (space_id, folder_id, title, content, created_by, updated_by)
@@ -101,7 +103,10 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await getAuthMember();
+    const member = await getAuthMember();
+    if (!member) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+    }
 
     const body = await request.json();
     const { id, title, content } = body;
@@ -110,8 +115,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'ID é obrigatório' }, { status: 400 });
     }
 
-    let memberId: string | null = null;
-    try { memberId = await getDefaultMemberId(); } catch { /* no member */ }
+    const memberId = member.id;
 
     const result = await query(
       `UPDATE doc_pages

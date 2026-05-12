@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET() {
@@ -7,7 +7,7 @@ export async function GET() {
     const auth = await getAuthMember();
     if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const workspaceId = auth.workspace_id;
-    const memberId = await getDefaultMemberId();
+    const memberId = auth.id;
 
     const result = await query(
       `SELECT sf.*, m.display_name AS creator_name
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     const workspaceId = auth.workspace_id;
-    const memberId = await getDefaultMemberId();
+    const memberId = auth.id;
 
     const result = await query(
       `INSERT INTO saved_filters (workspace_id, member_id, name, filter_config, is_shared)

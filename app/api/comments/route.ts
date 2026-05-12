@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
@@ -46,6 +46,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const validation = await validateBody(request, createCommentSchema);
     if ('error' in validation) {
@@ -53,15 +54,7 @@ export async function POST(request: Request) {
     }
     const { ticket_id, content } = validation.data;
 
-    // Usar membro autenticado como autor
-    let memberId = auth?.id;
-    if (!memberId) {
-      try {
-        memberId = await getDefaultMemberId();
-      } catch {
-        return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
-      }
-    }
+    const memberId = auth.id;
 
     const result = await query(
       `INSERT INTO comments (ticket_id, author_id, body)
@@ -107,11 +100,11 @@ export async function POST(request: Request) {
           await createNotification({
             workspace_id: target.workspace_id || ticketWorkspaceId,
             recipient_id: target.id,
-            actor_id: auth?.id,
+            actor_id: auth.id,
             type: 'mention',
             entity_type: 'comment',
             entity_id: comment.id,
-            title: `${auth?.display_name || 'Alguém'} mencionou você${ticketKey ? ` em ${ticketKey}` : ''}`,
+            title: `${auth.display_name || 'Alguém'} mencionou você${ticketKey ? ` em ${ticketKey}` : ''}`,
             message: content.trim().substring(0, 140),
             link: `/ticket/${ticket_id}`,
           });

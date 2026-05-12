@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
 
@@ -52,12 +52,7 @@ export async function POST(request: Request) {
     const allowed = await hasTicketAccess(auth, ticket_id);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    let memberId: string | null = auth.id;
-    if (!memberId) {
-      try {
-        memberId = await getDefaultMemberId();
-      } catch { /* sem membro padrão */ }
-    }
+    const memberId = auth.id;
 
     const result = await query(
       `INSERT INTO attachments (ticket_id, uploaded_by, file_name, file_url, file_size, mime_type)

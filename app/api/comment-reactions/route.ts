@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const { searchParams } = new URL(request.url);
     const commentId = searchParams.get('comment_id');
 
@@ -32,7 +33,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await getAuthMember();
+    const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const body = await request.json();
     const { comment_id, emoji } = body;
 
@@ -40,12 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'comment_id e emoji são obrigatórios' }, { status: 400 });
     }
 
-    let memberId: string;
-    try {
-      memberId = await getDefaultMemberId();
-    } catch {
-      return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
-    }
+    const memberId = auth.id;
 
     // Toggle: se já tem a reação, remove; se não, adiciona
     const existing = await query(

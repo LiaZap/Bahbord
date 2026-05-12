@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, getDefaultMemberId } from '@/lib/db';
+import { query } from '@/lib/db';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
 
@@ -50,6 +50,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const auth = await getAuthMember();
+    if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
     const body = await request.json();
     const { ticket_id, action } = body;
@@ -58,14 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ticket_id obrigatório' }, { status: 400 });
     }
 
-    let memberId = auth?.id;
-    if (!memberId) {
-      try {
-        memberId = await getDefaultMemberId();
-      } catch {
-        return NextResponse.json({ error: 'Nenhum membro encontrado' }, { status: 400 });
-      }
-    }
+    const memberId = auth.id;
 
     if (action === 'start') {
       // Parar qualquer timer rodando para este ticket (mín 1 min, arredonda pra cima)
