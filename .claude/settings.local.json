@@ -88,7 +88,16 @@
       "Bash(sort -t: -k2 -rn)",
       "Bash(find /c/Users/Paulo/Documents/Bahjira/db -name \"*.sql\" -exec wc -l {} +)",
       "Bash(grep -n \"DROP VIEW\\\\|DROP TABLE\" /c/Users/Paulo/Documents/Bahjira/db/*.sql)",
-      "Bash(grep -r \"tickets_full\" /c/Users/Paulo/Documents/Bahjira/db/*.sql)"
+      "Bash(grep -r \"tickets_full\" /c/Users/Paulo/Documents/Bahjira/db/*.sql)",
+      "Bash(ls -la docs/*.md)",
+      "Bash(awk '{print $NF, $5}')",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(grep -h \"ALTER TABLE\" /c/Users/Paulo/Documents/Bahjira/db/*.sql)",
+      "Bash(ls -la C:/Users/Paulo/.claude/.mcp*)",
+      "Bash(ls -la C:/Users/Paulo/.claude/mcp*)",
+      "Bash(claude mcp:*)",
+      "Bash(awk '{print $5, $NF}')"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true
 }

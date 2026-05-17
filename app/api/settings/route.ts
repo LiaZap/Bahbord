@@ -1,26 +1,82 @@
 import { NextResponse } from 'next/server';
-import { query, filterAllowedColumns } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { workspaces, statuses, services, categories, ticketTypes, quickReactions, members, clients } from '@/lib/schema/core';
+import { tickets } from '@/lib/schema/tickets';
+import { eq, sql } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
+import { query } from '@/lib/db';
+import type { PgTable } from 'drizzle-orm/pg-core';
 
-// Tabelas pra auditar mutações (subset do allowedTables, focado no sensível).
+// Tabelas auditáveis (subset sensível)
 const AUDIT_SENSITIVE_TABLES = new Set(['members', 'clients']);
+
+// Mapa tabela-nome → schema Drizzle
+const TABLE_MAP: Record<string, PgTable> = {
+  statuses,
+  services,
+  categories,
+  ticket_types: ticketTypes,
+  quick_reactions: quickReactions,
+  members,
+  clients,
+};
+
+// Colunas permitidas por tabela (segurança contra injection)
+const ALLOWED_COLUMNS: Record<string, string[]> = {
+  statuses: ['name', 'color', 'position', 'wip_limit', 'is_done'],
+  services: ['name', 'color', 'is_active'],
+  categories: ['name', 'color'],
+  ticket_types: ['name', 'icon', 'color', 'description_template', 'position'],
+  quick_reactions: ['emoji', 'label', 'position'],
+  members: ['display_name', 'email', 'role', 'phone'],
+  clients: ['name', 'color', 'contact_email', 'contact_phone', 'is_active'],
+};
+
+// Camel-case mapping para Drizzle
+const COLUMN_CAMEL: Record<string, Record<string, string>> = {
+  statuses: { name: 'name', color: 'color', position: 'position', wip_limit: 'wipLimit', is_done: 'isDone' },
+  services: { name: 'name', color: 'color', is_active: 'isActive' },
+  categories: { name: 'name', color: 'color' },
+  ticket_types: { name: 'name', icon: 'icon', color: 'color', description_template: 'descriptionTemplate', position: 'position' },
+  quick_reactions: { emoji: 'emoji', label: 'label', position: 'position' },
+  members: { display_name: 'displayName', email: 'email', role: 'role', phone: 'phone' },
+  clients: { name: 'name', color: 'color', contact_email: 'contactEmail', contact_phone: 'contactPhone', is_active: 'isActive' },
+};
+
+function filterAndMapFields(table: string, fields: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ALLOWED_COLUMNS[table];
+  const camelMap = COLUMN_CAMEL[table];
+  if (!allowed || !camelMap) return {};
+  const mapped: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (allowed.includes(key) && camelMap[key]) {
+      mapped[camelMap[key]] = val;
+    }
+  }
+  return mapped;
+}
 
 // GET workspace settings
 export async function GET() {
   try {
-    const result = await query(
-      `SELECT id, name, slug, prefix, description, created_at, updated_at
-      FROM workspaces LIMIT 1`
-    );
-    return NextResponse.json(result.rows[0] || null);
+    const [ws] = await db.select({
+      id: workspaces.id,
+      name: workspaces.name,
+      slug: workspaces.slug,
+      prefix: workspaces.prefix,
+      description: workspaces.description,
+      created_at: workspaces.createdAt,
+      updated_at: workspaces.updatedAt,
+    }).from(workspaces).limit(1);
+    return NextResponse.json(ws || null);
   } catch (err) {
     console.error('GET /api/settings error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }
 
-// PATCH workspace settings
+// PATCH workspace settings ou item de tabela
 export async function PATCH(request: Request) {
   try {
     const auth = await getAuthMember();
@@ -33,26 +89,30 @@ export async function PATCH(request: Request) {
 
     // Generic CRUD para tabelas de configuração
     if (table) {
-      const allowedTables = ['statuses', 'services', 'categories', 'ticket_types', 'quick_reactions', 'members', 'clients'];
-      if (!allowedTables.includes(table)) {
+      if (!TABLE_MAP[table]) {
         return NextResponse.json({ error: 'Tabela não permitida' }, { status: 400 });
       }
 
-      const safeFields = filterAllowedColumns(table, fields);
+      const mapped = filterAndMapFields(table, fields);
+      if (Object.keys(mapped).length === 0) {
+        return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
+      }
+
+      const drizzleTable = TABLE_MAP[table];
+      // Use raw query for dynamic table update (Drizzle requires static table ref for .update())
+      const safeFields: Record<string, unknown> = {};
+      const allowed = ALLOWED_COLUMNS[table] || [];
+      for (const [key, val] of Object.entries(fields)) {
+        if (allowed.includes(key)) safeFields[key] = val;
+      }
       const sets: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
-
       for (const [key, val] of Object.entries(safeFields)) {
         sets.push(`${key} = $${idx}`);
         values.push(val);
         idx++;
       }
-
-      if (sets.length === 0) {
-        return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
-      }
-
       values.push(id);
       const result = await query(
         `UPDATE ${table} SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
@@ -67,7 +127,7 @@ export async function PATCH(request: Request) {
           action: `${table}.updated`,
           entityType: table,
           entityId: id,
-          changes: safeFields as Record<string, unknown>,
+          changes: safeFields,
           ipAddress: meta.ipAddress,
           userAgent: meta.userAgent,
         });
@@ -76,44 +136,35 @@ export async function PATCH(request: Request) {
       return NextResponse.json(result.rows[0]);
     }
 
-    // Update workspace
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
+    // Update workspace (sem table param)
+    const wsUpdate: Record<string, unknown> = {};
+    if (body.name !== undefined) wsUpdate.name = body.name;
+    if (body.description !== undefined) wsUpdate.description = body.description;
+    if (body.prefix !== undefined) wsUpdate.prefix = body.prefix;
 
-    for (const [key, val] of Object.entries(body)) {
-      if (['name', 'description', 'prefix'].includes(key)) {
-        sets.push(`${key} = $${idx}`);
-        values.push(val);
-        idx++;
-      }
-    }
-
-    if (sets.length === 0) {
+    if (Object.keys(wsUpdate).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo' }, { status: 400 });
     }
+    wsUpdate.updatedAt = new Date();
 
-    sets.push(`updated_at = NOW()`);
-    const wsId = auth.workspace_id;
-    values.push(wsId);
-    const result = await query(
-      `UPDATE workspaces SET ${sets.join(', ')} WHERE id = $${idx + 1} RETURNING *`,
-      values
-    );
+    const [updated] = await db.update(workspaces)
+      .set(wsUpdate)
+      .where(eq(workspaces.id, auth.workspace_id))
+      .returning();
 
     const meta = extractRequestMeta(request);
     await logAudit({
-      workspaceId: wsId,
+      workspaceId: auth.workspace_id,
       actorId: auth.id,
       action: 'workspace.updated',
       entityType: 'workspace',
-      entityId: wsId,
+      entityId: auth.workspace_id,
       changes: body,
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
     });
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/settings error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -141,7 +192,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Workspace não encontrado' }, { status: 400 });
     }
 
-    const safeFields = filterAllowedColumns(table, fields);
+    // Filter allowed fields + add workspace_id
+    const allowed = ALLOWED_COLUMNS[table] || [];
+    const safeFields: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(fields)) {
+      if (allowed.includes(key)) safeFields[key] = val;
+    }
     const allFields = { ...safeFields, workspace_id: workspaceId };
     const columns = Object.keys(allFields);
     const placeholders = columns.map((_, i) => `$${i + 1}`);
@@ -161,7 +217,7 @@ export async function POST(request: Request) {
         action: `${table}.created`,
         entityType: table,
         entityId: created?.id,
-        changes: safeFields as Record<string, unknown>,
+        changes: safeFields,
         ipAddress: meta.ipAddress,
         userAgent: meta.userAgent,
       });
@@ -193,45 +249,31 @@ export async function DELETE(request: Request) {
 
     // Prevent removing the last admin/owner
     if (table === 'members') {
-      const roleCheck = await query(
-        `SELECT COUNT(*) AS cnt FROM org_roles WHERE role IN ('owner', 'admin')`
-      );
+      const roleCheck = await query(`SELECT COUNT(*) AS cnt FROM org_roles WHERE role IN ('owner', 'admin')`);
       const currentCount = parseInt(roleCheck.rows[0].cnt, 10);
-      const memberRole = await query(
-        `SELECT role FROM org_roles WHERE member_id = $1`, [id]
-      );
+      const memberRole = await query(`SELECT role FROM org_roles WHERE member_id = $1`, [id]);
       const isTargetAdmin = memberRole.rows[0] && ['owner', 'admin'].includes(memberRole.rows[0].role);
       if (isTargetAdmin && currentCount <= 1) {
         return NextResponse.json({ error: 'Não é possível remover o último admin da organização' }, { status: 409 });
       }
     }
 
-    // Verificar se tem tickets associados (para statuses e services)
-    if (table === 'statuses') {
-      const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE status_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt, 10) > 0) {
-        return NextResponse.json({ error: 'Não é possível remover: existem tickets com este status' }, { status: 409 });
-      }
-    }
+    // Verificar se tem tickets associados
+    const fkChecks: Record<string, string> = {
+      statuses: 'status_id',
+      services: 'service_id',
+      clients: 'client_id',
+      categories: 'category_id',
+    };
 
-    if (table === 'services') {
-      const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE service_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt, 10) > 0) {
-        return NextResponse.json({ error: 'Não é possível remover: existem tickets com este serviço' }, { status: 409 });
-      }
-    }
+    if (fkChecks[table]) {
+      const [check] = await db
+        .select({ cnt: sql<number>`COUNT(*)::int` })
+        .from(tickets)
+        .where(eq((tickets as any)[fkChecks[table] === 'status_id' ? 'statusId' : fkChecks[table] === 'service_id' ? 'serviceId' : fkChecks[table] === 'client_id' ? 'clientId' : 'categoryId'], id));
 
-    if (table === 'clients') {
-      const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE client_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt, 10) > 0) {
-        return NextResponse.json({ error: 'Não é possível remover: existem tickets com este cliente' }, { status: 409 });
-      }
-    }
-
-    if (table === 'categories') {
-      const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE category_id = $1`, [id]);
-      if (parseInt(check.rows[0].cnt, 10) > 0) {
-        return NextResponse.json({ error: 'Não é possível remover: existem tickets com esta categoria' }, { status: 409 });
+      if (check.cnt > 0) {
+        return NextResponse.json({ error: `Não é possível remover: existem tickets associados` }, { status: 409 });
       }
     }
 

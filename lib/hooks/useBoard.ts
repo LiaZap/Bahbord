@@ -31,15 +31,10 @@ export type TicketItem = {
   customerRequestCount?: number;
 };
 
-export type BoardItems = {
-  todo: TicketItem[];
-  waiting: TicketItem[];
-  progress: TicketItem[];
-  done: TicketItem[];
-};
+export type BoardItems = Record<string, TicketItem[]>;
 
 function findContainer(items: BoardItems, id: string) {
-  return Object.keys(items).find((columnId) => items[columnId as keyof BoardItems].some((item) => item.id === id));
+  return Object.keys(items).find((columnId) => items[columnId]?.some((item) => item.id === id));
 }
 
 export function useBoard(initialItems: BoardItems, wipLimits: Record<string, number | null>) {
@@ -60,35 +55,25 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
   useEffect(() => {
     setItems(initialItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(initialItems.todo.map(t => t.id)), JSON.stringify(initialItems.progress.map(t => t.id)), JSON.stringify(initialItems.done.map(t => t.id)), JSON.stringify(initialItems.waiting.map(t => t.id))]);
+  }, [JSON.stringify(Object.entries(initialItems).map(([k, v]) => [k, v.map((t: TicketItem) => t.id)]))]);
 
   const { toast } = useToast();
 
   // Supabase Realtime — atualizar board quando tickets mudam
   useEffect(() => {
+    const columnIds = Object.keys(initialItems);
     const channel = supabase
       .channel('board-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tickets' },
         async () => {
-          // Recarregar tickets quando houver mudança
           try {
             const res = await fetch('/api/tickets?include_snoozed=true');
             if (!res.ok) return;
             const allTickets = await res.json();
 
-            const normalizeStatus = (status: string | null) => {
-              if (!status) return 'todo';
-              const key = status.toUpperCase();
-              if (key.includes('INICIADO')) return 'todo';
-              if (key.includes('RESP')) return 'waiting';
-              if (key.includes('PROGRESSO')) return 'progress';
-              if (key.includes('CONCLU')) return 'done';
-              return 'todo';
-            };
-
-            const mapTicket = (t: any) => ({
+            const mapTicket = (t: any): TicketItem => ({
               id: t.id,
               title: t.title,
               service: t.service ?? t.service_name ?? 'Sem serviço',
@@ -114,12 +99,21 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
                     : 0,
             });
 
-            setItems({
-              todo: allTickets.filter((t: any) => normalizeStatus(t.status) === 'todo').map(mapTicket),
-              waiting: allTickets.filter((t: any) => normalizeStatus(t.status) === 'waiting').map(mapTicket),
-              progress: allTickets.filter((t: any) => normalizeStatus(t.status) === 'progress').map(mapTicket),
-              done: allTickets.filter((t: any) => normalizeStatus(t.status) === 'done').map(mapTicket),
-            });
+            // Agrupar por status_id real (as colunas que existem)
+            const newItems: BoardItems = {};
+            for (const colId of columnIds) {
+              newItems[colId] = [];
+            }
+            for (const t of allTickets) {
+              const statusId = t.status_id ?? t.statusId;
+              if (statusId && newItems[statusId]) {
+                newItems[statusId].push(mapTicket(t));
+              } else if (columnIds.length > 0) {
+                // fallback: primeira coluna
+                newItems[columnIds[0]].push(mapTicket(t));
+              }
+            }
+            setItems(newItems);
           } catch (err) {
             console.error('Erro ao atualizar board via realtime:', err);
           }
@@ -130,7 +124,8 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(Object.keys(initialItems))]);
 
   // Extrair opções disponíveis dos tickets
   const allTickets = useMemo(() =>
@@ -182,17 +177,17 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
 
     // Validar WIP limit
     const limit = wipLimits[destinationColumn];
-    if (limit && items[destinationColumn as keyof BoardItems].length >= limit) {
+    if (limit && (items[destinationColumn]?.length ?? 0) >= limit) {
       return; // Bloqueia o move
     }
 
     setItems((prev) => {
-      const activeItem = prev[sourceColumn as keyof BoardItems].find((item) => item.id === active.id);
+      const activeItem = (prev[sourceColumn] ?? []).find((item) => item.id === active.id);
       if (!activeItem) return prev;
       return {
         ...prev,
-        [sourceColumn]: prev[sourceColumn as keyof BoardItems].filter((item) => item.id !== active.id),
-        [destinationColumn]: [...prev[destinationColumn as keyof BoardItems], activeItem]
+        [sourceColumn]: (prev[sourceColumn] ?? []).filter((item) => item.id !== active.id),
+        [destinationColumn]: [...(prev[destinationColumn] ?? []), activeItem]
       };
     });
   }, [items, wipLimits]);
@@ -212,12 +207,12 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
 
     // Same column — just reorder
     if (sourceColumn === overContainer) {
-      const activeIndex = items[currentContainer as keyof BoardItems].findIndex((item) => item.id === active.id);
-      const overIndex = items[overContainer as keyof BoardItems].findIndex((item) => item.id === over.id);
+      const activeIndex = (items[currentContainer] ?? []).findIndex((item) => item.id === active.id);
+      const overIndex = (items[overContainer] ?? []).findIndex((item) => item.id === over.id);
       if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
         setItems((prev) => ({
           ...prev,
-          [currentContainer]: arrayMove(prev[currentContainer as keyof BoardItems], activeIndex, overIndex)
+          [currentContainer]: arrayMove((prev[currentContainer] ?? []), activeIndex, overIndex)
         }));
       }
       return;
@@ -226,7 +221,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
     // Different column — update status in API
     // Validar WIP limit
     const limit = wipLimits[overContainer];
-    if (limit && items[overContainer as keyof BoardItems].length > limit) {
+    if (limit && (items[overContainer]?.length ?? 0) > limit) {
       toast(`Limite WIP atingido (${limit}) nesta coluna`, 'warning');
       return;
     }
@@ -235,7 +230,7 @@ export function useBoard(initialItems: BoardItems, wipLimits: Record<string, num
       const res = await fetch('/api/tickets', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: active.id, status_key: overContainer })
+        body: JSON.stringify({ id: active.id, status_id: overContainer })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

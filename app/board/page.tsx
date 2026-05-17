@@ -2,7 +2,11 @@ export const dynamic = "force-dynamic";
 import { redirect } from 'next/navigation';
 import KanbanBoard from '@/components/board/KanbanBoard';
 import BoardShell from '@/components/board/BoardShell';
-import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { query } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { statuses, services, ticketTypes } from '@/lib/schema/core';
+import { projects } from '@/lib/schema/tickets';
+import { eq, asc } from 'drizzle-orm';
 import { isAdmin } from '@/lib/api-auth';
 import { hasBoardAccess, hasProjectAccess } from '@/lib/access-check';
 import { requireApproved } from '@/lib/page-guards';
@@ -14,6 +18,7 @@ type BoardTicket = {
   service_name: string | null;
   service_color: string | null;
   assignee_name: string | null;
+  status_id: string | null;
   status_name: string | null;
   priority: string | null;
   ticket_key: string | null;
@@ -32,18 +37,8 @@ type BoardTicket = {
 type ProjectItem = { id: string; name: string };
 
 type ServiceItem = { id: string; name: string };
-type StatusItem = { id: string; name: string; wip_limit?: number | null };
+type StatusItem = { id: string; name: string; color: string; position: number; wip_limit?: number | null; is_done?: boolean };
 type TicketTypeItem = { id: string; name: string };
-
-function normalizeStatus(status: string | null) {
-  if (!status) return 'todo';
-  const key = status.toUpperCase();
-  if (key.includes('INICIADO')) return 'todo';
-  if (key.includes('RESP')) return 'waiting';
-  if (key.includes('PROGRESSO')) return 'progress';
-  if (key.includes('CONCLU')) return 'done';
-  return 'todo';
-}
 
 function mapTicket(ticket: BoardTicket) {
   return {
@@ -104,6 +99,7 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
       id,
       title,
       priority,
+      status_id,
       to_char(due_date AT TIME ZONE 'America/Sao_Paulo', 'DD/MM') AS due,
       service_name,
       service_color,
@@ -128,34 +124,48 @@ export default async function BoardPage({ searchParams }: { searchParams: { boar
 
   const rows = result.rows as BoardTicket[];
 
-  const wsId = await getDefaultWorkspaceId();
   const [serviceRows, statusRows, typeRows, projectRows] = await Promise.all([
-    query<ServiceItem>(`SELECT id, name FROM services WHERE workspace_id = $1 ORDER BY name ASC`, [wsId]),
-    query<StatusItem>(`SELECT id, name, wip_limit FROM statuses WHERE workspace_id = $1 ORDER BY position ASC`, [wsId]),
-    query<TicketTypeItem>(`SELECT id, name FROM ticket_types WHERE workspace_id = $1 ORDER BY position ASC`, [wsId]),
-    query<ProjectItem>(`SELECT id, name FROM projects WHERE workspace_id = $1 AND is_archived = false ORDER BY name ASC`, [wsId]),
+    db.select({ id: services.id, name: services.name }).from(services).orderBy(asc(services.name)),
+    db.select({ id: statuses.id, name: statuses.name, color: statuses.color, position: statuses.position, wip_limit: statuses.wipLimit, is_done: statuses.isDone })
+      .from(statuses).orderBy(asc(statuses.position)),
+    db.select({ id: ticketTypes.id, name: ticketTypes.name }).from(ticketTypes).orderBy(asc(ticketTypes.position)),
+    db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.isArchived, false)).orderBy(asc(projects.name)),
   ]);
 
-  const initialItems = {
-    todo: rows.filter((t) => normalizeStatus(t.status_name) === 'todo').map(mapTicket),
-    waiting: rows.filter((t) => normalizeStatus(t.status_name) === 'waiting').map(mapTicket),
-    progress: rows.filter((t) => normalizeStatus(t.status_name) === 'progress').map(mapTicket),
-    done: rows.filter((t) => normalizeStatus(t.status_name) === 'done').map(mapTicket)
-  };
-
-  // Montar mapa de WIP limits por coluna
-  const wipLimits: Record<string, number | null> = {};
-  for (const s of statusRows.rows) {
-    const key = normalizeStatus(s.name);
-    if (s.wip_limit) wipLimits[key] = s.wip_limit;
+  // Agrupar tickets pelo status_id real (colunas dinâmicas)
+  const initialItems: Record<string, ReturnType<typeof mapTicket>[]> = {};
+  for (const s of statusRows) {
+    initialItems[s.id] = [];
+  }
+  for (const ticket of rows) {
+    const colId = ticket.status_id;
+    if (colId && initialItems[colId]) {
+      initialItems[colId].push(mapTicket(ticket));
+    } else if (statusRows.length > 0) {
+      initialItems[statusRows[0].id].push(mapTicket(ticket));
+    }
   }
 
+  // Montar mapa de WIP limits por status_id
+  const wipLimits: Record<string, number | null> = {};
+  for (const s of statusRows) {
+    if (s.wip_limit) wipLimits[s.id] = s.wip_limit;
+  }
+
+  // Montar colunas para o KanbanBoard
+  const boardColumns = statusRows.map((s) => ({
+    id: s.id,
+    title: s.name,
+    color: s.color || '#6b7280',
+    isDone: s.is_done ?? false,
+  }));
+
   // Hide project filter when already filtering by board/project
-  const projectsToShow = (board_id || project_id) ? [] : projectRows.rows;
+  const projectsToShow = (board_id || project_id) ? [] : projectRows;
 
   return (
-    <BoardShell services={serviceRows.rows} statuses={statusRows.rows} ticketTypes={typeRows.rows}>
-      <KanbanBoard initialItems={initialItems} wipLimits={wipLimits} availableProjects={projectsToShow} />
+    <BoardShell services={serviceRows} statuses={statusRows} ticketTypes={typeRows}>
+      <KanbanBoard initialItems={initialItems} columns={boardColumns} wipLimits={wipLimits} availableProjects={projectsToShow} />
     </BoardShell>
   );
 }

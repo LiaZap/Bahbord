@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/drizzle';
 import { query } from '@/lib/db';
+import { teams, teamMembers } from '@/lib/schema/rbac';
+import { eq, and } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
-// Prefix usado em todas as chaves do cache de teams. Mutations (POST/PATCH/
-// DELETE) chamam invalidateCachePrefix(TEAMS_CACHE_PREFIX) pra garantir que a
-// próxima leitura veja o write — TTL de 60s é só pra absorver bursts de leitura.
 const TEAMS_CACHE_PREFIX = 'teams:';
 
 export async function GET() {
@@ -14,9 +14,7 @@ export async function GET() {
     if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const workspaceId = auth.workspace_id;
 
-    // Cache 60s: teams + member_count + composição de members são quase-estáticos
-    // (mudam só em mutations admin). Resultado independe de role do requester
-    // — projeção é a mesma pra todo mundo (id/display_name/email/role).
+    // Cache 60s — query complexa com json_agg mantida em raw SQL
     const rows = await cachedQuery(
       `${TEAMS_CACHE_PREFIX}${workspaceId}`,
       async () => (await query(
@@ -60,17 +58,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
 
-    const workspaceId = auth.workspace_id;
-
-    const result = await query(
-      `INSERT INTO teams (workspace_id, name, description, color)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [workspaceId, name.trim(), description || null, color || '#6366f1']
-    );
+    const [created] = await db.insert(teams).values({
+      workspaceId: auth.workspace_id,
+      name: name.trim(),
+      description: description || null,
+      color: color || '#6366f1',
+    }).returning();
 
     invalidateCachePrefix(TEAMS_CACHE_PREFIX);
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error('POST /api/teams error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -95,12 +91,14 @@ export async function PATCH(request: Request) {
       if (!member_id) {
         return NextResponse.json({ error: 'member_id é obrigatório' }, { status: 400 });
       }
-      await query(
-        `INSERT INTO team_members (team_id, member_id, role)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (team_id, member_id) DO UPDATE SET role = $3`,
-        [id, member_id, role || 'member']
-      );
+      await db.insert(teamMembers).values({
+        teamId: id,
+        memberId: member_id,
+        role: role || 'member',
+      }).onConflictDoUpdate({
+        target: [teamMembers.teamId, teamMembers.memberId],
+        set: { role: role || 'member' },
+      });
       invalidateCachePrefix(TEAMS_CACHE_PREFIX);
       return NextResponse.json({ success: true });
     }
@@ -110,39 +108,33 @@ export async function PATCH(request: Request) {
       if (!member_id) {
         return NextResponse.json({ error: 'member_id é obrigatório' }, { status: 400 });
       }
-      await query(
-        `DELETE FROM team_members WHERE team_id = $1 AND member_id = $2`,
-        [id, member_id]
-      );
+      await db.delete(teamMembers)
+        .where(and(eq(teamMembers.teamId, id), eq(teamMembers.memberId, member_id)));
       invalidateCachePrefix(TEAMS_CACHE_PREFIX);
       return NextResponse.json({ success: true });
     }
 
     // Update team fields
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (color !== undefined) updateData.color = color;
 
-    if (name !== undefined) { sets.push(`name = $${idx}`); values.push(name); idx++; }
-    if (description !== undefined) { sets.push(`description = $${idx}`); values.push(description); idx++; }
-    if (color !== undefined) { sets.push(`color = $${idx}`); values.push(color); idx++; }
-
-    if (sets.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
     }
 
-    values.push(id);
-    const result = await query(
-      `UPDATE teams SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
+    const [updated] = await db.update(teams)
+      .set(updateData)
+      .where(eq(teams.id, id))
+      .returning();
 
-    if (result.rowCount === 0) {
+    if (!updated) {
       return NextResponse.json({ error: 'Equipe não encontrada' }, { status: 404 });
     }
 
     invalidateCachePrefix(TEAMS_CACHE_PREFIX);
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/teams error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -162,12 +154,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
 
-    const result = await query(
-      `DELETE FROM teams WHERE id = $1 RETURNING *`,
-      [id]
-    );
+    const deleted = await db.delete(teams).where(eq(teams.id, id)).returning();
 
-    if (result.rowCount === 0) {
+    if (deleted.length === 0) {
       return NextResponse.json({ error: 'Equipe não encontrada' }, { status: 404 });
     }
 

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/drizzle';
 import { query } from '@/lib/db';
+import { comments } from '@/lib/schema/social';
+import { members } from '@/lib/schema/core';
+import { eq, and, asc } from 'drizzle-orm';
 import { dispatchWebhook } from '@/lib/webhooks';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
@@ -18,25 +22,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'ticket_id obrigatório' }, { status: 400 });
     }
 
-    // Validar acesso ao ticket (admin bypassa)
     const canAccess = await hasTicketAccess(auth, ticketId);
-    if (!canAccess) {
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
-    }
+    if (!canAccess) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    const result = await query(
-      `SELECT
-        c.id, c.body, c.created_at, c.updated_at,
-        c.author_id,
-        m.display_name AS author_name, m.email AS author_email, m.avatar_url AS author_avatar
-      FROM comments c
-      JOIN members m ON m.id = c.author_id
-      WHERE c.ticket_id = $1
-      ORDER BY c.created_at ASC`,
-      [ticketId]
-    );
+    const rows = await db.select({
+      id: comments.id,
+      body: comments.body,
+      created_at: comments.createdAt,
+      updated_at: comments.updatedAt,
+      author_id: comments.authorId,
+      author_name: members.displayName,
+      author_email: members.email,
+      author_avatar: members.avatarUrl,
+    })
+      .from(comments)
+      .innerJoin(members, eq(members.id, comments.authorId))
+      .where(eq(comments.ticketId, ticketId))
+      .orderBy(asc(comments.createdAt));
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('GET /api/comments error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -54,28 +58,21 @@ export async function POST(request: Request) {
     }
     const { ticket_id, content } = validation.data;
 
-    const memberId = auth.id;
+    const [comment] = await db.insert(comments).values({
+      ticketId: ticket_id,
+      authorId: auth.id,
+      body: content.trim(),
+    }).returning();
 
-    const result = await query(
-      `INSERT INTO comments (ticket_id, author_id, body)
-       VALUES ($1, $2, $3)
-       RETURNING id, body, created_at`,
-      [ticket_id, memberId, content.trim()]
-    );
-
-    const comment = result.rows[0];
     dispatchWebhook('comment.created', { ...comment, ticket_id });
 
-    // Notificações de @menção (fire-and-forget: falhas não quebram a resposta)
+    // Notificações de @menção (fire-and-forget)
     try {
       const mentions = extractMentions(content);
       if (mentions.length > 0) {
-        // Busca ticket_key + workspace_id uma única vez
         const ticketRes = await query(
           `SELECT t.workspace_id, tf.ticket_key, tf.title
-           FROM tickets t
-           LEFT JOIN tickets_full tf ON tf.id = t.id
-           WHERE t.id = $1`,
+           FROM tickets t LEFT JOIN tickets_full tf ON tf.id = t.id WHERE t.id = $1`,
           [ticket_id]
         );
         const ticketRow = ticketRes.rows[0];
@@ -84,21 +81,15 @@ export async function POST(request: Request) {
 
         const notified = new Set<string>();
         for (const name of mentions) {
-          const memberRes = await query(
-            `SELECT id, workspace_id, display_name
-             FROM members
-             WHERE LOWER(display_name) LIKE LOWER($1)
-             ORDER BY LENGTH(display_name) ASC
-             LIMIT 1`,
-            [`%${name}%`]
-          );
-          const target = memberRes.rows[0];
-          if (!target) continue;
-          if (notified.has(target.id)) continue;
+          const [target] = await db.select({ id: members.id, workspaceId: members.workspaceId, displayName: members.displayName })
+            .from(members)
+            .where(eq(members.displayName, name))
+            .limit(1);
+          if (!target || notified.has(target.id)) continue;
           notified.add(target.id);
 
           await createNotification({
-            workspace_id: target.workspace_id || ticketWorkspaceId,
+            workspace_id: target.workspaceId || ticketWorkspaceId,
             recipient_id: target.id,
             actor_id: auth.id,
             type: 'mention',
@@ -133,21 +124,23 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'id e content são obrigatórios' }, { status: 400 });
     }
 
-    // Author OR admin pode editar
     const isAdminUser = auth.role === 'owner' || auth.role === 'admin';
-    const ownerCondition = isAdminUser ? '' : 'AND author_id = $3';
-    const params: unknown[] = isAdminUser ? [content.trim(), id] : [content.trim(), id, auth.id];
 
-    const result = await query(
-      `UPDATE comments SET body = $1, updated_at = NOW() WHERE id = $2 ${ownerCondition} RETURNING id, body, updated_at`,
-      params
-    );
+    // Author OR admin pode editar
+    const condition = isAdminUser
+      ? eq(comments.id, id)
+      : and(eq(comments.id, id), eq(comments.authorId, auth.id));
 
-    if (result.rowCount === 0) {
+    const [updated] = await db.update(comments)
+      .set({ body: content.trim(), updatedAt: new Date() })
+      .where(condition!)
+      .returning();
+
+    if (!updated) {
       return NextResponse.json({ error: 'Sem permissão ou comentário não encontrado' }, { status: 403 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/comments error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -166,13 +159,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
 
-    // Author OR admin pode deletar
     const isAdminUser = auth.role === 'owner' || auth.role === 'admin';
-    const result = isAdminUser
-      ? await query(`DELETE FROM comments WHERE id = $1`, [id])
-      : await query(`DELETE FROM comments WHERE id = $1 AND author_id = $2`, [id, auth.id]);
+    const condition = isAdminUser
+      ? eq(comments.id, id)
+      : and(eq(comments.id, id), eq(comments.authorId, auth.id));
 
-    if (result.rowCount === 0) {
+    const deleted = await db.delete(comments).where(condition!).returning();
+
+    if (deleted.length === 0) {
       return NextResponse.json({ error: 'Sem permissão ou comentário não encontrado' }, { status: 403 });
     }
 

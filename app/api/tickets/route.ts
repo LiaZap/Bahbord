@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query, getDefaultWorkspaceId } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { statuses } from '@/lib/schema/core';
+import { tickets } from '@/lib/schema/tickets';
+import { eq, sql } from 'drizzle-orm';
 import { getAuthMember } from '@/lib/api-auth';
 import { createTicketSchema } from '@/lib/validators';
 import { hasTicketAccess } from '@/lib/access-check';
@@ -139,55 +143,74 @@ export async function PATCH(request: Request) {
 
     const body = await request.json();
     const ticketId = body.id as string | undefined;
+    const statusId = body.status_id as string | undefined;
     const statusKey = body.status_key as string | undefined;
 
-    if (!ticketId || !statusKey) {
-      return NextResponse.json({ error: 'Missing ticket id or status_key' }, { status: 400 });
+    if (!ticketId || (!statusId && !statusKey)) {
+      return NextResponse.json({ error: 'Missing ticket id or status_id/status_key' }, { status: 400 });
     }
 
     const allowed = await hasTicketAccess(auth, ticketId);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    // Map status_key to search patterns (flexible matching)
-    const statusPatterns: Record<string, string[]> = {
-      todo: ['INICIADO', 'TODO', 'ABERTO', 'NOVO'],
-      waiting: ['AGUARDANDO', 'RESPOSTA', 'WAITING', 'PENDENTE'],
-      progress: ['PROGRESSO', 'ANDAMENTO', 'PROGRESS', 'DOING'],
-      done: ['CONCLU', 'DONE', 'FINALIZADO', 'FEITO']
-    };
+    let resolvedStatusId: string;
 
-    const patterns = statusPatterns[statusKey];
-    if (!patterns) {
-      return NextResponse.json({ error: 'Invalid status_key' }, { status: 400 });
+    if (statusId) {
+      // Modo novo: status_id direto (UUID)
+      const [found] = await db.select({ id: statuses.id, isDone: statuses.isDone })
+        .from(statuses).where(eq(statuses.id, statusId));
+      if (!found) {
+        return NextResponse.json({ error: 'Status não encontrado' }, { status: 404 });
+      }
+      resolvedStatusId = statusId;
+    } else {
+      // Modo legado: status_key com pattern matching
+      const statusPatterns: Record<string, string[]> = {
+        todo: ['INICIADO', 'TODO', 'ABERTO', 'NOVO'],
+        waiting: ['AGUARDANDO', 'RESPOSTA', 'WAITING', 'PENDENTE'],
+        progress: ['PROGRESSO', 'ANDAMENTO', 'PROGRESS', 'DOING'],
+        done: ['CONCLU', 'DONE', 'FINALIZADO', 'FEITO']
+      };
+
+      const patterns = statusPatterns[statusKey!];
+      if (!patterns) {
+        return NextResponse.json({ error: 'Invalid status_key' }, { status: 400 });
+      }
+
+      const statusResult = await query(
+        `SELECT id, name FROM statuses
+         WHERE ${patterns.map((_, i) => `UPPER(name) LIKE '%' || $${i + 1} || '%'`).join(' OR ')}
+         ORDER BY position ASC LIMIT 1`,
+        patterns
+      );
+
+      if (!statusResult.rows[0]) {
+        return NextResponse.json({ error: `Nenhum status encontrado para "${statusKey}"` }, { status: 404 });
+      }
+      resolvedStatusId = statusResult.rows[0].id;
     }
 
-    // Find status matching any pattern
-    const statusResult = await query(
-      `SELECT id, name FROM statuses
-       WHERE ${patterns.map((_, i) => `UPPER(name) LIKE '%' || $${i + 1} || '%'`).join(' OR ')}
-       ORDER BY position ASC LIMIT 1`,
-      patterns
-    );
+    // Buscar se o status destino marca como "concluído"
+    const [targetStatus] = await db.select({ isDone: statuses.isDone })
+      .from(statuses).where(eq(statuses.id, resolvedStatusId));
 
-    if (!statusResult.rows[0]) {
-      return NextResponse.json({ error: `Nenhum status encontrado para "${statusKey}"` }, { status: 404 });
-    }
+    // Atualizar ticket com lógica de completed_at
+    const [updated] = await db.update(tickets)
+      .set({
+        statusId: resolvedStatusId,
+        updatedAt: new Date(),
+        completedAt: targetStatus?.isDone
+          ? sql`COALESCE(${tickets.completedAt}, NOW())`
+          : null,
+      })
+      .where(eq(tickets.id, ticketId))
+      .returning();
 
-    const result = await query(
-      `UPDATE tickets
-       SET status_id = $1,
-           updated_at = NOW(),
-           completed_at = CASE WHEN (SELECT is_done FROM statuses WHERE id = $1) = true THEN COALESCE(completed_at, NOW()) ELSE NULL END
-       WHERE id = $2
-       RETURNING *`,
-      [statusResult.rows[0].id, ticketId]
-    );
-
-    if (result.rowCount === 0) {
+    if (!updated) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/tickets error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });

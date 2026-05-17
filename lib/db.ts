@@ -1,3 +1,5 @@
+// Pool pg compartilhado entre raw queries legadas e Drizzle ORM.
+// Novos endpoints devem usar `import { db } from '@/lib/drizzle'` em vez de `query()`.
 import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 const connectionString = process.env.DATABASE_URL || '';

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { projects, boards, sprints } from '@/lib/schema/tickets';
+import { eq } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createProjectSchema } from '@/lib/validators';
 import { logAudit, extractRequestMeta } from '@/lib/audit';
@@ -145,27 +148,31 @@ export async function POST(request: Request) {
       }
     }
 
-    const result = await query(
-      `INSERT INTO projects (workspace_id, name, prefix, description, color)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [workspaceId, name, prefix.toUpperCase(), description || null, color || '#3b82f6']
-    );
+    const [project] = await db.insert(projects).values({
+      workspaceId,
+      name,
+      prefix: prefix.toUpperCase(),
+      description: description || null,
+      color: color || '#3b82f6',
+    }).returning();
 
-    const project = result.rows[0];
     const sprintBoardName = `01 ${project.name}`;
 
-    // Create default board + active sprint ("01 <NOME_PROJETO>")
-    await query(
-      `INSERT INTO boards (project_id, name, type, is_default)
-       VALUES ($1, $2, 'kanban', true)`,
-      [project.id, sprintBoardName]
-    );
-    await query(
-      `INSERT INTO sprints (workspace_id, project_id, name, is_active)
-       VALUES ($1, $2, $3, true)`,
-      [workspaceId, project.id, sprintBoardName]
-    );
+    // Create default board + active sprint
+    await db.insert(boards).values({
+      projectId: project.id,
+      name: sprintBoardName,
+      type: 'kanban',
+      isDefault: true,
+    });
+    await db.insert(sprints).values({
+      workspaceId,
+      projectId: project.id,
+      name: sprintBoardName,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    });
 
     // If template_id provided, log it for future use
     if (template_id) {
@@ -212,32 +219,25 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
 
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (color !== undefined) updateData.color = color;
+    if (is_archived !== undefined) updateData.isArchived = is_archived;
 
-    if (name !== undefined) { sets.push(`name = $${idx}`); values.push(name); idx++; }
-    if (description !== undefined) { sets.push(`description = $${idx}`); values.push(description); idx++; }
-    if (color !== undefined) { sets.push(`color = $${idx}`); values.push(color); idx++; }
-    if (is_archived !== undefined) { sets.push(`is_archived = $${idx}`); values.push(is_archived); idx++; }
-
-    if (sets.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
     }
+    updateData.updatedAt = new Date();
 
-    sets.push(`updated_at = NOW()`);
-    values.push(id);
+    const [updated] = await db.update(projects)
+      .set(updateData)
+      .where(eq(projects.id, id))
+      .returning();
 
-    const result = await query(
-      `UPDATE projects SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
-
-    if (result.rowCount === 0) {
+    if (!updated) {
       return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 });
     }
-
-    const updated = result.rows[0] as { id: string; workspace_id: string };
     const meta = extractRequestMeta(request);
     const changedFields: Record<string, unknown> = {};
     if (name !== undefined) changedFields.name = name;
@@ -245,7 +245,7 @@ export async function PATCH(request: Request) {
     if (color !== undefined) changedFields.color = color;
     if (is_archived !== undefined) changedFields.is_archived = is_archived;
     await logAudit({
-      workspaceId: updated.workspace_id,
+      workspaceId: updated.workspaceId,
       actorId: auth.id,
       action: is_archived === true ? 'project.archived' : 'project.updated',
       entityType: 'project',
@@ -279,19 +279,17 @@ export async function DELETE(request: Request) {
     }
 
     // Archive instead of hard delete
-    const result = await query(
-      `UPDATE projects SET is_archived = true, updated_at = NOW() WHERE id = $1 RETURNING *`,
-      [id]
-    );
+    const [archived] = await db.update(projects)
+      .set({ isArchived: true, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
 
-    if (result.rowCount === 0) {
+    if (!archived) {
       return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 });
     }
-
-    const archived = result.rows[0] as { id: string; workspace_id: string; name: string };
     const meta = extractRequestMeta(request);
     await logAudit({
-      workspaceId: archived.workspace_id,
+      workspaceId: archived.workspaceId,
       actorId: auth.id,
       action: 'project.archived',
       entityType: 'project',

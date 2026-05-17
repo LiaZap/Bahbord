@@ -37,24 +37,9 @@ interface ColumnProps {
   onToggleSelect?: (id: string) => void;
 }
 
-const columnAccents: Record<string, string> = {
-  todo: 'bg-slate-400',
-  waiting: 'bg-amber-400',
-  progress: 'bg-blue-500',
-  done: 'bg-emerald-500',
-};
-
-const statusKeyToName: Record<string, string> = {
-  todo: 'NÃO INICIADO',
-  waiting: 'AGUARDANDO RESPOSTA',
-  progress: 'EM PROGRESSO',
-  done: 'CONCLUÍDO',
-};
-
 export default function KanbanColumn({ id, title, color, cards, activeItemId, onSelectCard, wipLimit, selectedIds, onToggleSelect }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const { createInColumn } = useBoardShell();
-  const accent = columnAccents[id] || color;
 
   return (
     <section
@@ -68,7 +53,7 @@ export default function KanbanColumn({ id, title, color, cards, activeItemId, on
       {/* Header */}
       <div className="mb-2 flex items-center justify-between px-0.5">
         <div className="flex items-center gap-2">
-          <div className={cn('h-2 w-2 rounded-sm', accent)} />
+          <div className="h-2 w-2 rounded-sm" style={{ backgroundColor: color }} />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-secondary-muted">{title}</span>
           <span className={cn('text-[11px] font-semibold tabular-nums', wipLimit && cards.length >= wipLimit ? 'text-amber-400' : 'text-tertiary-muted')}>
             {cards.length}{wipLimit ? `/${wipLimit}` : ''}

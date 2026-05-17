@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/drizzle';
 import { query } from '@/lib/db';
+import { clients } from '@/lib/schema/core';
+import { tickets } from '@/lib/schema/tickets';
+import { eq, asc, sql } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { cachedQuery, invalidateCachePrefix } from '@/lib/cache';
 
-// Prefix usado em todas as chaves do cache de clients (rota /api/clients).
-// Mutations (POST/PATCH/DELETE) chamam invalidateCachePrefix(CLIENTS_CACHE_PREFIX).
-// OBS: o cache em /api/options já existe sob o prefix 'options:clients:' — esses
-// dois caches são independentes (rotas diferentes); cada mutation invalida o
-// próprio. Quem precisa invalidar options:clients faria via outra rota.
 const CLIENTS_CACHE_PREFIX = 'clients:';
 
 export async function GET() {
@@ -16,10 +15,7 @@ export async function GET() {
     if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     const workspaceId = auth.workspace_id;
 
-    // Cache 60s. ticket_count via subquery muda com qualquer ticket criado, mas
-    // pra UI de listagem de clientes (admin) 60s de defasagem é aceitável e o
-    // ganho de evitar a subquery N vezes (uma por client) é significativo em
-    // workspaces com muitos clientes.
+    // Cache 60s — ticket_count via subquery, defasagem aceitável
     const rows = await cachedQuery(
       `${CLIENTS_CACHE_PREFIX}${workspaceId}`,
       async () => (await query(
@@ -55,14 +51,18 @@ export async function POST(request: Request) {
     if (!name?.trim()) {
       return NextResponse.json({ error: 'name é obrigatório' }, { status: 400 });
     }
-    const workspaceId = auth.workspace_id;
-    const result = await query(
-      `INSERT INTO clients (workspace_id, name, color, contact_email, contact_phone, organization_id, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING *`,
-      [workspaceId, name.trim(), color || '#6366f1', contact_email || null, contact_phone || null, organization_id || null]
-    );
+
+    const [created] = await db.insert(clients).values({
+      workspaceId: auth.workspace_id,
+      name: name.trim(),
+      color: color || '#6366f1',
+      contactEmail: contact_email || null,
+      contactPhone: contact_phone || null,
+      isActive: true,
+    }).returning();
+
     invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error('POST /api/clients error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -77,32 +77,33 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { id, name, color, contact_email, contact_phone, organization_id, is_active } = body;
+    const { id, name, color, contact_email, contact_phone, is_active } = body;
     if (!id) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
-    if (name !== undefined) { sets.push(`name = $${idx}`); values.push(name); idx++; }
-    if (color !== undefined) { sets.push(`color = $${idx}`); values.push(color); idx++; }
-    if (contact_email !== undefined) { sets.push(`contact_email = $${idx}`); values.push(contact_email); idx++; }
-    if (contact_phone !== undefined) { sets.push(`contact_phone = $${idx}`); values.push(contact_phone); idx++; }
-    if (organization_id !== undefined) { sets.push(`organization_id = $${idx}`); values.push(organization_id || null); idx++; }
-    if (is_active !== undefined) { sets.push(`is_active = $${idx}`); values.push(is_active); idx++; }
-    if (sets.length === 0) {
+
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+    if (contact_email !== undefined) updateData.contactEmail = contact_email;
+    if (contact_phone !== undefined) updateData.contactPhone = contact_phone;
+    if (is_active !== undefined) updateData.isActive = is_active;
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
     }
-    values.push(id);
-    const result = await query(
-      `UPDATE clients SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
-    if (result.rowCount === 0) {
+
+    const [updated] = await db.update(clients)
+      .set(updateData)
+      .where(eq(clients.id, id))
+      .returning();
+
+    if (!updated) {
       return NextResponse.json({ error: 'Cliente não encontrado' }, { status: 404 });
     }
+
     invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/clients error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -121,11 +122,16 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
-    const check = await query(`SELECT COUNT(*) AS cnt FROM tickets WHERE client_id = $1`, [id]);
-    if (parseInt(check.rows[0].cnt, 10) > 0) {
+
+    // Verificar tickets vinculados
+    const [check] = await db.select({ cnt: sql<number>`COUNT(*)::int` })
+      .from(tickets).where(eq(tickets.clientId, id));
+
+    if (check.cnt > 0) {
       return NextResponse.json({ error: 'Não é possível remover: existem tickets vinculados a este cliente' }, { status: 409 });
     }
-    await query(`DELETE FROM clients WHERE id = $1`, [id]);
+
+    await db.delete(clients).where(eq(clients.id, id));
     invalidateCachePrefix(CLIENTS_CACHE_PREFIX);
     return NextResponse.json({ ok: true });
   } catch (err) {

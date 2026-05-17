@@ -31,13 +31,6 @@ export function useBoardShell() {
   return useContext(BoardShellContext);
 }
 
-// Mapeamento das column keys para nomes de status
-const statusKeyToName: Record<string, string> = {
-  todo: 'NÃO INICIADO',
-  waiting: 'AGUARDANDO RESPOSTA',
-  progress: 'EM PROGRESSO',
-  done: 'CONCLUÍDO',
-};
 
 export default function BoardShell({ services, statuses, ticketTypes, children }: BoardShellProps) {
   const modalRef = useRef<CreateTicketModalRef>(null);
@@ -52,10 +45,9 @@ export default function BoardShell({ services, statuses, ticketTypes, children }
     }).catch(() => {});
   }, []);
 
-  function createInColumn(statusKey: string) {
-    const statusName = statusKeyToName[statusKey];
-    const matchingStatus = statuses.find((s) => s.name.toUpperCase() === statusName);
-    modalRef.current?.open(matchingStatus?.id);
+  function createInColumn(statusId: string) {
+    // statusId agora é o UUID real do status — passa direto pro modal
+    modalRef.current?.open(statusId);
   }
 
   function handleCloseDetailModal(changed: boolean = true) {

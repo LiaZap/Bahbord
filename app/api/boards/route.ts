@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { boards } from '@/lib/schema/tickets';
+import { boardRoles } from '@/lib/schema/rbac';
+import { eq } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
@@ -129,23 +133,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `type inválido. Use: ${validTypes.join(', ')}` }, { status: 400 });
     }
 
-    const result = await query(
-      `INSERT INTO boards (project_id, name, type, description)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [project_id, name, type || 'kanban', description || null]
-    );
-
-    const board = result.rows[0];
+    const [board] = await db.insert(boards).values({
+      projectId: project_id,
+      name,
+      type: type || 'kanban',
+      description: description || null,
+    }).returning();
 
     // Dar board_role admin ao criador
     if (auth) {
-      await query(
-        `INSERT INTO board_roles (board_id, member_id, role)
-         VALUES ($1, $2, 'admin')
-         ON CONFLICT DO NOTHING`,
-        [board.id, auth.id]
-      );
+      await db.insert(boardRoles).values({
+        boardId: board.id,
+        memberId: auth.id,
+        role: 'admin',
+      }).onConflictDoNothing();
     }
 
     return NextResponse.json(board, { status: 201 });
@@ -183,30 +184,25 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
 
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
 
-    if (name !== undefined) { sets.push(`name = $${idx}`); values.push(name); idx++; }
-    if (description !== undefined) { sets.push(`description = $${idx}`); values.push(description); idx++; }
-
-    if (sets.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
     }
+    updateData.updatedAt = new Date();
 
-    sets.push(`updated_at = NOW()`);
-    values.push(id);
+    const [updated] = await db.update(boards)
+      .set(updateData)
+      .where(eq(boards.id, id))
+      .returning();
 
-    const result = await query(
-      `UPDATE boards SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
-
-    if (result.rowCount === 0) {
+    if (!updated) {
       return NextResponse.json({ error: 'Board não encontrado' }, { status: 404 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/boards error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -227,12 +223,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id é obrigatório' }, { status: 400 });
     }
 
-    const result = await query(
-      `DELETE FROM boards WHERE id = $1 RETURNING *`,
-      [id]
-    );
+    const deleted = await db.delete(boards).where(eq(boards.id, id)).returning();
 
-    if (result.rowCount === 0) {
+    if (deleted.length === 0) {
       return NextResponse.json({ error: 'Board não encontrado' }, { status: 404 });
     }
 

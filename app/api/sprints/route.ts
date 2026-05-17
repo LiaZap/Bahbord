@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { sprints, boards, tickets } from '@/lib/schema/tickets';
+import { eq, and, ne, asc, isNull, sql } from 'drizzle-orm';
 import { getAuthMember, isAdmin } from '@/lib/api-auth';
 import { createSprintSchema, validateBody } from '@/lib/validators';
+import { query } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
@@ -12,6 +15,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('project_id');
 
+    // Query complexa com GROUP BY + aggregate + RBAC subqueries — mantida em raw SQL
+    // pois Drizzle query builder não suporta COUNT FILTER nativamente
     let whereClause = 's.workspace_id = $1';
     const params: unknown[] = [wsId];
 
@@ -62,8 +67,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    // Clonar request para conseguir ler o body cru DEPOIS do validateBody
-    // (precisamos dos campos extras de rollover que não estão no schema).
     const reqClone = request.clone();
     const validation = await validateBody(request, createSprintSchema);
     if ('error' in validation) {
@@ -88,37 +91,29 @@ export async function POST(request: Request) {
         ? rawBody.rollover_strategy
         : 'move_incomplete';
 
-    const wsId = auth.workspace_id;
+    const [created] = await db.insert(sprints).values({
+      workspaceId: auth.workspace_id,
+      projectId: project_id || null,
+      name: name.trim(),
+      goal: goal || null,
+      startDate: start_date ? new Date(start_date) : new Date(),
+      endDate: end_date ? new Date(end_date) : new Date(),
+      isActive: false,
+      isCompleted: false,
+      autoRollover: autoRollover,
+      cadenceDays: cadenceDays,
+      rolloverStrategy: rolloverStrategy,
+    }).returning();
 
-    const result = await query(
-      `INSERT INTO sprints
-         (workspace_id, project_id, name, goal, start_date, end_date,
-          is_active, is_completed, auto_rollover, cadence_days, rollover_strategy)
-       VALUES ($1, $2, $3, $4, $5, $6, false, false, $7, $8, $9)
-       RETURNING *`,
-      [
-        wsId,
-        project_id || null,
-        name.trim(),
-        goal || null,
-        start_date || null,
-        end_date || null,
-        autoRollover,
-        cadenceDays,
-        rolloverStrategy,
-      ]
-    );
-
-    // Auto-create a board for this sprint inside the project
     if (project_id) {
-      await query(
-        `INSERT INTO boards (project_id, name, type)
-         VALUES ($1, $2, 'scrum')`,
-        [project_id, name.trim()]
-      );
+      await db.insert(boards).values({
+        projectId: project_id,
+        name: name.trim(),
+        type: 'scrum',
+      });
     }
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(created, { status: 201 });
   } catch (err) {
     console.error('POST /api/sprints error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -139,63 +134,56 @@ export async function PATCH(request: Request) {
     }
 
     if (action === 'activate') {
-      // Deactivate only sprints from the same project
-      const sprintData = await query(`SELECT project_id, workspace_id FROM sprints WHERE id = $1`, [id]);
-      const sprint = sprintData.rows[0];
+      const [sprint] = await db.select({ projectId: sprints.projectId, workspaceId: sprints.workspaceId })
+        .from(sprints).where(eq(sprints.id, id));
+
       if (sprint) {
-        if (sprint.project_id) {
-          await query(`UPDATE sprints SET is_active = false WHERE project_id = $1`, [sprint.project_id]);
+        if (sprint.projectId) {
+          await db.update(sprints).set({ isActive: false }).where(eq(sprints.projectId, sprint.projectId));
         } else {
-          await query(`UPDATE sprints SET is_active = false WHERE workspace_id = $1 AND project_id IS NULL`, [sprint.workspace_id]);
+          await db.update(sprints).set({ isActive: false })
+            .where(and(eq(sprints.workspaceId, sprint.workspaceId!), isNull(sprints.projectId)));
         }
       }
-      const result = await query(
-        `UPDATE sprints SET is_active = true WHERE id = $1 RETURNING *`,
-        [id]
-      );
-      return NextResponse.json(result.rows[0]);
+
+      const [activated] = await db.update(sprints)
+        .set({ isActive: true })
+        .where(eq(sprints.id, id))
+        .returning();
+
+      return NextResponse.json(activated);
     }
 
     if (action === 'complete') {
-      // Fetch completing sprint to know its project
-      const sprintData = await query(
-        `SELECT id, project_id, workspace_id FROM sprints WHERE id = $1`,
-        [id]
-      );
-      const completingSprint = sprintData.rows[0];
+      const [completingSprint] = await db
+        .select({ id: sprints.id, projectId: sprints.projectId, workspaceId: sprints.workspaceId })
+        .from(sprints).where(eq(sprints.id, id));
 
       if (completingSprint) {
-        // Find the next sprint (same project, not active, not completed, oldest first)
-        let nextSprintRes;
-        if (completingSprint.project_id) {
-          nextSprintRes = await query(
-            `SELECT id FROM sprints
-             WHERE project_id = $1
-               AND is_active = false
-               AND is_completed = false
-               AND id <> $2
-             ORDER BY created_at ASC
-             LIMIT 1`,
-            [completingSprint.project_id, id]
-          );
-        } else {
-          nextSprintRes = await query(
-            `SELECT id FROM sprints
-             WHERE workspace_id = $1
-               AND project_id IS NULL
-               AND is_active = false
-               AND is_completed = false
-               AND id <> $2
-             ORDER BY created_at ASC
-             LIMIT 1`,
-            [completingSprint.workspace_id, id]
-          );
-        }
+        // Find next sprint
+        const nextConditions = completingSprint.projectId
+          ? and(
+              eq(sprints.projectId, completingSprint.projectId),
+              eq(sprints.isActive, false),
+              eq(sprints.isCompleted, false),
+              ne(sprints.id, id)
+            )
+          : and(
+              eq(sprints.workspaceId, completingSprint.workspaceId!),
+              isNull(sprints.projectId),
+              eq(sprints.isActive, false),
+              eq(sprints.isCompleted, false),
+              ne(sprints.id, id)
+            );
 
-        const nextSprint = nextSprintRes.rows[0];
+        const [nextSprint] = await db.select({ id: sprints.id })
+          .from(sprints)
+          .where(nextConditions!)
+          .orderBy(asc(sprints.createdAt))
+          .limit(1);
 
+        // Mover tickets não-concluídos — usa raw SQL para o subquery com JOIN
         if (nextSprint) {
-          // Move unfinished tickets to the next sprint
           await query(
             `UPDATE tickets
              SET sprint_id = $1
@@ -209,7 +197,6 @@ export async function PATCH(request: Request) {
             [nextSprint.id, id]
           );
         } else {
-          // No next sprint: send unfinished tickets to backlog (sprint_id = NULL)
           await query(
             `UPDATE tickets
              SET sprint_id = NULL
@@ -225,60 +212,56 @@ export async function PATCH(request: Request) {
         }
       }
 
-      const result = await query(
-        `UPDATE sprints SET is_completed = true, is_active = false, completed_at = NOW() WHERE id = $1 RETURNING *`,
-        [id]
-      );
-      return NextResponse.json(result.rows[0]);
+      const [completed] = await db.update(sprints)
+        .set({ isCompleted: true, isActive: false, completedAt: new Date() })
+        .where(eq(sprints.id, id))
+        .returning();
+
+      return NextResponse.json(completed);
     }
 
     // Generic field update
-    const sets: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
+    const ALLOWED_PATCH = ['name', 'goal', 'start_date', 'end_date', 'project_id', 'auto_rollover', 'cadence_days', 'rollover_strategy'];
+    const updateData: Record<string, unknown> = {};
 
-    const ALLOWED_PATCH = [
-      'name',
-      'goal',
-      'start_date',
-      'end_date',
-      'project_id',
-      'auto_rollover',
-      'cadence_days',
-      'rollover_strategy',
-    ];
     for (const [key, val] of Object.entries(fields)) {
       if (!ALLOWED_PATCH.includes(key)) continue;
-      // Validar enum de rollover_strategy
       if (key === 'rollover_strategy' && typeof val === 'string' &&
           !['move_incomplete', 'keep_in_place', 'archive_incomplete'].includes(val)) {
-        return NextResponse.json(
-          { error: 'rollover_strategy inválido' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'rollover_strategy inválido' }, { status: 400 });
       }
-      // Validar cadence_days positivo
       if (key === 'cadence_days' && val !== null && val !== undefined) {
         if (typeof val !== 'number' || val <= 0) {
           return NextResponse.json({ error: 'cadence_days deve ser > 0' }, { status: 400 });
         }
       }
-      sets.push(`${key} = $${idx}`);
-      values.push(val);
-      idx++;
+      // Map snake_case DB fields → camelCase Drizzle columns
+      const columnMap: Record<string, string> = {
+        name: 'name', goal: 'goal', start_date: 'startDate', end_date: 'endDate',
+        project_id: 'projectId', auto_rollover: 'autoRollover',
+        cadence_days: 'cadenceDays', rollover_strategy: 'rolloverStrategy',
+      };
+      const drizzleKey = columnMap[key];
+      if (drizzleKey) {
+        // Convert date strings to Date objects
+        if ((key === 'start_date' || key === 'end_date') && val) {
+          updateData[drizzleKey] = new Date(val as string);
+        } else {
+          updateData[drizzleKey] = val;
+        }
+      }
     }
 
-    if (sets.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo' }, { status: 400 });
     }
 
-    values.push(id);
-    const result = await query(
-      `UPDATE sprints SET ${sets.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
+    const [updated] = await db.update(sprints)
+      .set(updateData)
+      .where(eq(sprints.id, id))
+      .returning();
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error('PATCH /api/sprints error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -298,17 +281,22 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
 
-    const check = await query(`SELECT COUNT(*)::int AS cnt FROM tickets WHERE sprint_id = $1`, [id]);
-    if (check.rows[0].cnt > 0) {
+    // Verificar tickets associados antes de deletar
+    const [check] = await db
+      .select({ cnt: sql<number>`COUNT(*)::int` })
+      .from(tickets)
+      .where(eq(tickets.sprintId, id));
+
+    if (check.cnt > 0) {
       return NextResponse.json(
-        { error: `Não é possível remover: ${check.rows[0].cnt} ticket(s) associado(s) a este sprint` },
+        { error: `Não é possível remover: ${check.cnt} ticket(s) associado(s) a este sprint` },
         { status: 409 }
       );
     }
 
-    const result = await query(`DELETE FROM sprints WHERE id = $1`, [id]);
+    const deleted = await db.delete(sprints).where(eq(sprints.id, id));
 
-    if (result.rowCount === 0) {
+    if (deleted.rowCount === 0) {
       return NextResponse.json({ error: 'Sprint não encontrado' }, { status: 404 });
     }
 

@@ -4,3 +4,14 @@ out
 .env*
 .DS_Store
 coverage
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+# drizzle
+drizzle/
+
+# claude code artifacts
+.agents/
+.claude/scheduled_tasks.lock
+skills-lock.json

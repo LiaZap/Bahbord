@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { db } from '@/lib/drizzle';
+import { subtasks } from '@/lib/schema/tickets';
+import { eq, asc, sql, max } from 'drizzle-orm';
 import { getAuthMember } from '@/lib/api-auth';
 import { hasTicketAccess } from '@/lib/access-check';
 
@@ -18,15 +20,19 @@ export async function GET(request: Request) {
     const allowed = await hasTicketAccess(auth, ticketId);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    const result = await query(
-      `SELECT s.id, s.title, s.is_done AS is_completed, s.position, s.created_at, s.completed_at
-      FROM subtasks s
-      WHERE s.ticket_id = $1
-      ORDER BY s.position ASC, s.created_at ASC`,
-      [ticketId]
-    );
+    const rows = await db.select({
+      id: subtasks.id,
+      title: subtasks.title,
+      is_completed: subtasks.isDone,
+      position: subtasks.position,
+      created_at: subtasks.createdAt,
+      completed_at: subtasks.completedAt,
+    })
+      .from(subtasks)
+      .where(eq(subtasks.ticketId, ticketId))
+      .orderBy(asc(subtasks.position), asc(subtasks.createdAt));
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('GET /api/subtasks error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -48,20 +54,27 @@ export async function POST(request: Request) {
     const allowed = await hasTicketAccess(auth, ticket_id);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    const posResult = await query(
-      `SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM subtasks WHERE ticket_id = $1`,
-      [ticket_id]
-    );
-    const nextPos = posResult.rows[0].next_pos;
+    // Calcular próxima posição
+    const [posResult] = await db
+      .select({ nextPos: sql<number>`COALESCE(MAX(${subtasks.position}), -1) + 1` })
+      .from(subtasks)
+      .where(eq(subtasks.ticketId, ticket_id));
 
-    const result = await query(
-      `INSERT INTO subtasks (ticket_id, title, position, is_done)
-       VALUES ($1, $2, $3, false)
-       RETURNING id, title, is_done AS is_completed, position, created_at, completed_at`,
-      [ticket_id, title.trim(), nextPos]
-    );
+    const [created] = await db.insert(subtasks).values({
+      ticketId: ticket_id,
+      title: title.trim(),
+      position: posResult.nextPos,
+      isDone: false,
+    }).returning();
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json({
+      id: created.id,
+      title: created.title,
+      is_completed: created.isDone,
+      position: created.position,
+      created_at: created.createdAt,
+      completed_at: created.completedAt,
+    }, { status: 201 });
   } catch (err) {
     console.error('POST /api/subtasks error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -80,56 +93,44 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
 
-    // Resolve ticket_id da subtask para checar acesso ao ticket pai
-    const subRes = await query<{ ticket_id: string }>(
-      `SELECT ticket_id FROM subtasks WHERE id = $1 LIMIT 1`,
-      [id]
-    );
-    if (!subRes.rows[0]) {
+    // Verificar acesso ao ticket pai
+    const [sub] = await db.select({ ticketId: subtasks.ticketId })
+      .from(subtasks).where(eq(subtasks.id, id));
+    if (!sub) {
       return NextResponse.json({ error: 'Subtask não encontrada' }, { status: 404 });
     }
-    const allowed = await hasTicketAccess(auth, subRes.rows[0].ticket_id);
+    const allowed = await hasTicketAccess(auth, sub.ticketId);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    const sets: string[] = [];
-    const params: unknown[] = [];
-    let idx = 1;
-
+    const updateData: Record<string, unknown> = {};
     if (typeof is_completed === 'boolean') {
-      sets.push(`is_done = $${idx}`);
-      params.push(is_completed);
-      idx++;
-      if (is_completed) {
-        sets.push(`completed_at = NOW()`);
-      } else {
-        sets.push(`completed_at = NULL`);
-      }
+      updateData.isDone = is_completed;
+      updateData.completedAt = is_completed ? new Date() : null;
     }
-
     if (typeof title === 'string') {
-      sets.push(`title = $${idx}`);
-      params.push(title.trim());
-      idx++;
+      updateData.title = title.trim();
     }
-
     if (typeof position === 'number') {
-      sets.push(`position = $${idx}`);
-      params.push(position);
-      idx++;
+      updateData.position = position;
     }
 
-    if (sets.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'Nenhum campo para atualizar' }, { status: 400 });
     }
 
-    params.push(id);
-    const result = await query(
-      `UPDATE subtasks SET ${sets.join(', ')} WHERE id = $${idx}
-       RETURNING id, title, is_done AS is_completed, position, created_at, completed_at`,
-      params
-    );
+    const [updated] = await db.update(subtasks)
+      .set(updateData)
+      .where(eq(subtasks.id, id))
+      .returning();
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json({
+      id: updated.id,
+      title: updated.title,
+      is_completed: updated.isDone,
+      position: updated.position,
+      created_at: updated.createdAt,
+      completed_at: updated.completedAt,
+    });
   } catch (err) {
     console.error('PATCH /api/subtasks error:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
@@ -148,17 +149,15 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id obrigatório' }, { status: 400 });
     }
 
-    const subRes = await query<{ ticket_id: string }>(
-      `SELECT ticket_id FROM subtasks WHERE id = $1 LIMIT 1`,
-      [id]
-    );
-    if (!subRes.rows[0]) {
+    const [sub] = await db.select({ ticketId: subtasks.ticketId })
+      .from(subtasks).where(eq(subtasks.id, id));
+    if (!sub) {
       return NextResponse.json({ error: 'Subtask não encontrada' }, { status: 404 });
     }
-    const allowed = await hasTicketAccess(auth, subRes.rows[0].ticket_id);
+    const allowed = await hasTicketAccess(auth, sub.ticketId);
     if (!allowed) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-    await query(`DELETE FROM subtasks WHERE id = $1`, [id]);
+    await db.delete(subtasks).where(eq(subtasks.id, id));
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('DELETE /api/subtasks error:', err);

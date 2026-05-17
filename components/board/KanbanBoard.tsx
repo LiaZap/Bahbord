@@ -12,20 +12,16 @@ import { useBoard, type BoardItems } from '@/lib/hooks/useBoard';
 
 export type { TicketItem, BoardItems } from '@/lib/hooks/useBoard';
 
-const columns: Array<{ id: keyof BoardItems; title: string; color: string }> = [
-  { id: 'todo', title: 'Não iniciado', color: 'bg-slate-500' },
-  { id: 'waiting', title: 'Aguardando resposta', color: 'bg-warning' },
-  { id: 'progress', title: 'Em progresso', color: 'bg-accent' },
-  { id: 'done', title: 'Concluído', color: 'bg-success' }
-];
+export type BoardColumn = { id: string; title: string; color: string; isDone?: boolean };
 
 interface KanbanBoardProps {
   initialItems: BoardItems;
+  columns: BoardColumn[];
   wipLimits?: Record<string, number | null>;
   availableProjects?: { id: string; name: string }[];
 }
 
-export default function KanbanBoard({ initialItems, wipLimits = {}, availableProjects = [] }: KanbanBoardProps) {
+export default function KanbanBoard({ initialItems, columns, wipLimits = {}, availableProjects = [] }: KanbanBoardProps) {
   const {
     items,
     selectedCard,
@@ -128,7 +124,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
           title="Nenhum ticket aqui ainda"
           description="Crie o primeiro ticket pra começar a organizar o trabalho do board."
           actions={[
-            { label: 'Novo ticket', onClick: () => createInColumn('todo'), variant: 'primary' },
+            { label: 'Novo ticket', onClick: () => createInColumn(columns[0]?.id ?? ''), variant: 'primary' },
           ]}
         />
       ) : (
@@ -154,7 +150,7 @@ export default function KanbanBoard({ initialItems, wipLimits = {}, availablePro
                 id={column.id}
                 title={column.title}
                 color={column.color}
-                cards={filterTickets(items[column.id])}
+                cards={filterTickets(items[column.id] ?? [])}
                 activeItemId={selectedCard}
                 onSelectCard={setSelectedCard}
                 wipLimit={wipLimits[column.id] ?? null}
